@@ -32,7 +32,7 @@ import { CleanupFrontendContribution } from './yukibana-cleanup-contribution';
 import { YukibanaCommandContribution, YukibanaMenuContribution } from './yukibana-contribution';
 import { bindLayout } from './yukibana-layout-contribution';
 import { YukibanaMessageMiddlewareContribution, YukibanaMessageService } from './yukibana-message-service';
-import { YukibanaProblemContributioun } from './yukibana-problem-contribution';
+import { YukibanaProblemCommandContribution, YukibanaProblemContributioun } from './yukibana-problem-contribution';
 import { YukibanaProblemManager } from './yukibana-problem-manager';
 import { YukibanaRemoteFileSystemProvider } from './yukibana-remote-file-system-provider';
 import { YukibanaToolbarDefaults } from './yukibana-toolbar-contributions';
@@ -69,6 +69,7 @@ export default new ContainerModule((bind, unbind, isBound, rebind) => {
 
     bind(YukibanaProblemContributioun).toSelf().inSingletonScope();
     rebind(ProblemContribution).toService(YukibanaProblemContributioun);
+    bind(CommandContribution).to(YukibanaProblemCommandContribution);
 
     bindLayout(bind, rebind, isBound);
 

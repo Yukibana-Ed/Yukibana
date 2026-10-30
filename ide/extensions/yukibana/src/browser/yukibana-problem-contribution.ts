@@ -1,12 +1,16 @@
 /**
  * SPDX-License-Identifier: MIT
  */
-
-import { ILogger } from '@theia/core';
+import { Command, CommandContribution, CommandRegistry, ILogger } from '@theia/core';
 import { inject, injectable, named, postConstruct } from '@theia/core/shared/inversify';
 import { ProblemContribution } from '@theia/markers/lib/browser/problem/problem-contribution';
 import { ProblemStat } from '@theia/markers/lib/browser/problem/problem-manager';
 import { ConfigProvider } from './config/config-provider';
+
+export const FocusProblemsCommand: Command = Command.toDefaultLocalizedCommand({
+    id: 'workbench.action.problems.focus',
+    label: 'Focus Problems (Errors, Warnings, Infos)',
+});
 
 /**
  * Theia's problems view contribution, without its status bar item while the config's `features.squiggles` is false;
@@ -34,5 +38,21 @@ export class YukibanaProblemContributioun extends ProblemContribution {
             return;
         }
         super.setStatusBarElement(problemStat);
+    }
+}
+
+@injectable()
+export class YukibanaProblemCommandContribution implements CommandContribution {
+    @inject(ProblemContribution) protected readonly problemView: ProblemContribution;
+
+    registerCommands(commands: CommandRegistry): void {
+        commands.registerCommand(FocusProblemsCommand, {
+            execute: async () => {
+                await this.problemView.openView({
+                    activate: true,
+                    reveal: true,
+                });
+            },
+        });
     }
 }
