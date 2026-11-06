@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** The Realtime topics a person's open pages listen to.
  *
  *  The database sends on three kinds of topic (see the migration

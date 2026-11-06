@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 import { defineConfig } from 'vitest/config';
 
 /** The unit suite: the pure modules in src/lib, run in Node, no services.

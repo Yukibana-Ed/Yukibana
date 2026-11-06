@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** Posting to a SvelteKit form action from script, for the controls that
  *  save as they are used and have no form to submit (a drag, a key press).
  *  The action is the same one a form would post to, so the server has one

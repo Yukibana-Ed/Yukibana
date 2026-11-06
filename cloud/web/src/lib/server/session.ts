@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** Who is asking.
  *
  *  Supabase Auth issues the session; this module reads it. A page request

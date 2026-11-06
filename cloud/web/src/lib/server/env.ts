@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** The Worker's configuration, read once per request and checked.
  *
  *  The Worker's env is whatever wrangler.jsonc, `wrangler secret` and .dev.vars

@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** Moving one item of an ordered list, as drag and drop does: the new order
  *  for the screen, and the two neighbours the server needs to place the
  *  moved item between (see app.move_project). Pure.

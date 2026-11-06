@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { behind, chooseReleases, nameOf, wantedRelease, type ReleaseRef } from '../src/lib/grading.js';

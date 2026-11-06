@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: MIT -->
 <script lang="ts">
   import CopyButton from './CopyButton.svelte';
   import { dismiss, toasts } from './toast.svelte';

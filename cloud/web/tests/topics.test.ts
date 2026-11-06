@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 import { expect, test } from 'vitest';
 import { trustId, type EditionId, type UserId } from '../src/lib/ids';
 import { topicsFor } from '../src/lib/topics';

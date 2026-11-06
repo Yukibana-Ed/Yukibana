@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** The registry's API, as whoever the credentials say.
  *
  *  Everything a person may do from a terminal or an IDE goes through here,

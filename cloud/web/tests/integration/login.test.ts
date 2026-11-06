@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 import { test, expect, afterAll } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';

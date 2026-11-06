@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** A directory as tar entries, the way `git archive` would see it minus the
  *  history: every file and directory under `dir`, symlinks kept as links,
  *  sorted so two runs over the same tree give the same archive. The

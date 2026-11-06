@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** Which release a submission is assembled with, and which it is compared
  *  with.
  *

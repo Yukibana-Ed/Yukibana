@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 import { afterEach, test, vi } from 'vitest';
 import assert from 'node:assert/strict';
 import type { Cookies } from '@sveltejs/kit';

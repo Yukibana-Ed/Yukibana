@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 import { describe, expect, test } from 'vitest';
 import { GET } from '../src/routes/schema/yukibana.json/+server.js';
 

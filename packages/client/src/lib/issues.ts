@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** Sentences for zod's issues, so a schema says what it expects once, as its
  *  types, and every message follows from that. Only a rule zod cannot state
  *  (a glob relative to the root, a uuid) writes its own words, in the

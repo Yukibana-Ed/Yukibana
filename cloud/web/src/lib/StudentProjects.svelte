@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: MIT -->
 <script lang="ts">
   import { when } from './format';
   import { viewer } from './viewer.svelte';

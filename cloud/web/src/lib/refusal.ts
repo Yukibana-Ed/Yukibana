@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** What a refused submission is told. Pure: the row `app.submit_refusal`
  *  returned (or none) in, one sentence out. The database has already
  *  decided the submission is refused; this only says why, in the words the

@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 // Writes cloud/web/.dev.vars: the local overrides for the production values
 // in wrangler.jsonc, beside it, which is where wrangler looks for it. Reads the running stack for the things that vary by
 // machine, and leaves an existing file alone.

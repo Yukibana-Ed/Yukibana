@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** A student's submission put back together with the teacher's project.
  *
  *  A student receives the starter: the project minus what `hidden` names,

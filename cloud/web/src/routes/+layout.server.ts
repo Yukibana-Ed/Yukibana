@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 import type { LayoutServerLoad } from './$types';
 import type { EditionRole } from '#lib/api.ts';
 import type { EditionId } from '#lib/ids.ts';

@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** gzip in and out, on the streams both Node and the Worker provide. */
 
 function buffer(bytes: Uint8Array): ArrayBuffer {

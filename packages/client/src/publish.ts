@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** Uploading a release to the registry. One multipart request; the server
  *  hashes and stores both archives and records the release under the
  *  project the token names, or, when the bearer is a person's access token,

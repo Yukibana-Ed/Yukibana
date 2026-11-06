@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** The reads behind the JSON API, as the caller.
  *
  *  Each function is one transaction under `asUser`, so what it returns is

@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { starterKey, submissionKey, teacherKey, uuidOf, type ProjectId, type SubmissionId } from '../src/lib/ids.js';

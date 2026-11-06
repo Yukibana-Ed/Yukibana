@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 import { test, expect } from 'vitest';
 import { s3Bucket } from '../../src/lib/server/storage.js';
 import type { ObjectKey } from '../../src/lib/ids.js';

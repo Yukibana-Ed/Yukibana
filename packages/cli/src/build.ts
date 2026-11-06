@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** From a project directory to the two archives a release is made of. */
 
 import { execFile } from 'node:child_process';

@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** Folder names for people, for `yukibana download`.
  *
  *  A teacher downloads every student's submission into one folder, one

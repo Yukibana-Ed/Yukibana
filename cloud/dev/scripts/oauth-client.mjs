@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 // Registers the registry's OAuth client on Supabase Auth, once per
 // environment, and prints its id: the value of SUPABASE_OAUTH_CLIENT_ID.
 // Through it the CLI and the IDE log in by way of the website

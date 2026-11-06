@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** How the pages write times and sizes. One place, so every page says a
  *  date the same way. */
 

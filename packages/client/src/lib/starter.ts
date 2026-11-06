@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** From a repository snapshot to the archive a student downloads.
  *
  *  Pure: entries in, entries out, plus what was removed and what was wrong.

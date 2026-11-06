@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 import { describe, expect, test } from 'vitest';
 import { asJsonError, errorResponse, isApiPath, preferringJson, unmatched } from '../src/lib/server/errors';
 

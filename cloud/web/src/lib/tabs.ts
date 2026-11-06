@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** Which tab of a page is showing.
  *
  *  A tab is a query parameter (`?tab=roster`), not client state: a link to a

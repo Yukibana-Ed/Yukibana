@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { me } from '#lib/server/catalogue.ts';

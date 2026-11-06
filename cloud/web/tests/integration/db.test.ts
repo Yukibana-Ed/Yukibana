@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 import { test, expect, afterAll } from 'vitest';
 import { asPublisher, asUser, connect, statusOf } from '../../src/lib/server/db.js';
 import { ALICE, BOB, TEACHER, claimsOf, config } from './env.js';

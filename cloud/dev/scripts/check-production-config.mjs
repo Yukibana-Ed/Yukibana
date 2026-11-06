@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 // Fails when a production value is still a placeholder, naming every one and
 // where it comes from. The deploy workflow runs this first: a Worker deployed
 // with REPLACE_ME_PROJECT_REF in it would start, serve pages, and fail every

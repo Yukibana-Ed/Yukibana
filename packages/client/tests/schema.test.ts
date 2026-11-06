@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 import { expect, test } from 'vitest';
 import assert from 'node:assert/strict';
 import { configJSONSchema, parseConfig, SCHEMA_URL } from '../src/lib/yukibana.js';

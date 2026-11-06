@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** yukibana: the registry from a terminal, as whoever is logged in.
  *
  *  Every command is a thin layer over the library (`library.ts`), which the

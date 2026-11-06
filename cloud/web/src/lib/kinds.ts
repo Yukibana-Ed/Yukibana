@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** The build systems a project can be. The database enum `app.project_kind`
  *  is the source of truth; this list is what a form offers, and adding one
  *  is a migration there and a line here. What each kind means for an archive

@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** What every command shares: its options, how it fails, where the registry
  *  is, who is asking, and how a list is printed. */
 

@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** The app itself, served over HTTP the way `pnpm --filter @yukibana/cloud-web dev` serves it, for a
  *  suite that must go through everything a browser's request goes through:
  *  the hook, the routing, the cookies, and the routes' own code, against

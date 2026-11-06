@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 import { defineConfig } from 'vitest/config';
 
 /** The integration suite drives the real server modules against the local

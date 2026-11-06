@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** Where the person looking at the page is, as far as times go.
  *
  *  `zone` is UTC while the page is rendered by the Worker and hydrated, and

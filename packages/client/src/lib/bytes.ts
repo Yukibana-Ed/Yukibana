@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** Bytes helpers shared by the library and the CLI's commands. */
 import { createHash } from 'node:crypto';
 

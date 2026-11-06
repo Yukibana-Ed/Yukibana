@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** How the API fails: always as JSON, `{ "status": …, "message": … }`
  *  (`ErrorJson`), with the status that says what went wrong.
  *

@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** The database, always as somebody.
  *
  *  The Worker connects as `yukibana_app`, a role that can read nothing and

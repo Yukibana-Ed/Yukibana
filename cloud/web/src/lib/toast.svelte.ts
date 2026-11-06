@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** One-off notices: a line that appears, stays long enough to read, and
  *  goes. Every failure the person should hear about goes through `toast`,
  *  whether a form action refused (the layout passes those on) or a page's

@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** A teacher's commands for what students sent: download it, one folder per
  *  student, and assemble it with the teacher's project. */
 

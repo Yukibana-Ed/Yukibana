@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 import type { Claims } from '#lib/claims.ts';
 import type { Supabase } from '#lib/server/session.ts';
 

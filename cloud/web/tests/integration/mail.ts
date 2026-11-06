@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** The local stack's mail catcher, read the way a person reads their mail:
  *  for the code in it. Shared by the suites that log in by code. */
 import { mailUrl } from './env.js';

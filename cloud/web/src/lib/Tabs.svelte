@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: MIT -->
 <script lang="ts">
   import type { Tab } from './tabs';
   /** The page's sections as links. `current` is the one showing. */

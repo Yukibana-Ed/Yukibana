@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { Unexpected, decodeList, decodeProject, decodeSubmission } from '../src/lib/wire.js';

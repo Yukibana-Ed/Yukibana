@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** What a route needs to do anything: the configuration, a database client
  *  for this request, the bucket, and the person asking.
  *

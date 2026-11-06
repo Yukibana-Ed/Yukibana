@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** `@yukibana/client`: the library the Theia extensions and the CLI's
  *  commands (`packages/cli`) share.
  *

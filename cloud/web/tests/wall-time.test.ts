@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { when } from '../src/lib/format';
 import { instantOf, isZone, local, type Reading } from '../src/lib/wall-time';

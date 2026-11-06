@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 import type { Handle, HandleServerError } from '@sveltejs/kit/hooks';
 import { error } from '@sveltejs/kit';
 import { version } from '$app/env';

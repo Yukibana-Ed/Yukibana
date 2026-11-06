@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 import { error, redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { returned } from '#lib/server/connect.ts';

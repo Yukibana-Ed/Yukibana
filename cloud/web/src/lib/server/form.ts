@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 import { error } from '@sveltejs/kit';
 import { uuidOf } from '#lib/ids.ts';
 

@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 import { test, expect, afterAll } from 'vitest';
 import { isHttpError } from '@sveltejs/kit';
 import { asUser, connect } from '../../src/lib/server/db.js';

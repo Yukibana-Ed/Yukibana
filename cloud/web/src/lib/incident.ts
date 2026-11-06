@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** Errors nobody expected, written down so that the person who met one can
  *  send it to whoever fixes it.
  *

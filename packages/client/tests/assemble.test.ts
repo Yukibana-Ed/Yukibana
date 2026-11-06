@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { assemble, submissionRoot, tampered } from '../src/lib/assemble.js';

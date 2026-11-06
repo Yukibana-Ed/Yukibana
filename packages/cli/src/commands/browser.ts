@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** The terminal's half of a browser login: how `yukibana login` opens the
  *  sign-in address and what the browser shows when it comes back. The
  *  library leaves both to its host; these are the CLI's choices, and are

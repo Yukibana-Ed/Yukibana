@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import type { EditionRole } from '#lib/api.ts';

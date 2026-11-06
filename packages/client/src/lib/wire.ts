@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** What the registry's JSON API answers, as the CLI relies on it.
  *
  *  `cloud/web/src/lib/api.ts` is the other side and says the same in the same

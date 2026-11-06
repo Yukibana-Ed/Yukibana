@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** A submission, made and looked at before it is sent.
  *
  *  This is the library half of `yukibana submit`, and what the IDE

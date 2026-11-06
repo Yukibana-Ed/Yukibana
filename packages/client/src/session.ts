@@ -1,3 +1,6 @@
+/**
+ * SPDX-License-Identifier: MIT
+ */
 /** Logging in as a person, and staying logged in.
  *
  *  Identity is Supabase Auth's. A login that comes back to the loopback
