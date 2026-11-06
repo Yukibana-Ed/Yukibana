@@ -15,7 +15,8 @@ export default defineConfig({
         projects: ['{cloud/*,ide,ide/*,ide/extensions/*,ide/extensions/langs/*,packages/*}/vitest.config.{ts,mts}', '.github/scripts/vitest.config.mts'],
         coverage: {
             provider: 'v8',
-            // Relative to each project's root.
+            // Not the package directories: paths are matched from the directory the projects that run share, which is a
+            // package's own when only its project runs.
             include: ['**/src/**/*.{ts,tsx}'],
             exclude: ['**/*.spec.ts', '**/typings/**'],
             reporter: ['text', 'html', 'lcov'],
