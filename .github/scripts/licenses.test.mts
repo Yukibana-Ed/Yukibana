@@ -83,12 +83,12 @@ describe('bundled plugins', () => {
         expect(pluginProblems([{ id: 'scalameta.metals', manifest: 'BUSL-1.1' }], ['scalameta.metals'], PLUGINS)).toEqual([expect.stringMatching(/BUSL-1\.1/)]);
     });
 
-    test('every reviewed plugin is used under a license that is allowed or an exception', () => {
+    test('every reviewed plugin is used under a license that is allowed, or says why it is accepted', () => {
         const all = PLUGINS.map(p => ({ id: p.pattern.replace('*', 'x'), manifest: p.manifest }));
         expect(pluginProblems(all, [], PLUGINS)).toEqual([]);
     });
 
-    test('a reviewed plugin under a license that is neither allowed nor an exception fails, whatever its manifest says', () => {
+    test('a reviewed plugin under a license that is not allowed fails without a reason, whatever its manifest says', () => {
         const reviews = [{ pattern: 'acme.lsp', license: 'GPL-3.0-only', manifest: 'GPL-3.0-only' }];
         expect(pluginProblems([{ id: 'acme.lsp', manifest: 'GPL-3.0-only' }], [], reviews)).toEqual([expect.stringMatching(/^acme\.lsp: reviewed as GPL-3\.0-only/)]);
     });

@@ -3,7 +3,7 @@
  */
 // Fails when a dependency's license is not one this project accepts, or when the IDE bundles a plugin nobody reviewed.
 // The rules are below: licenses accepted for any package, the packages accepted under another license (each with why),
-// and the plugins, each with the license it was reviewed under. Every npm package counts, development tools too: the
+// and the plugins, each with the license it was reviewed under (and why, when that is another license). Every npm package counts, development tools too: the
 // Worker's bundle is built from devDependencies, and a list split by use would need to be maintained by hand.
 //
 //   pnpm install && pnpm download:plugins && node .github/scripts/licenses.mts
@@ -26,23 +26,17 @@ export const ALLOWED: ReadonlySet<string> = new Set([
     'Unlicense',
 ]);
 
-/** A package or bundled plugin, or a family of them, accepted under one license that {@link ALLOWED} does not cover. */
+/** An npm package, or a family of them, accepted under one license that {@link ALLOWED} does not cover. */
 export interface Exception {
-    /**
-     * The npm package's name or the plugin's directory under `ide/plugins`, or a prefix of them followed by `*`
-     * (`@theia/*`).
-     */
+    /** The package's name, or a prefix of names followed by `*` (`@theia/*`). */
     readonly pattern: string;
-    /**
-     * The license accepted, exactly as pnpm reports it for a package or as {@link ReviewedPlugin.license} has it for a
-     * plugin: another one fails the check again.
-     */
+    /** The license accepted, exactly as pnpm reports it: another one fails the check again. */
     readonly license: string;
     /** Why it is accepted. */
     readonly reason: string;
 }
 
-/** The packages and plugins accepted under a license {@link ALLOWED} does not cover. */
+/** The packages accepted under a license {@link ALLOWED} does not cover. */
 export const EXCEPTIONS: readonly Exception[] = [
     { pattern: '@theia/*', license: 'EPL-2.0 OR GPL-2.0-only WITH Classpath-exception-2.0', reason: 'Theia, used under the EPL-2.0' },
     { pattern: '@theia/*', license: 'EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0', reason: 'Theia, used under the EPL-2.0' },
@@ -57,21 +51,18 @@ export const EXCEPTIONS: readonly Exception[] = [
     { pattern: 'truncate-utf8-bytes', license: 'WTFPL', reason: "permissive; electron-builder's, not shipped" },
     { pattern: 'lightningcss*', license: 'MPL-2.0', reason: "Vite's CSS tool, which runs at build time and is not shipped" },
     { pattern: '@img/sharp-libvips-*', license: 'LGPL-3.0-or-later', reason: "wrangler's local image tool, not shipped" },
-    {
-        pattern: 'redhat.java',
-        license: 'EPL-2.0',
-        reason: 'the Java language server, shipped as its own plugin; the Eclipse JustJ JRE it bundles is GPL-2.0-only WITH Classpath-exception-2.0',
-    },
 ];
 
 /** A bundled plugin, or a family of them, with the license it was reviewed under. */
 export interface ReviewedPlugin {
     /** The plugin's directory under `ide/plugins` (`publisher.name`, lowercase), or a prefix of them followed by `*`. */
     readonly pattern: string;
-    /** The license it is used under, as an SPDX expression: one {@link ALLOWED} satisfies, or one of {@link EXCEPTIONS}. */
+    /** The license it is used under, as an SPDX expression. */
     readonly license: string;
     /** Its manifest's `license` field, exactly; `undefined` when the manifest has none. A different one fails. */
     readonly manifest: string | undefined;
+    /** Why `license` is accepted although {@link ALLOWED} does not satisfy it; absent when it does. */
+    readonly reason?: string;
 }
 
 /**
@@ -83,7 +74,12 @@ export const PLUGINS: readonly ReviewedPlugin[] = [
     { pattern: 'ms-ceintl.vscode-language-pack-fr', license: 'MIT', manifest: 'SEE MIT LICENSE IN LICENSE.md' },
     { pattern: 'ms-vscode.js-debug', license: 'MIT', manifest: 'MIT' },
     { pattern: 'ms-vscode.vscode-js-profile-table', license: 'MIT', manifest: 'MIT' },
-    { pattern: 'redhat.java', license: 'EPL-2.0', manifest: 'EPL-2.0' },
+    {
+        pattern: 'redhat.java',
+        license: 'EPL-2.0',
+        manifest: 'EPL-2.0',
+        reason: 'the Java language server, shipped as its own plugin; the Eclipse JustJ JRE it bundles is GPL-2.0-only WITH Classpath-exception-2.0',
+    },
     { pattern: 'scala-lang.scala', license: 'MIT', manifest: 'SEE LICENSE IN LICENSE.md' },
     { pattern: 'scalameta.metals', license: 'Apache-2.0', manifest: 'Apache-2.0' },
     { pattern: 'vscjava.vscode-gradle', license: 'MIT', manifest: 'SEE LICENSE IN LICENSE.md' },
@@ -175,7 +171,7 @@ export function packageProblems(packages: readonly PackageLicense[]): string[] {
     return packages.filter(p => !usable(p.name, p.license)).map(p => `${p.name}@${p.versions.join(', ')}: ${p.license}`);
 }
 
-/** `true` iff the package or plugin `name` may be used under `license`: {@link ALLOWED} satisfies it, or an exception names it. */
+/** `true` iff the package `name` may be used under `license`: {@link ALLOWED} satisfies it, or an exception names it. */
 function usable(name: string, license: string): boolean {
     return allowed(license) || EXCEPTIONS.some(e => matches(e.pattern, name) && e.license === license);
 }
@@ -199,8 +195,9 @@ export interface DownloadedPlugin {
 
 /**
  * Returns the problems with the downloaded plugins, one line each: a plugin that `reviews` (in the check,
- * {@link PLUGINS}) does not name, one reviewed under a license that is not accepted, a manifest whose license changed
- * since the review, or a plugin of ide/package.json's `theiaPlugins` (`declared`) that was not downloaded.
+ * {@link PLUGINS}) does not name, one reviewed under a license that {@link ALLOWED} does not satisfy and without a
+ * reason, a manifest whose license changed since the review, or a plugin of ide/package.json's `theiaPlugins`
+ * (`declared`) that was not downloaded.
  */
 export function pluginProblems(downloaded: readonly DownloadedPlugin[], declared: readonly string[], reviews: readonly ReviewedPlugin[]): string[] {
     const problems = downloaded.flatMap(plugin => {
@@ -209,7 +206,7 @@ export function pluginProblems(downloaded: readonly DownloadedPlugin[], declared
             return [`${plugin.id}: not reviewed (its manifest says ${JSON.stringify(plugin.manifest)}); add it to PLUGINS once its license is checked`];
         }
         return [
-            ...(usable(plugin.id, review.license) ? [] : [`${plugin.id}: reviewed as ${review.license}, which is neither allowed nor an exception`]),
+            ...(allowed(review.license) || review.reason !== undefined ? [] : [`${plugin.id}: reviewed as ${review.license}, which is not allowed and has no reason`]),
             ...(review.manifest === plugin.manifest ? [] : [`${plugin.id}: its manifest says ${JSON.stringify(plugin.manifest)}, reviewed as ${JSON.stringify(review.manifest)}`]),
         ];
     });
