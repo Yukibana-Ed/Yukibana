@@ -3,6 +3,9 @@
 **/.browser_modules
 **/dist
 **/lib
+# The cloud's and the CLI's lib/ are source (SvelteKit's $lib and the CLI's library), not tsc output.
+!/cloud/web/src/lib/
+!/packages/cli/src/lib/
 **/src-gen
 **/gen-esbuild.*.mjs
 **/plugins
@@ -14,3 +17,9 @@
 **/coverage
 
 .idea
+
+# The cloud's local secrets and Worker state; the rest of its .gitignore joins this one when it joins the workspace.
+.env
+.env.local
+.dev.vars
+.wrangler/
