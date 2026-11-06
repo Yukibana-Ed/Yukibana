@@ -1,9 +1,10 @@
 {
-  "name": "yukibana-ext",
+  "name": "@yukibana/ide-ext",
+  "version": "0.0.0-dev",
+  "license": "MIT",
   "keywords": [
     "theia-extension"
   ],
-  "version": "0.1.0",
   "files": [
     "lib",
     "src"
@@ -30,12 +31,18 @@
   },
   "devDependencies": {
     "@types/micromatch": "catalog:",
+    "chai": "catalog:",
+    "jsdom": "catalog:",
     "rimraf": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   },
   "scripts": {
     "prepare": "tsc --build",
-    "clean": "rimraf lib tsconfig.tsbuildinfo"
+    "clean": "rimraf lib tsconfig.tsbuildinfo",
+    "lint": "oxlint",
+    "typecheck": "tsc --build",
+    "test": "vitest run"
   },
   "theiaExtensions": [
     {

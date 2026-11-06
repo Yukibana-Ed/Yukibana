@@ -5,7 +5,7 @@ import { ILogger } from '@theia/core';
 import { FileUri } from '@theia/core/lib/node';
 import { inject, injectable, named } from '@theia/core/shared/inversify';
 import { RegistryError, unpackStarter } from '@yukibana/client';
-import { SubmissionServiceImpl } from 'yukibana-submission-ext/lib/node/submission-service';
+import { SubmissionServiceImpl } from '@yukibana/ide-submission-ext/lib/node/submission-service';
 import { CloudService, DownloadResult, ProjectListing, ProjectLookup, SubmissionResult, SubmitAvailability } from '../common/cloud-protocol';
 import { CloudClient, isRefused } from './cloud-client';
 import { CloudSessionManager } from './cloud-session-manager';

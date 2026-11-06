@@ -6,13 +6,15 @@
   "devEngines": {
     "runtime": {
       "name": "node",
-      "version": ">=24",
-      "onFail": "error"
+      "version": "24.22.1",
+      "onFail": "download"
     }
   },
-  "packageManager": "pnpm@12.8.1",
+  "packageManager": "pnpm@12.15.0",
   "scripts": {
     "setup:ide": "pnpm --filter \"{ide/**}...\" install && pnpm run check:theia",
+    "setup:cloud": "pnpm --filter \"{cloud/**}...\" install",
+    "setup:cli": "pnpm --filter @yukibana/cli... install",
     "check:theia": "node node_modules/@theia/cli/bin/theia.js check:theia-version",
     "build": "node ide/scripts/cli.mts build",
     "start": "node ide/scripts/cli.mts start",
@@ -21,21 +23,19 @@
     "watch": "node ide/scripts/cli.mts watch",
     "new:ext": "node ide/scripts/cli.mts new:ext",
     "clean": "pnpm -r --if-present run clean",
-    "lint": "oxlint",
+    "lint": "pnpm -r run lint",
     "lint:fix": "oxlint --fix",
+    "typecheck": "pnpm -r run typecheck",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
-    "test:e2e": "pnpm --filter yukibana-tests exec playwright test"
+    "test:e2e": "pnpm --filter @yukibana/ide-e2e exec playwright test"
   },
   "devDependencies": {
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
-    "chai": "catalog:",
-    "ignore-styles": "catalog:",
-    "jsdom": "catalog:",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",

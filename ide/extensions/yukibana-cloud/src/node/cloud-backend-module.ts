@@ -4,7 +4,7 @@
 import { ConnectionHandler, RpcConnectionHandler } from '@theia/core';
 import { LocalizationContribution } from '@theia/core/lib/node/i18n/localization-contribution';
 import { ContainerModule } from '@theia/core/shared/inversify';
-import { IdentityProviderContribution } from 'yukibana-ext/lib/node/identity-service';
+import { IdentityProviderContribution } from '@yukibana/ide-ext/lib/node/identity-service';
 import { AuthClient, cloudAuthPath, CloudService, cloudServicePath } from '../common/cloud-protocol';
 import { OpenWorkspacesClient, openWorkspacesPath } from '../common/open-workspaces-protocol';
 import { CloudAuthImpl } from './cloud-auth';

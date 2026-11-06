@@ -1,9 +1,10 @@
 {
-  "name": "yukibana-product-ext",
+  "name": "@yukibana/ide-product-ext",
+  "version": "0.0.0-dev",
+  "license": "MIT",
   "keywords": [
     "theia-extension"
   ],
-  "version": "0.1.0",
   "files": [
     "lib",
     "src"
@@ -17,7 +18,9 @@
   },
   "scripts": {
     "prepare": "tsc --build",
-    "clean": "rimraf lib tsconfig.tsbuildinfo"
+    "clean": "rimraf lib tsconfig.tsbuildinfo",
+    "lint": "oxlint",
+    "typecheck": "tsc --build"
   },
   "theiaExtensions": [
     {

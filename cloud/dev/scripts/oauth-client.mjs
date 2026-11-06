@@ -19,10 +19,10 @@ const NAME = 'Yukibana IDE and CLI';
 let [authUrl, site] = process.argv.slice(2);
 let key = process.env.SUPABASE_SECRET_KEY;
 if (authUrl === undefined) {
-  const status = JSON.parse(execFileSync('npx', ['--yes', 'supabase', 'status', '-o', 'json', '--workdir', fileURLToPath(new URL('../../db', import.meta.url))], { encoding: 'utf8', shell: process.platform === 'win32' }));
+  const status = JSON.parse(execFileSync('pnpm', ['exec', 'supabase', 'status', '-o', 'json'], { cwd: fileURLToPath(new URL('../../db', import.meta.url)), encoding: 'utf8', shell: process.platform === 'win32' }));
   authUrl = status.API_URL;
   key ??= status.SECRET_KEY ?? status.SERVICE_ROLE_KEY;
-  // The local site_url in cloud/db/supabase/config.toml, where `npm run dev` serves.
+  // The local site_url in cloud/db/supabase/config.toml, where `pnpm --filter @yukibana/cloud-web dev` serves.
   site ??= 'http://127.0.0.1:5173';
 }
 if (site === undefined || key === undefined || key === '') {
@@ -51,7 +51,9 @@ async function call(method, body) {
 const clients = [];
 for (let page = 1; page < 100; page++) {
   const url = new URL(endpoint);
-  if (page > 1) url.searchParams.set('page', String(page));
+  if (page > 1) {
+    url.searchParams.set('page', String(page));
+  }
   const res = await fetch(url, { headers });
   if (!res.ok) {
     console.error(`GET ${url} answered ${res.status}: ${await res.text()}`);
@@ -61,7 +63,9 @@ for (let page = 1; page < 100; page++) {
   const body = await res.json();
   clients.push(...(body.clients ?? []));
   const more = res.headers.get('link')?.includes('rel="next"') ?? false;
-  if (!more) break;
+  if (!more) {
+    break;
+  }
 }
 const existing = clients.find(c => c.client_name === NAME && (c.redirect_uris ?? []).includes(redirect));
 if (existing !== undefined) {

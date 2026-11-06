@@ -4,7 +4,7 @@
 import { inject, injectable } from '@theia/core/shared/inversify';
 import { TelemetryEvent } from '@theia/telemetry/lib/common/telemetry-protocol';
 import { TelemetrySink } from '@theia/telemetry/lib/node';
-import { IdentityService } from 'yukibana-ext/lib/node/identity-service';
+import { IdentityService } from '@yukibana/ide-ext/lib/node/identity-service';
 
 const BATCH_SIZE = 50;
 const MAX_DRAIN_DELAY_MS = 10_000;

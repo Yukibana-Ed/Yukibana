@@ -11,7 +11,7 @@ import { FileService } from '@theia/filesystem/lib/browser/file-service';
 import { WorkspaceCommands, WorkspaceService } from '@theia/workspace/lib/browser';
 import { Project } from '@yukibana/client';
 import * as React from 'react';
-import { localizeMarkdown } from 'yukibana-common/lib/localize-markdown';
+import { localizeMarkdown } from '@yukibana/ide-common/lib/localize-markdown';
 import { CloudAccount, CloudService } from '../../common/cloud-protocol';
 import { OpenWorkspacesServer } from '../../common/open-workspaces-protocol';
 import { CloudAccountService, CloudAccountState } from '../cloud-account-service';

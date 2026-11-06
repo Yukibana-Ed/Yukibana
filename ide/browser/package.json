@@ -1,7 +1,8 @@
 {
   "private": true,
-  "name": "yukibana-browser-app",
-  "version": "0.1.0",
+  "name": "@yukibana/ide-browser",
+  "version": "0.0.0-dev",
+  "license": "MIT",
   "dependencies": {
     "@theia/ai-anthropic": "catalog:",
     "@theia/ai-chat": "catalog:",
@@ -26,18 +27,20 @@
     "@theia/test": "catalog:",
     "@theia/toolbar": "catalog:",
     "@theia/workspace": "catalog:",
-    "yukibana-cloud-ext": "catalog:",
-    "yukibana-ext": "catalog:",
-    "yukibana-submission-ext": "catalog:",
-    "yukibana-telemetry-ext": "catalog:",
-    "yukibana-scala-lang-ext": "catalog:"
+    "@yukibana/ide-cloud-ext": "catalog:",
+    "@yukibana/ide-ext": "catalog:",
+    "@yukibana/ide-scala-lang-ext": "catalog:",
+    "@yukibana/ide-submission-ext": "catalog:",
+    "@yukibana/ide-telemetry-ext": "catalog:"
   },
   "devDependencies": {
     "@theia/cli": "catalog:"
   },
   "scripts": {
     "clean": "theia clean",
-    "watch": "theia build --watch --mode development"
+    "watch": "theia build --watch --mode development",
+    "lint": "oxlint",
+    "typecheck": "tsc --build"
   },
   "theia": {
     "target": "browser",

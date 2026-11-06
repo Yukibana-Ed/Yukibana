@@ -4,8 +4,8 @@ What a student's IDE needs from Yukibana is four things: who the student is,
 which exercises are open to them, what a submission from their folder would
 hold, and a way to send it. All four are in `@yukibana/client`
 (`packages/client/src/library.ts`), whose dependencies are `modern-tar`, `ignore` and `zod` (none
-with dependencies of its own), and which runs wherever Node 22.15
-or later does: a Theia backend, an Electron main process, a VS Code
+with dependencies of its own), and which runs on Node 24, as everything in
+this repository does: a Theia backend, an Electron main process, a VS Code
 extension host. `ide/extensions/yukibana-cloud` is the IDE's client built on
 it; read it next to this page.
 

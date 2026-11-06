@@ -5,12 +5,12 @@ import { Command, CommandContribution, CommandRegistry, CommandService, Contribu
 import { inject, injectable, named } from '@theia/core/shared/inversify';
 import { TelemetryService } from '@theia/telemetry/lib/common';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
-import { ConfigProvider } from 'yukibana-ext/lib/browser/config/config-provider';
+import { ConfigProvider } from '@yukibana/ide-ext/lib/browser/config/config-provider';
 import { SubmissionPreview, SubmissionService } from '../common/submission-protocol';
 import { SubmissionResult, SubmissionTarget } from '../common/submission-target';
 import { SubmissionTelemetry } from '../common/submission-telemetry';
 import { SubmissionSummaryDialog } from './submission-summary-dialog';
-import { localizeMarkdown } from 'yukibana-common/lib/localize-markdown';
+import { localizeMarkdown } from '@yukibana/ide-common/lib/localize-markdown';
 
 export const SubmitCommand: Command = Command.toLocalizedCommand(
     {

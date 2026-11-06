@@ -12,7 +12,7 @@ if (existsSync(target)) {
   console.log('.dev.vars exists; leaving it alone');
   process.exit(0);
 }
-const status = JSON.parse(execFileSync('npx', ['--yes', 'supabase', 'status', '-o', 'json', '--workdir', fileURLToPath(new URL('../../db', import.meta.url))], { encoding: 'utf8' }));
+const status = JSON.parse(execFileSync('pnpm', ['exec', 'supabase', 'status', '-o', 'json'], { cwd: fileURLToPath(new URL('../../db', import.meta.url)), encoding: 'utf8' }));
 // The devcontainer and the stack's containers are siblings, so "localhost"
 // differs: the CLI already honours SUPABASE_SERVICES_HOSTNAME in its URLs,
 // and the bucket gets the same treatment.

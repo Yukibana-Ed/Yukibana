@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: MIT
  */
 import { nls } from '@theia/core';
-import { localizeMarkdown } from 'yukibana-common/lib/localize-markdown';
+import { localizeMarkdown } from '@yukibana/ide-common/lib/localize-markdown';
 import { AvailableUpdate, DecidedRow, UpdateRow, UpdateState } from '../../common/update-protocol';
 
 /**

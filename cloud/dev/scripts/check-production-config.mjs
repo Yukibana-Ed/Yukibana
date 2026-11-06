@@ -19,7 +19,9 @@ for (const file of files) {
   const lines = readFileSync(new URL(`../../../${file}`, import.meta.url), 'utf8').split('\n');
   lines.forEach((line, i) => {
     for (const name of Object.keys(WHERE)) {
-      if (line.includes(name)) found.push({ file, line: i + 1, name });
+      if (line.includes(name)) {
+        found.push({ file, line: i + 1, name });
+      }
     }
   });
 }
@@ -32,7 +34,9 @@ console.error('These production values are still placeholders:\n');
 for (const name of new Set(found.map(f => f.name))) {
   console.error(`  ${name}`);
   console.error(`    is ${WHERE[name]}`);
-  for (const f of found.filter(x => x.name === name)) console.error(`    at ${f.file}:${f.line}`);
+  for (const f of found.filter(x => x.name === name)) {
+    console.error(`    at ${f.file}:${f.line}`);
+  }
   console.error('');
 }
 console.error('Fill them in and commit; docs/cloud/deploy.md says where each comes from.');

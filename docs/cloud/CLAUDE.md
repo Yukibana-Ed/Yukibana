@@ -82,7 +82,7 @@ Every policy has a pgTAP test in `cloud/db/supabase/tests/`, and the tests are w
 as negatives: the student who cannot read a classmate's submission, the
 assistant who cannot enrol, the owner who cannot move a project to another
 edition. Negative tests are the only ones that catch a policy accidentally
-widened. `npx --yes supabase test db --workdir cloud/db` runs them against the local stack; CI runs them on
+widened. `pnpm --filter @yukibana/cloud-db test:db` runs them against the local stack; CI runs them on
 every push, after rebuilding the database from empty.
 
 ## A sibling subdomain is another person's page
@@ -168,7 +168,7 @@ so; the bugs are the documentation people read.
 * `cloud/web/tests/`, `packages/client/tests/` and `packages/cli/tests/` are the unit suites, no services.
 * `cloud/web/tests/integration/` drives the real server modules against the local
   stack: Postgres through `yukibana_app`, the bucket over S3, releases by
-  token and by owner, submissions. It runs with `npm --prefix cloud/web run test:integration`
+  token and by owner, submissions. It runs with `pnpm --filter @yukibana/cloud-web test:integration`
   and in CI.
 * `cloud/db/supabase/tests/` is pgTAP. `cloud/db/supabase/seeds/10_test_helpers.sql` gives it
   `tests.create_user`, `tests.authenticate` and lookups that see through RLS.
@@ -180,15 +180,15 @@ so; the bugs are the documentation people read.
 
 ## Before you push
 
-Until the cloud and the CLI join the pnpm workspace, each area is checked
-with its own scripts: `npm --prefix cloud/web run lint`, `typecheck`, `test`
-and `build`; the same four for `packages/cli` (whose `pretest` builds the
-client); and `pnpm --filter @yukibana/client run typecheck`, `lint` and
-`test`. Formatting follows the old repository's oxfmt settings: single quotes
-(double only where they spare an escape), lines up to 180 characters. With
-the stack running: squawk from `cloud/db` (see its `.squawk.toml`),
-`npx --yes supabase db reset --workdir cloud/db`, `npx --yes supabase test db
---workdir cloud/db`, and `npm --prefix cloud/web run test:integration`.
+At the root: `pnpm lint`, `pnpm typecheck` and `pnpm test` run every
+package's scripts (one package's with `pnpm --filter <name> <script>`):
+`@yukibana/cloud-web`, `@yukibana/client`, `@yukibana/cli`, and
+`@yukibana/cloud-db`, whose `lint` is squawk over the migrations (see its
+`.squawk.toml`). Formatting follows the old repository's oxfmt settings:
+single quotes (double only where they spare an escape), lines up to 180
+characters. With the stack running: `pnpm --filter @yukibana/cloud-db reset`,
+`pnpm --filter @yukibana/cloud-db test:db`, and
+`pnpm --filter @yukibana/cloud-web test:integration`.
 On `main`, the database deploys only after CI is green (migrations,
 bootstrap, settings), but Cloudflare deploys the Worker on every push
 regardless, so nothing orders the two: a change that needs a migration ships

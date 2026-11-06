@@ -1,11 +1,11 @@
-/** The app itself, served over HTTP the way `npm run dev` serves it, for a
+/** The app itself, served over HTTP the way `pnpm dev` serves it, for a
  *  suite that must go through everything a browser's request goes through:
  *  the hook, the routing, the cookies, and the routes' own code, against
  *  the local stack.
  *
  *  The configuration comes from `config` (tests/integration/env.ts), handed
  *  to the Worker's emulation as process environment. A `.dev.vars` in
- *  cloud/web wins over it, as it does for `npm run dev`: wrangler then
+ *  cloud/web wins over it, as it does for `pnpm dev`: wrangler then
  *  reads that file and not the environment. `node cloud/dev/scripts/dev-vars.mjs` writes one
  *  for the same local stack, so either way the app talks to it.
  *

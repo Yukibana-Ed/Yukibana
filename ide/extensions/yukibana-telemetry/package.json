@@ -1,9 +1,10 @@
 {
-  "name": "yukibana-telemetry-ext",
+  "name": "@yukibana/ide-telemetry-ext",
+  "version": "0.0.0-dev",
+  "license": "MIT",
   "keywords": [
     "theia-extension"
   ],
-  "version": "0.1.0",
   "files": [
     "lib",
     "src"
@@ -11,7 +12,7 @@
   "dependencies": {
     "@theia/core": "catalog:",
     "@theia/telemetry": "catalog:",
-    "yukibana-ext": "catalog:"
+    "@yukibana/ide-ext": "catalog:"
   },
   "devDependencies": {
     "@types/archiver": "catalog:",
@@ -20,7 +21,9 @@
   },
   "scripts": {
     "prepare": "tsc --build",
-    "clean": "rimraf lib tsconfig.tsbuildinfo"
+    "clean": "rimraf lib tsconfig.tsbuildinfo",
+    "lint": "oxlint",
+    "typecheck": "tsc --build"
   },
   "theiaExtensions": [
     {

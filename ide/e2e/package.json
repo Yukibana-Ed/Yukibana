@@ -1,7 +1,8 @@
 {
   "private": true,
-  "name": "yukibana-tests",
-  "version": "0.1.0",
+  "name": "@yukibana/ide-e2e",
+  "version": "0.0.0-dev",
+  "license": "MIT",
   "author": "Yukibana Team <info.yukibana@isc-vs.ch>",
   "homepage": "https://github.com/ISC-HEI/Yukibana#readme",
   "bugs": {
@@ -14,5 +15,9 @@
   "dependencies": {
     "@playwright/test": "catalog:",
     "@theia/playwright": "catalog:"
+  },
+  "scripts": {
+    "lint": "oxlint",
+    "typecheck": "tsc --noEmit"
   }
 }

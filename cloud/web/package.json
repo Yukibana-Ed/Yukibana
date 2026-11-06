@@ -1,7 +1,8 @@
 {
-  "name": "yukibana-app",
   "private": true,
-  "version": "0.1.0",
+  "name": "@yukibana/cloud-web",
+  "version": "0.0.0-dev",
+  "license": "MIT",
   "type": "module",
   "imports": {
     "#lib/*": "./src/lib/*"
@@ -18,26 +19,23 @@
     "lint": "svelte-kit sync && oxlint --type-aware --deny-warnings"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20261027.1",
-    "@sveltejs/adapter-cloudflare": "^8.0.0",
-    "@sveltejs/kit": "^3.1.0",
-    "@sveltejs/vite-plugin-svelte": "^7.3.1",
-    "@types/node": "^22.20.4",
-    "oxlint": "^1.89.0",
-    "oxlint-tsgolint": "^7.0.2001",
-    "svelte": "^5.57.3",
-    "svelte-check": "^4.7.7",
-    "typescript": "^6.0.3",
-    "vite": "^8.3.3",
-    "vitest": "^5.0.5",
-    "wrangler": "^4.153.0"
+    "@sveltejs/adapter-cloudflare": "catalog:",
+    "@sveltejs/kit": "catalog:",
+    "@sveltejs/vite-plugin-svelte": "catalog:",
+    "@types/node": "catalog:",
+    "svelte": "catalog:",
+    "svelte-check": "catalog:",
+    "typescript": "catalog:ts6",
+    "vite": "catalog:",
+    "vitest": "catalog:",
+    "wrangler": "catalog:"
   },
   "dependencies": {
-    "@date-fns/tz": "^1.5.0",
-    "@supabase/ssr": "^0.12.7",
-    "@supabase/supabase-js": "^2.118.0",
-    "aws4fetch": "^1.0.20",
-    "jose": "^6.2.13",
-    "postgres": "^3.4.7"
+    "@date-fns/tz": "catalog:",
+    "@supabase/ssr": "catalog:",
+    "@supabase/supabase-js": "catalog:",
+    "aws4fetch": "catalog:",
+    "jose": "catalog:",
+    "postgres": "catalog:"
   }
 }

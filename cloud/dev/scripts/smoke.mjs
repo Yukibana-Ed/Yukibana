@@ -6,7 +6,7 @@
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-const s = JSON.parse(execFileSync('npx', ['--yes', 'supabase', 'status', '-o', 'json', '--workdir', fileURLToPath(new URL('../../db', import.meta.url))], { encoding: 'utf8' }));
+const s = JSON.parse(execFileSync('pnpm', ['exec', 'supabase', 'status', '-o', 'json'], { cwd: fileURLToPath(new URL('../../db', import.meta.url)), encoding: 'utf8' }));
 const url = process.env.SUPABASE_URL ?? s.API_URL;
 const key = process.env.SUPABASE_ANON_KEY ?? s.PUBLISHABLE_KEY ?? s.ANON_KEY;
 const host = process.env.SUPABASE_SERVICES_HOSTNAME ?? '127.0.0.1';
@@ -17,7 +17,9 @@ let failed = false;
 const check = async (name, target, init = {}, ok = res => res.ok) => {
   try {
     const res = await fetch(target, init);
-    if (!ok(res)) throw new Error(`HTTP ${res.status}`);
+    if (!ok(res)) {
+      throw new Error(`HTTP ${res.status}`);
+    }
     console.log(`OK   ${name}`);
   } catch (e) {
     // The URL, always: "fetch failed" on its own says nothing about which

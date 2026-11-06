@@ -26,8 +26,8 @@
 .svelte-kit/
 /cloud/web/build/
 # The Supabase CLI's local state, and the local bucket's data when run without Docker.
-supabase/.temp/
-supabase/.branches/
+/cloud/db/supabase/.temp/
+/cloud/db/supabase/.branches/
 /cloud/dev/data/
 # direnv (cloud/dev/.envrc), and nyc's coverage data.
 .direnv/

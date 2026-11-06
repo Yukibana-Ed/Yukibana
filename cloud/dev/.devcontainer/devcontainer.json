@@ -26,12 +26,10 @@
   },
 
   "remoteUser": "node",
-  // The CLI links @yukibana/client as file:../client, for which npm installs
-  // nothing, so the client's dependencies come from the pnpm workspace first
-  // (the same line action/action.yml runs). The root's devEngines refuses any
-  // Node below 24, hence the image. Becomes one `pnpm install` once the cloud
-  // and the CLI are workspace packages.
-  "postCreateCommand": "npx --yes \"$(node -p \"require('./package.json').packageManager\")\" --filter @yukibana/client install --frozen-lockfile && npm --prefix cloud/web ci && npm --prefix packages/cli ci",
+  // The cloud and the CLI, and the library the CLI uses, with the pnpm the
+  // root's packageManager names (which runs them on the root's devEngines Node).
+  // Neither Electron nor Theia: an IDE developer does not need this container.
+  "postCreateCommand": "npx --yes \"$(node -p \"require('./package.json').packageManager\")\" --filter \"{cloud/**}...\" --filter @yukibana/cli... install --frozen-lockfile",
   "postStartCommand": "cloud/dev/.devcontainer/setup.sh",
 
   // No forwardPorts: the Supabase and RustFS ports are published by the host

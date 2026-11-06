@@ -1,8 +1,10 @@
 {
   "private": true,
-  "name": "yukibana-electron-app",
+  "name": "@yukibana/ide-electron",
+  "productName": "Yukibana",
   "description": "Yukibana IDE",
-  "version": "0.1.0",
+  "version": "0.0.0-dev",
+  "license": "MIT",
   "main": "scripts/theia-electron-main.js",
   "author": "Yukibana Team <info.yukibana@isc-vs.ch>",
   "homepage": "https://github.com/ISC-HEI/Yukibana#readme",
@@ -41,25 +43,27 @@
     "@theia/test": "catalog:",
     "@theia/toolbar": "catalog:",
     "@theia/workspace": "catalog:",
+    "@yukibana/ide-cloud-ext": "catalog:",
+    "@yukibana/ide-ext": "catalog:",
+    "@yukibana/ide-launcher-ext": "catalog:",
+    "@yukibana/ide-product-ext": "catalog:",
+    "@yukibana/ide-scala-lang-ext": "catalog:",
+    "@yukibana/ide-submission-ext": "catalog:",
+    "@yukibana/ide-telemetry-ext": "catalog:",
     "react": "catalog:",
-    "react-dom": "catalog:",
-    "yukibana-cloud-ext": "catalog:",
-    "yukibana-ext": "catalog:",
-    "yukibana-launcher-ext": "catalog:",
-    "yukibana-product-ext": "catalog:",
-    "yukibana-submission-ext": "catalog:",
-    "yukibana-telemetry-ext": "catalog:",
-    "yukibana-scala-lang-ext": "catalog:"
+    "react-dom": "catalog:"
   },
   "devDependencies": {
     "@theia/bundle-plugin": "catalog:",
     "@theia/cli": "catalog:",
     "electron": "42.8.1",
-    "electron-builder": "^26.18.0"
+    "electron-builder": "catalog:"
   },
   "scripts": {
     "clean": "theia clean",
-    "watch": "theia build --watch --mode development"
+    "watch": "theia build --watch --mode development",
+    "lint": "oxlint",
+    "typecheck": "tsc --build"
   },
   "theia": {
     "target": "electron",

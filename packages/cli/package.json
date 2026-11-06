@@ -1,8 +1,8 @@
 {
-  "name": "@yukibana/cli",
   "private": true,
-  "version": "0.1.0",
+  "name": "@yukibana/cli",
   "description": "Build, publish, submit, download and assemble Yukibana course projects from a terminal: the `yukibana` command, over @yukibana/client.",
+  "version": "0.0.0-dev",
   "license": "MIT",
   "type": "module",
   "exports": {
@@ -16,21 +16,16 @@
   },
   "scripts": {
     "build": "tsc --build tsconfig.build.json",
-    "build:client": "tsc --build ../client/tsconfig.build.json",
-    "pretest": "npm run build:client",
     "test": "vitest run",
-    "typecheck": "npm run build:client && tsc --noEmit",
-    "lint": "npm run build:client && oxlint --type-aware --deny-warnings"
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint --type-aware --deny-warnings"
   },
   "devDependencies": {
-    "@types/node": "^22.20.4",
-    "oxlint": "^1.89.0",
-    "oxlint-tsgolint": "^7.0.2001",
-    "typescript": "^7.0.2",
-    "vitest": "^5.0.4"
+    "@types/node": "catalog:",
+    "vitest": "catalog:"
   },
   "dependencies": {
-    "@yukibana/client": "file:../client",
-    "uuid": "^14.0.3"
+    "@yukibana/client": "catalog:",
+    "uuid": "catalog:"
   }
 }

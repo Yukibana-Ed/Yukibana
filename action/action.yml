@@ -36,7 +36,8 @@ inputs:
 runs:
   using: composite
   steps:
-    # 24: the repository's pnpm workspace refuses an older Node.
+    # pnpm itself runs on this Node; the workspace's scripts run on the
+    # release the root's devEngines names, which pnpm downloads.
     - uses: actions/setup-node@v4
       with:
         node-version: 24
@@ -46,15 +47,11 @@ runs:
     - name: Build the CLI
       shell: bash
       run: |
-        # The CLI (npm) links @yukibana/client (pnpm workspace) as file:../client,
-        # and npm installs nothing for a link: the workspace installs the
-        # client's dependencies, with the pnpm the root's packageManager names.
+        # The CLI and what it depends on in the workspace, nothing else, with
+        # the pnpm the root's packageManager names.
         pnpm="$(node -p "require('${{ github.action_path }}/../package.json').packageManager")"
-        npx --yes "$pnpm" --dir "${{ github.action_path }}/.." --filter @yukibana/client install --frozen-lockfile
-        # Flags before the command. `npm run build --prefix x` is ambiguous:
-        # npm may hand the flag to the script instead of reading it itself.
-        npm --prefix "${{ github.action_path }}/../packages/cli" ci
-        npm --prefix "${{ github.action_path }}/../packages/cli" run build
+        npx --yes "$pnpm" --dir "${{ github.action_path }}/.." --filter @yukibana/cli... install --frozen-lockfile
+        npx --yes "$pnpm" --dir "${{ github.action_path }}/.." --filter @yukibana/cli run build
 
     - name: Publish
       shell: bash

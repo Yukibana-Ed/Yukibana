@@ -1,17 +1,18 @@
 {
-  "name": "yukibana-scala-lang-ext",
+  "name": "@yukibana/ide-scala-lang-ext",
+  "version": "0.0.0-dev",
+  "license": "MIT",
   "keywords": [
     "theia-extension",
     "language"
   ],
-  "version": "0.1.0",
   "files": [
     "lib",
     "src"
   ],
   "dependencies": {
     "@theia/core": "catalog:",
-    "yukibana-ext": "catalog:"
+    "@yukibana/ide-ext": "catalog:"
   },
   "devDependencies": {
     "rimraf": "catalog:",
@@ -19,7 +20,9 @@
   },
   "scripts": {
     "prepare": "tsc --build",
-    "clean": "rimraf lib tsconfig.tsbuildinfo"
+    "clean": "rimraf lib tsconfig.tsbuildinfo",
+    "lint": "oxlint",
+    "typecheck": "tsc --build"
   },
   "theiaExtensions": [
     {

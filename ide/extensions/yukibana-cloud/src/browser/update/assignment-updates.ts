@@ -8,7 +8,7 @@ import { inject, injectable, named } from '@theia/core/shared/inversify';
 import { EditorManager } from '@theia/editor/lib/browser';
 import { MergeEditorOpenerOptions, MergeEditorUri } from '@theia/scm/lib/browser/merge-editor/merge-editor';
 import { WorkspaceService } from '@theia/workspace/lib/browser';
-import { localizeMarkdown } from 'yukibana-common/lib/localize-markdown';
+import { localizeMarkdown } from '@yukibana/ide-common/lib/localize-markdown';
 import { messageOf } from '../../common/errors';
 import {
     AvailableUpdate,

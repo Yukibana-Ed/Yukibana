@@ -13,8 +13,8 @@ export SUPABASE_AUTH_EXTERNAL_GITHUB_SECRET="${SUPABASE_AUTH_EXTERNAL_GITHUB_SEC
 # Restart the stack every time. `supabase start` on its own is a no-op against a
 # running stack: it applies neither config.toml changes nor repairs stopped
 # containers. Plain `stop` (never --no-backup) keeps the data volumes.
-npx --yes supabase stop --workdir cloud/db || true
-npx --yes supabase start --workdir cloud/db
+pnpm --filter @yukibana/cloud-db exec supabase stop || true
+pnpm --filter @yukibana/cloud-db exec supabase start
 
 # The bucket, as sibling containers of the Supabase ones.
 docker compose -f cloud/dev/compose.yml up -d
@@ -26,4 +26,4 @@ echo
 echo "Inside this devcontainer:  http://${SUPABASE_SERVICES_HOSTNAME:-127.0.0.1}:54321"
 echo "From your host browser:    http://localhost:54321   Studio: http://localhost:54323"
 echo "Bucket (S3):               http://localhost:9000"
-echo "Then: npm --prefix cloud/web run dev"
+echo "Then: pnpm --filter @yukibana/cloud-web dev"

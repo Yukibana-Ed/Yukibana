@@ -54,36 +54,25 @@ jobs:
       - name: Lint
         run: pnpm run lint
 
+      - name: Typecheck
+        run: pnpm run typecheck
+
       - name: Check formatting
         run: pnpm run format:check
 
+      # Every package's unit tests: the IDE's, the client's, the CLI's and the cloud Worker's.
       - name: Unit tests
         run: pnpm test:coverage
 
-      # The library the IDE builds from this repository, and the CLI over it, keep their own checks until PR 3 brings
-      # them into the root's; PR 5's per-package CI replaces this step.
-      - name: Check the client library and the CLI
+      # The CLI as a course repository's CI runs it, over the fixture repository; and the Worker's production build.
+      # PR 5's per-package CI replaces this step.
+      - name: Build the CLI and the cloud Worker
         run: |
-          pnpm --filter @yukibana/client run typecheck
-          pnpm --filter @yukibana/client run lint
-          pnpm --filter @yukibana/client test
-          npm --prefix packages/cli ci
-          npm --prefix packages/cli run typecheck
-          npm --prefix packages/cli run lint
-          npm --prefix packages/cli test
-          npm --prefix packages/cli run build
+          pnpm --filter @yukibana/cli run build
           mkdir -p "$RUNNER_TEMP/fixture"
           tar -xzf packages/client/tests/fixtures/repo.tar.gz -C "$RUNNER_TEMP/fixture" --strip-components=1
           node packages/cli/dist/index.js check "$RUNNER_TEMP/fixture" --folder calc
-
-      # The cloud's Worker, with the old repository's npm scripts until PR 3; PR 5's per-package CI replaces this step.
-      - name: Check the cloud web app
-        run: |
-          npm --prefix cloud/web ci
-          npm --prefix cloud/web run typecheck
-          npm --prefix cloud/web run lint
-          npm --prefix cloud/web test
-          npm --prefix cloud/web run build
+          pnpm --filter @yukibana/cloud-web run build
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v7
@@ -132,7 +121,7 @@ jobs:
       - name: Install Playwright Chromium
         if: matrix.app == 'browser'
         shell: bash
-        run: pnpm --filter yukibana-tests exec playwright install --with-deps chromium
+        run: pnpm --filter @yukibana/ide-e2e exec playwright install --with-deps chromium
 
       # Builds both apps and downloads the plugins first.
       - name: E2E tests

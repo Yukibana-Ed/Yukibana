@@ -1,7 +1,8 @@
 {
-  "name": "yukibana-common",
+  "name": "@yukibana/ide-common",
   "description": "Helpers shared by the Yukibana extensions",
-  "version": "0.1.0",
+  "version": "0.0.0-dev",
+  "license": "MIT",
   "files": [
     "lib",
     "src"
@@ -15,6 +16,8 @@
   },
   "scripts": {
     "prepare": "tsc --build",
-    "clean": "rimraf lib tsconfig.tsbuildinfo"
+    "clean": "rimraf lib tsconfig.tsbuildinfo",
+    "lint": "oxlint",
+    "typecheck": "tsc --build"
   }
 }

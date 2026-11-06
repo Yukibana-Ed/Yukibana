@@ -187,7 +187,7 @@ export function recentProject(uri: URI, home?: URI, format = OS.backend.isWindow
     return { uri, name, location: path.fsPath(format), workspaceFile };
 }
 
-/** Name of the file at a project's root that says how the IDE treats it; the same one `yukibana-ext` reads. */
+/** Name of the file at a project's root that says how the IDE treats it; the same one `@yukibana/ide-ext` reads. */
 export const CONFIG_FILENAME = 'yukibana.json';
 
 /**

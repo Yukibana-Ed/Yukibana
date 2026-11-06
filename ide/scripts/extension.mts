@@ -12,9 +12,6 @@ interface TemplateFile {
 
 type TemplateEntry = TemplateDirectory | TemplateFile;
 
-const RIMRAF_VERSION = '^6.1.3';
-const TYPESCRIPT_VERSION = '7.0.2';
-
 const EXTENSION_TEMPLATE: TemplateEntry[] = [
     {
         path: 'src',
@@ -23,23 +20,26 @@ const EXTENSION_TEMPLATE: TemplateEntry[] = [
         path: 'package.json',
         content: name => `
         {
-          "name": "${name}-ext",
+          "name": "@yukibana/ide-${name}-ext",
           "keywords": [
             "theia-extension"
           ],
-          "version": "0.1.0",
+          "version": "0.0.0-dev",
+          "license": "MIT",
           "files": [
             "lib",
             "src"
           ],
           "dependencies": {},
           "devDependencies": {
-            "rimraf": "${RIMRAF_VERSION}",
-            "typescript": "${TYPESCRIPT_VERSION}"
+            "rimraf": "catalog:",
+            "typescript": "catalog:"
           },
           "scripts": {
             "prepare": "tsc --build",
-            "clean": "rimraf lib tsconfig.tsbuildinfo"
+            "clean": "rimraf lib tsconfig.tsbuildinfo",
+            "lint": "oxlint",
+            "typecheck": "tsc --build"
           },
           "theiaExtensions": []
         }
@@ -69,24 +69,27 @@ const LANG_EXTENSION_TEMPLATE: TemplateEntry[] = [
         path: 'package.json',
         content: name => `
         {
-          "name": "yukibana-${name}-lang-ext",
+          "name": "@yukibana/ide-${name}-lang-ext",
           "keywords": [
             "theia-extension",
             "language"
           ],
-          "version": "0.1.0",
+          "version": "0.0.0-dev",
+          "license": "MIT",
           "files": [
             "lib",
             "src"
           ],
           "dependencies": {},
           "devDependencies": {
-            "rimraf": "${RIMRAF_VERSION}",
-            "typescript": "${TYPESCRIPT_VERSION}"
+            "rimraf": "catalog:",
+            "typescript": "catalog:"
           },
           "scripts": {
             "prepare": "tsc --build",
-            "clean": "rimraf lib tsconfig.tsbuildinfo"
+            "clean": "rimraf lib tsconfig.tsbuildinfo",
+            "lint": "oxlint",
+            "typecheck": "tsc --build"
           },
           "theiaExtensions": []
         }

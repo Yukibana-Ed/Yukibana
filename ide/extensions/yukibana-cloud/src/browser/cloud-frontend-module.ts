@@ -9,7 +9,7 @@ import { CommandContribution, MenuContribution, ResourceResolver } from '@theia/
 import { bindViewContribution, FrontendApplicationContribution, OpenHandler, RemoteConnectionProvider, ServiceConnectionProvider, WidgetFactory } from '@theia/core/lib/browser';
 import { TabBarToolbarContribution } from '@theia/core/lib/browser/shell/tab-bar-toolbar';
 import { ContainerModule } from '@theia/core/shared/inversify';
-import { SubmissionTarget } from 'yukibana-submission-ext/lib/common/submission-target';
+import { SubmissionTarget } from '@yukibana/ide-submission-ext/lib/common/submission-target';
 import { CloudAuth, cloudAuthPath, CloudService, cloudServicePath } from '../common/cloud-protocol';
 import { openWorkspacesPath, OpenWorkspacesServer } from '../common/open-workspaces-protocol';
 import { CloudAccountMenuContribution } from './cloud-account-menu';

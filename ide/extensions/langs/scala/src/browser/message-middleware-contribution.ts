@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: MIT
  */
 import { MaybePromise, MessageType } from '@theia/core';
-import { YukibanaMessageMiddlewareContribution } from 'yukibana-ext/lib/browser/yukibana-message-service';
+import { YukibanaMessageMiddlewareContribution } from '@yukibana/ide-ext/lib/browser/yukibana-message-service';
 
 export class ScalaMessageMiddlewareContribution implements YukibanaMessageMiddlewareContribution {
     readonly PRIORITY: number = 0;

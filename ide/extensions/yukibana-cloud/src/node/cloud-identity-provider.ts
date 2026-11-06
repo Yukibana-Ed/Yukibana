@@ -3,7 +3,7 @@
  */
 import { inject, injectable } from '@theia/core/shared/inversify';
 import { randomUUIDv7 } from 'node:crypto';
-import { IdentityProviderContribution } from 'yukibana-ext/lib/node/identity-service';
+import { IdentityProviderContribution } from '@yukibana/ide-ext/lib/node/identity-service';
 import { CloudAuth } from '../common/cloud-protocol';
 import { CloudAuthImpl } from './cloud-auth';
 

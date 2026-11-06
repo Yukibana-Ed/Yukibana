@@ -6,7 +6,7 @@ updates:
       interval: weekly
     # The same age as pnpm's minimumReleaseAge in pnpm-workspace.yaml.
     cooldown:
-      default-days: 7
+      default-days: 14
     groups:
       # Theia's version check fails on any mix of @theia/* versions.
       theia:
@@ -18,6 +18,9 @@ updates:
     ignore:
       # Theia pins the Electron version as a peer dependency of @theia/electron.
       - dependency-name: electron
+      # The ts6 catalog stays on TypeScript 6 for svelte-check; the default catalog's major is bumped by hand.
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
   - package-ecosystem: github-actions
     directory: /
     schedule:

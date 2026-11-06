@@ -2,8 +2,9 @@
 
 ## Prerequisites
 
-- [Node.js v24+](https://nodejs.org/en/download/)
-- [pnpm](https://pnpm.io/installation)
+- [pnpm](https://pnpm.io/installation), which runs every script on the Node.js 24 release that the root
+  `package.json` names (`devEngines`), and downloads that release itself the first time
+- [Node.js](https://nodejs.org/en/download/), if your pnpm needs one to run
 - [Python 3](https://docs.python.org/3/using/index.html)
 
 Some additional tools and libraries are needed depending on your platform,
@@ -28,7 +29,8 @@ On Windows, the Visual Studio Build Tools also need the
    ```
 
 3. Install the IDE's dependencies (which also checks that every `@theia/*` package has the same version),
-   then build and start the app
+   then build and start the app. `pnpm setup:cloud` and `pnpm setup:cli` install what the cloud or the CLI
+   needs instead, without Electron or Theia, and `pnpm install` installs everything
 
    ```bash
    pnpm setup:ide
@@ -42,6 +44,11 @@ On Windows, the Visual Studio Build Tools also need the
 All commands run from the repository root. The extensions compile incrementally,
 so only the ones that changed are recompiled.
 
+`pnpm lint`, `pnpm typecheck` and `pnpm test` cover every package, so they need every package installed
+(`pnpm install`). After `pnpm setup:ide`, run them for what it installed the same way, e.g.
+`pnpm --filter "{ide/**}..." test` (`"{cloud/**}..."` after `pnpm setup:cloud`, `@yukibana/cli...` after
+`pnpm setup:cli`).
+
 - `pnpm start [browser|electron]`: build in development mode, download the bundled
   plugins if needed, and start the app (Electron by default).
   Use `--prod` for a production build, and pass extra arguments to `theia start`
@@ -52,9 +59,11 @@ so only the ones that changed are recompiled.
   Use `--preview` for an unpacked directory
 - `pnpm download:plugins`: download the plugins listed in `theiaPlugins` (in `ide/package.json`) into `ide/plugins`,
   again whenever that list changes (done automatically by `start` and `package`; delete `ide/plugins` to download them again)
-- `pnpm lint` / `pnpm lint:fix`: lint the whole project with oxlint
+- `pnpm lint`, `pnpm typecheck`: run every package's `lint` (oxlint) or `typecheck` script; one package's with
+  e.g. `pnpm --filter @yukibana/cli lint`. `pnpm lint:fix` fixes what oxlint can across the whole project
 - `pnpm format` / `pnpm format:check`: format the whole project with oxfmt, or only check it
-- `pnpm test`: run the unit tests (`*.spec.ts`) with Vitest, straight from the sources;
+- `pnpm test`: run every package's unit tests with Vitest, straight from the sources, each with its package's
+  `vitest.config` (the same as `pnpm -r test`, in one run);
   `pnpm test:watch` reruns them on every change. What a spec imports from another extension
   or library comes from its compiled `lib`, so rebuild that one after changing it (`pnpm setup:ide`
   compiles them all). Filter by file name and test name, e.g.
@@ -63,13 +72,13 @@ so only the ones that changed are recompiled.
   tests ([ide/e2e/e2e](ide/e2e/e2e)) in each of them. Pick one app with `--project=browser` or
   `--project=electron`, and filter like `pnpm test`: `pnpm test:e2e scala -g "language"`.
   Playwright's own options work too, e.g. `--headed`, `--debug` or `--ui`. Before the
-  first run, install Playwright's Chromium: `pnpm --filter yukibana-tests exec playwright install chromium`
+  first run, install Playwright's Chromium: `pnpm --filter @yukibana/ide-e2e exec playwright install chromium`
 - `pnpm test:coverage`: run the unit tests and report their coverage, in `coverage/index.html`
 - `pnpm clean`: remove what the extensions compiled and the apps bundled, e.g. after deleting
   or renaming source files, whose stale compiled files are otherwise left behind
 
 To recompile the extensions on every change, run `pnpm watch`, and to rebundle an app,
-`pnpm --filter yukibana-browser-app watch` (or `yukibana-electron-app`).
+`pnpm --filter @yukibana/ide-browser watch` (or `@yukibana/ide-electron`).
 
 ## Architecture
 
@@ -79,7 +88,7 @@ The IDE is in [ide](ide), separated into 4 main parts:
 - custom extensions ([ide/extensions](ide/extensions))
 - helpers shared by the extensions ([ide/common](ide/common))
 
-Each part is its own workspace, and the end-to-end tests ([ide/e2e](ide/e2e)) are one too.
+Each part is its own package of the pnpm workspace, and the end-to-end tests ([ide/e2e](ide/e2e)) are one too.
 The commands above, run from the root, build and start them.
 The extensions also use [@yukibana/client](packages/client), the library they share with the
 [CLI](packages/cli); the cloud the IDE talks to is in [cloud](cloud).
@@ -92,15 +101,24 @@ More information can be found in [docs/architecture.md](docs/architecture.md).
 
 ### The cloud and the CLI
 
-Until they join the pnpm workspace, [cloud/web](cloud/web) and [packages/cli](packages/cli) are installed with npm
-(`npm --prefix cloud/web ci`, `npm --prefix packages/cli ci`) and keep their own scripts (`build`, `test`, `typecheck`,
-`lint`). The CLI links [@yukibana/client](packages/client) as `file:../client`, and npm installs no dependencies for a
-link: run `pnpm --filter @yukibana/client install` (or `pnpm setup:ide`) at the root first, on Node 24 as the root's
-`devEngines` requires (the cloud's devcontainer, `cloud/dev/.devcontainer`, does both). Their guide is
-[docs/cloud/CLAUDE.md](docs/cloud/CLAUDE.md).
+[cloud/web](cloud/web) (`@yukibana/cloud-web`, the Worker), [cloud/db](cloud/db) (`@yukibana/cloud-db`, the database
+with the Supabase CLI and squawk) and [packages/cli](packages/cli) (`@yukibana/cli`) are packages of the same
+workspace. `pnpm setup:cloud` or `pnpm setup:cli` installs them, and each has its own scripts, e.g.
+`pnpm --filter @yukibana/cloud-web dev`, `pnpm --filter @yukibana/cli build`. The database's are `lint` (squawk over the
+migrations), `start`, `stop`, `reset` and `test:db` (pgTAP), and any other Supabase command runs in `cloud/db` with
+`pnpm --filter @yukibana/cloud-db exec supabase <command>`. The library the CLI and the IDE share,
+[@yukibana/client](packages/client), compiles into its `lib` on install; rebuild it after changing it with
+`pnpm --filter @yukibana/client prepare`. Their guide is [docs/cloud/CLAUDE.md](docs/cloud/CLAUDE.md).
 
 The cloud's devcontainer is not where editors look for one (`.devcontainer/` at the root), so start it from the root
 with `devcontainer up --workspace-folder . --config cloud/dev/.devcontainer/devcontainer.json`.
+
+## Dependencies
+
+Every dependency's version is in the catalog of [pnpm-workspace.yaml](pnpm-workspace.yaml); a `package.json` names it as
+`catalog:` (`catalog:ts6` for `cloud/web`'s TypeScript 6), and a workspace package through the catalog's
+`workspace:*`. The exception is `electron`, whose exact version Theia's CLI checks. pnpm only installs versions that are
+at least 14 days old (`minimumReleaseAge`), and refuses a lockfile that holds a younger one.
 
 ## Troubleshooting
 

@@ -13,7 +13,7 @@ import * as path from 'path';
 import * as zlib from 'zlib';
 import { DownloadResult } from '../common/cloud-protocol';
 import { CloudClient } from './cloud-client';
-import { SubmissionServiceImpl } from 'yukibana-submission-ext/lib/node/submission-service';
+import { SubmissionServiceImpl } from '@yukibana/ide-submission-ext/lib/node/submission-service';
 import { CloudServiceImpl } from './cloud-service';
 import { CloudSessionManager } from './cloud-session-manager';
 
