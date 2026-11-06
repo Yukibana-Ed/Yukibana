@@ -140,7 +140,11 @@ function notFoundOrEmpty(dirPath: string): boolean {
     }
 }
 
-/** Returns the new extension name given in `positionals`; exits if none is given or if the extension already exists. */
+/**
+ * Returns the new extension's name, given in `positionals`, and its folder: ide/extensions/langs/<name> for a language
+ * extension, ide/extensions/<name> otherwise, which is where each template's relative `extends` finds ide/configs.
+ * Exits if no name is given or if the folder already exists and is not empty, unless `force`.
+ */
 function parseNewExtension(positionals: string[], lang: boolean = false, force: boolean = false): [string, string] {
     if (positionals.length === 0) {
         fail(`Missing required extension name`);
@@ -152,7 +156,7 @@ function parseNewExtension(positionals: string[], lang: boolean = false, force: 
     if (ext.includes('/')) {
         fail(`Extension name cannot contain '/'`);
     }
-    const extPath = path.join(ide, 'extensions', 'langs', ext);
+    const extPath = lang ? path.join(ide, 'extensions', 'langs', ext) : path.join(ide, 'extensions', ext);
     if (!force && !notFoundOrEmpty(extPath)) {
         fail(`Directory ${extPath} already exists`);
     }
