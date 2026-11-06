@@ -1,10 +1,13 @@
 # Deploys the cloud from main: the database first (migrations, the per-environment bootstrap, Supabase's settings), then
 # the Worker. Migrations only ever add (docs/cloud/CLAUDE.md), so the Worker still running between the two steps works
-# against the new schema. A failed deploy is re-run by hand; the next one includes everything anyway.
+# against the new schema. A failed deploy is re-run by hand; the next one includes everything anyway. A run whose commit
+# is older than the last successful deploy's refuses, so a re-run of an old run cannot put an old Worker back.
 #
-# On a push to main when the pnpm package graph says @yukibana/cloud-web or @yukibana/cloud-db is affected (so a change
-# to packages they use counts), and by hand. A first environment needs it twice: deploy, log in once with GitHub, deploy
-# again so cloud/db/ops/bootstrap.sql can promote the first admin.
+# On a push to main of ISC-HEI/Yukibana (a fork has no production environment) when the pnpm package graph says
+# @yukibana/cloud-web or @yukibana/cloud-db is affected (so a change to packages they use counts), or the lockfile, the
+# workspace's configuration or this file changed; a change to CI, a root config or the cloud's tests alone deploys
+# nothing (`deploy` in .github/scripts/plan.mts). And by hand. A first environment needs it twice: deploy, log in once
+# with GitHub, deploy again so cloud/db/ops/bootstrap.sql can promote the first admin.
 #
 # The secrets are on the `production` environment (Settings, Environments), and each step gets only the ones it uses:
 #   SUPABASE_ACCESS_TOKEN   a Supabase personal access token (sbp_...)
@@ -40,13 +43,14 @@ permissions:
 jobs:
   plan:
     name: Plan
+    if: github.repository == 'ISC-HEI/Yukibana'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read
       actions: read
     outputs:
-      cloud: ${{ steps.plan.outputs.cloud }}
+      deploy: ${{ steps.plan.outputs.deploy }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -80,13 +84,32 @@ jobs:
   deploy:
     name: Deploy
     needs: plan
-    if: needs.plan.outputs.cloud == 'true'
+    if: needs.plan.outputs.deploy == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
     environment:
       name: production
       url: https://cloud.yukibana.dev
     steps:
+      # Re-running an old run (or only its failed jobs, which reuses the plan) after a newer one deployed would deploy the
+      # old Worker over the newer one, against the newer schema. So this commit must be the last deployed one or after it.
+      - name: Not older than the last deploy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          last=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy-cloud.yml/runs?branch=main&status=success&per_page=1" --jq '.workflow_runs[0].head_sha // empty')
+          if [ -n "$last" ]; then
+            status=$(gh api "repos/$GITHUB_REPOSITORY/compare/$last...$GITHUB_SHA" --jq .status)
+            case "$status" in
+              ahead|identical) ;;
+              *) echo "::error::$GITHUB_SHA is $status of $last, which a later run already deployed. Nothing was deployed; to deploy main again, use Run workflow on main."
+                 exit 1 ;;
+            esac
+          fi
+
       - name: Checkout
         uses: actions/checkout@v7
         with:

@@ -9,6 +9,7 @@
 //
 // BASE is the commit the run compares with: the pull request's base, the merge queue's base, the commit a push replaced,
 // or (deploy-cloud.yml) the last commit deployed. Without one (a run by hand, a new branch), everything runs.
+// ci.yml reads every output but `deploy`; deploy-cloud.yml reads only `deploy`.
 import { execFileSync } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
 import path from 'node:path';
@@ -26,13 +27,15 @@ export interface WorkspacePackage {
  *
  * - `unknown`: there is no base to compare with, so everything is affected.
  * - `shared`: a file that belongs to no package but the workspace root changed (the lockfile, a root config,
- *   `.github/`, `cloud/dev/`, ...), which any package may read, so every package is affected.
- * - `packages`: only files inside packages changed; `affected` are those packages and every package depending on them.
+ *   `.github/`, `cloud/dev/`, ...), which any package may read, so every package is checked.
+ * - `packages`: only files inside packages changed.
+ *
+ * `affected` are the packages that changed files inside them, and every package depending on those; `files` are the
+ * changed files, relative to the repository root.
  */
 export type Change =
     | { readonly kind: 'unknown'; readonly reason: string }
-    | { readonly kind: 'shared'; readonly files: readonly string[] }
-    | { readonly kind: 'packages'; readonly affected: readonly string[]; readonly files: readonly string[] };
+    | { readonly kind: 'shared' | 'packages'; readonly affected: readonly string[]; readonly files: readonly string[] };
 
 /** What one CI run does. */
 export interface Plan {
@@ -51,19 +54,36 @@ export interface Plan {
     readonly licenses: boolean;
     /** `true` iff a pull request's Worker may be uploaded as a preview: the Worker is affected and `cloud/db` is not touched. */
     readonly preview: boolean;
+    /**
+     * `true` iff Deploy cloud deploys: what it deploys may have changed, because a package in `CLOUD_PACKAGES` is affected
+     * or one of `DEPLOY_INPUTS` changed. A change to CI, a root config or the cloud's tests alone does not deploy.
+     */
+    readonly deploy: boolean;
 }
 
-/** The packages whose being affected starts the cloud stack. */
-export const CLOUD_PACKAGES: readonly string[] = ['@yukibana/cloud-web', '@yukibana/cloud-db'];
+/** The packages whose being affected starts the cloud stack, and deploys. */
+const CLOUD_PACKAGES: readonly string[] = ['@yukibana/cloud-web', '@yukibana/cloud-db'];
+
+/**
+ * The directory of files that the cloud's integration tests read and pnpm's graph cannot see: the fixture repository
+ * belongs to `@yukibana/client`, and `@yukibana/cloud-web` publishes it as a release.
+ */
+const CLOUD_FIXTURES = 'packages/client/tests/fixtures/';
+
+/** The files no package owns that every install reads: a change to one can change what any package is built with. */
+const INSTALL_INPUTS: readonly string[] = ['package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml'];
+
+/** The files no package owns whose change deploys the cloud: what it is installed with, and the deploy itself. */
+const DEPLOY_INPUTS: readonly string[] = [...INSTALL_INPUTS, '.github/workflows/deploy-cloud.yml'];
 
 /**
  * The packages whose being affected starts the IDE's end-to-end tests: the two apps, the tests themselves, and
  * `@yukibana/ide`, which holds the scripts and the Theia CLI that build the apps.
  */
-export const IDE_PACKAGES: readonly string[] = ['@yukibana/ide', '@yukibana/ide-browser', '@yukibana/ide-electron', '@yukibana/ide-e2e'];
+const IDE_PACKAGES: readonly string[] = ['@yukibana/ide', '@yukibana/ide-browser', '@yukibana/ide-electron', '@yukibana/ide-e2e'];
 
 /** The files whose change runs the license check: what it checks, and its rules. */
-export const LICENSE_INPUTS: readonly string[] = ['pnpm-lock.yaml', 'ide/package.json', '.github/scripts/licenses.mts'];
+const LICENSE_INPUTS: readonly string[] = ['pnpm-lock.yaml', 'ide/package.json', '.github/scripts/licenses.mts'];
 
 /**
  * Returns the pnpm selectors of the affected packages: `...[base]`, and `...{dir/**}` for each changed package whose
@@ -87,29 +107,31 @@ export function affectedSelectors(base: string, changed: readonly WorkspacePacka
  */
 export function decide(change: Change, all: readonly string[]): Plan {
     if (change.kind === 'unknown') {
-        return { packages: [...all].sort(), cloud: true, ide: true, devcontainer: true, licenses: true, preview: false };
+        return { packages: [...all].sort(), cloud: true, ide: true, devcontainer: true, licenses: true, preview: false, deploy: true };
     }
     const packages = change.kind === 'shared' ? [...all] : [...change.affected];
-    const unknown = packages.filter(p => !all.includes(p));
+    const unknown = change.affected.filter(p => !all.includes(p));
     if (unknown.length > 0) {
         throw new Error(`decide: not workspace packages: ${unknown.join(', ')}`);
     }
-    // The built CLI checks the fixture repository in packages/client/tests, which pnpm counts as the client's tests alone.
+    // The built CLI checks the fixture repository in packages/client/tests, which pnpm counts as the client's tests alone;
+    // the cloud's integration tests read it too (CLOUD_FIXTURES).
     if (packages.includes('@yukibana/client') && !packages.includes('@yukibana/cli') && all.includes('@yukibana/cli')) {
         packages.push('@yukibana/cli');
     }
     const { files } = change;
     return {
         packages: packages.sort(),
-        cloud: packages.some(p => CLOUD_PACKAGES.includes(p)),
+        cloud: packages.some(p => CLOUD_PACKAGES.includes(p)) || files.some(f => f.startsWith(CLOUD_FIXTURES)),
         ide: packages.some(p => IDE_PACKAGES.includes(p)),
-        // What the container is built from, and the scripts and compose file its start runs.
-        devcontainer: files.some(f => f.startsWith('cloud/dev/')),
+        // What the container is built from, the scripts and compose file its start runs, and what it installs from.
+        devcontainer: files.some(f => f.startsWith('cloud/dev/') || INSTALL_INPUTS.includes(f)),
         // The npm dependencies are in the lockfile, the plugins are listed in ide/package.json, and the rules are checked
         // against the real tree when they change.
         licenses: files.some(f => LICENSE_INPUTS.includes(f)),
         // A preview runs against production's database, so not with a migration it would not have.
         preview: packages.includes('@yukibana/cloud-web') && !files.some(f => f.startsWith('cloud/db/')),
+        deploy: change.affected.some(p => CLOUD_PACKAGES.includes(p)) || files.some(f => DEPLOY_INPUTS.includes(f)),
     };
 }
 
@@ -122,6 +144,7 @@ export function outputLines(plan: Plan): string {
         `devcontainer=${plan.devcontainer}`,
         `licenses=${plan.licenses}`,
         `preview=${plan.preview}`,
+        `deploy=${plan.deploy}`,
         '',
     ].join('\n');
 }
@@ -175,10 +198,10 @@ function changeSince(base: string, all: readonly WorkspacePackage[]): Change {
         .split('\n')
         .filter(f => f !== '');
     const changed = pnpmList([`[${base}]`]);
-    if (changed.some(p => p.dir === '')) {
-        return { kind: 'shared', files };
-    }
-    return { kind: 'packages', affected: namesOf(pnpmList(affectedSelectors(base, changed, all))), files };
+    const inPackages = changed.filter(p => p.dir !== '');
+    // `...[base]` selects the root too when a file outside every package changed; it is not a package to run.
+    const affected = namesOf(pnpmList(affectedSelectors(base, inPackages, all)).filter(p => p.dir !== ''));
+    return { kind: inPackages.length < changed.length ? 'shared' : 'packages', affected, files };
 }
 
 if (import.meta.main) {
@@ -195,7 +218,7 @@ if (import.meta.main) {
         why,
         '',
         `Packages: ${plan.packages.length === 0 ? 'none' : plan.packages.join(', ')}`,
-        `Cloud stack: ${plan.cloud}, IDE e2e: ${plan.ide}, devcontainer: ${plan.devcontainer}, licenses: ${plan.licenses}, preview: ${plan.preview}`,
+        `Cloud stack: ${plan.cloud}, IDE e2e: ${plan.ide}, devcontainer: ${plan.devcontainer}, licenses: ${plan.licenses}, preview: ${plan.preview}, deploy: ${plan.deploy}`,
         '',
     ].join('\n');
     process.stdout.write(summary);

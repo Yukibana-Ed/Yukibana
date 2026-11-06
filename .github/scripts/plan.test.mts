@@ -45,17 +45,18 @@ describe('what runs', () => {
             devcontainer: true,
             licenses: true,
             preview: false,
+            deploy: true,
         });
     });
 
     test('a lockfile change checks every package and their licenses', () => {
-        const plan = decide({ kind: 'shared', files: ['pnpm-lock.yaml'] }, names);
-        expect(plan).toMatchObject({ packages: [...names].sort(), cloud: true, ide: true, licenses: true, devcontainer: false, preview: true });
+        const plan = decide({ kind: 'shared', affected: [], files: ['pnpm-lock.yaml'] }, names);
+        expect(plan).toMatchObject({ packages: [...names].sort(), cloud: true, ide: true, licenses: true, devcontainer: true, preview: true, deploy: true });
     });
 
     test('a change to the CLI alone starts neither the cloud stack nor the IDE end-to-end tests', () => {
         const plan = decide({ kind: 'packages', affected: ['@yukibana/cli'], files: ['packages/cli/src/index.ts'] }, names);
-        expect(plan).toEqual({ packages: ['@yukibana/cli'], cloud: false, ide: false, devcontainer: false, licenses: false, preview: false });
+        expect(plan).toEqual({ packages: ['@yukibana/cli'], cloud: false, ide: false, devcontainer: false, licenses: false, preview: false, deploy: false });
     });
 
     test("a change to the client library tests the IDE that uses it, and not the cloud, which doesn't", () => {
@@ -65,12 +66,26 @@ describe('what runs', () => {
     });
 
     test('a change to the license rules checks the licenses', () => {
-        expect(decide({ kind: 'shared', files: ['.github/scripts/licenses.mts'] }, names).licenses).toBe(true);
+        expect(decide({ kind: 'shared', affected: [], files: ['.github/scripts/licenses.mts'] }, names).licenses).toBe(true);
     });
 
-    test('a change to the fixture repository alone has the built CLI check it', () => {
+    test('a change to the fixture repository alone has the built CLI and the cloud stack check it, and deploys nothing', () => {
         const plan = decide({ kind: 'packages', affected: ['@yukibana/client'], files: ['packages/client/tests/fixtures/repo.tar.gz'] }, names);
-        expect(plan.packages).toEqual(['@yukibana/cli', '@yukibana/client']);
+        expect(plan).toMatchObject({ packages: ['@yukibana/cli', '@yukibana/client'], cloud: true, deploy: false });
+    });
+
+    test('a change to CI alone checks every package and deploys nothing', () => {
+        const plan = decide({ kind: 'shared', affected: [], files: ['.github/workflows/ci.yml', 'oxfmt.config.mts'] }, names);
+        expect(plan).toMatchObject({ packages: [...names].sort(), cloud: true, devcontainer: false, deploy: false });
+    });
+
+    test('a change to CI together with the Worker deploys', () => {
+        const plan = decide({ kind: 'shared', affected: ['@yukibana/cloud-web'], files: ['.github/workflows/ci.yml', 'cloud/web/src/a.ts'] }, names);
+        expect(plan.deploy).toBe(true);
+    });
+
+    test('a change to the deploy itself deploys', () => {
+        expect(decide({ kind: 'shared', affected: [], files: ['.github/workflows/deploy-cloud.yml'] }, names).deploy).toBe(true);
     });
 
     test("a change to the IDE's build scripts runs the end-to-end tests", () => {
@@ -85,13 +100,17 @@ describe('what runs', () => {
         expect(plan).toMatchObject({ cloud: true, preview: false });
     });
 
-    test('a change to the Worker alone may have a preview', () => {
-        expect(decide({ kind: 'packages', affected: ['@yukibana/cloud-web'], files: ['cloud/web/src/a.ts'] }, names)).toMatchObject({ cloud: true, preview: true });
+    test('a change to the Worker alone may have a preview, and deploys', () => {
+        expect(decide({ kind: 'packages', affected: ['@yukibana/cloud-web'], files: ['cloud/web/src/a.ts'] }, names)).toMatchObject({
+            cloud: true,
+            preview: true,
+            deploy: true,
+        });
     });
 
     test('a change to the devcontainer or the scripts its start runs builds it', () => {
-        expect(decide({ kind: 'shared', files: ['cloud/dev/.devcontainer/setup.sh'] }, names).devcontainer).toBe(true);
-        expect(decide({ kind: 'shared', files: ['cloud/dev/scripts/smoke.mjs'] }, names).devcontainer).toBe(true);
+        expect(decide({ kind: 'shared', affected: [], files: ['cloud/dev/.devcontainer/setup.sh'] }, names).devcontainer).toBe(true);
+        expect(decide({ kind: 'shared', affected: [], files: ['cloud/dev/scripts/smoke.mjs'] }, names).devcontainer).toBe(true);
     });
 
     test("a change to the IDE's plugin list checks the plugins' licenses", () => {
@@ -106,6 +125,7 @@ describe('what runs', () => {
             devcontainer: false,
             licenses: false,
             preview: false,
+            deploy: false,
         });
     });
 
@@ -115,6 +135,6 @@ describe('what runs', () => {
 });
 
 test('the plan reaches the workflow as one output per line, the packages as JSON', () => {
-    const lines = outputLines({ packages: ['@yukibana/cli'], cloud: false, ide: true, devcontainer: false, licenses: false, preview: false });
-    expect(lines).toBe('packages=["@yukibana/cli"]\ncloud=false\nide=true\ndevcontainer=false\nlicenses=false\npreview=false\n');
+    const lines = outputLines({ packages: ['@yukibana/cli'], cloud: false, ide: true, devcontainer: false, licenses: false, preview: false, deploy: false });
+    expect(lines).toBe('packages=["@yukibana/cli"]\ncloud=false\nide=true\ndevcontainer=false\nlicenses=false\npreview=false\ndeploy=false\n');
 });
