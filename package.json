@@ -1,8 +1,5 @@
 {
   "private": true,
-  "engines": {
-    "node": ">=24"
-  },
   "devEngines": {
     "runtime": {
       "name": "node",
@@ -23,7 +20,7 @@
     "watch": "node ide/scripts/cli.mts watch",
     "new:ext": "node ide/scripts/cli.mts new:ext",
     "clean": "pnpm -r --if-present run clean",
-    "lint": "pnpm -r run lint",
+    "lint": "oxlint cloud/dev cloud/db/supabase/functions oxfmt.config.mts vitest.config.mts && pnpm -r run lint",
     "lint:fix": "oxlint --fix",
     "typecheck": "pnpm -r run typecheck",
     "format": "oxfmt",

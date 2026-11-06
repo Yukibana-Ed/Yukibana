@@ -48,13 +48,13 @@ export function credentialProblem(cfg: Pick<S3Config, 'endpoint' | 'accessKeyId'
     return (
       `S3_ACCESS_KEY_ID is ${cfg.accessKeyId.length} characters, and an R2 Access Key ID is 32 hexadecimal ones. ` +
       'R2 → Manage API tokens shows three values when a token is made: this is probably the first, the token value. ' +
-      'Set the Access Key ID instead (npx wrangler secret put S3_ACCESS_KEY_ID).'
+      'Set the Access Key ID instead (pnpm --filter @yukibana/cloud-web exec wrangler secret put S3_ACCESS_KEY_ID).'
     );
   }
   if (!/^[0-9a-f]{64}$/.test(cfg.secretAccessKey)) {
     return (
       `S3_SECRET_ACCESS_KEY is ${cfg.secretAccessKey.length} characters, and an R2 Secret Access Key is 64 hexadecimal ones. ` +
-      'Set the Secret Access Key from the page that made the token (npx wrangler secret put S3_SECRET_ACCESS_KEY).'
+      'Set the Secret Access Key from the page that made the token (pnpm --filter @yukibana/cloud-web exec wrangler secret put S3_SECRET_ACCESS_KEY).'
     );
   }
   return null;

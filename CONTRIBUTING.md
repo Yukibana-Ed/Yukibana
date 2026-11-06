@@ -4,7 +4,9 @@
 
 - [pnpm](https://pnpm.io/installation), which runs every script on the Node.js 24 release that the root
   `package.json` names (`devEngines`), and downloads that release itself the first time
-- [Node.js](https://nodejs.org/en/download/), if your pnpm needs one to run
+- [Node.js](https://nodejs.org/en/download/), if your pnpm needs one to run. Run tools through pnpm
+  (`pnpm --filter <package> exec <tool>`), not `npx` or `npm` at the root: there npm enforces the root's exact Node.js release
+  itself, cannot download it, and stops with `EBADDEVENGINES` on any other
 - [Python 3](https://docs.python.org/3/using/index.html)
 
 Some additional tools and libraries are needed depending on your platform,

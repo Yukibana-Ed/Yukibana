@@ -26,10 +26,13 @@
   },
 
   "remoteUser": "node",
-  // The cloud and the CLI, and the library the CLI uses, with the pnpm the
-  // root's packageManager names (which runs them on the root's devEngines Node).
+  // The pnpm the root's packageManager names, installed globally so that
+  // setup.sh and the cloud/dev scripts find it on PATH, then the cloud and the
+  // CLI, and the library the CLI uses, which pnpm runs on the root's devEngines
+  // Node. Not `npx pnpm` here: npm enforces that exact Node release itself and
+  // cannot download it, so on any other 24.x it stops before pnpm starts.
   // Neither Electron nor Theia: an IDE developer does not need this container.
-  "postCreateCommand": "npx --yes \"$(node -p \"require('./package.json').packageManager\")\" --filter \"{cloud/**}...\" --filter @yukibana/cli... install --frozen-lockfile",
+  "postCreateCommand": "npm install --global \"$(node -p \"require('./package.json').packageManager\")\" && pnpm --filter \"{cloud/**}...\" --filter @yukibana/cli... install --frozen-lockfile",
   "postStartCommand": "cloud/dev/.devcontainer/setup.sh",
 
   // No forwardPorts: the Supabase and RustFS ports are published by the host

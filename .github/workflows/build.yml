@@ -102,9 +102,10 @@ jobs:
           cache: true
           install: false
 
+      # The IDE and what it uses, as `pnpm setup:ide` installs it: not the cloud's Supabase CLI, squawk or workerd.
       - name: Install dependencies
         shell: bash
-        run: pnpm ci --fetch-timeout 100000
+        run: pnpm --filter "{ide/**}..." install --frozen-lockfile --fetch-timeout 100000
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -172,9 +173,10 @@ jobs:
           cache: true
           install: false
 
+      # The IDE and what it uses, as `pnpm setup:ide` installs it: not the cloud's Supabase CLI, squawk or workerd.
       - name: Install dependencies
         shell: bash
-        run: pnpm ci --fetch-timeout 100000
+        run: pnpm --filter "{ide/**}..." install --frozen-lockfile --fetch-timeout 100000
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

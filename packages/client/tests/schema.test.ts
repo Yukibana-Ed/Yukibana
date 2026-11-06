@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { configJSONSchema, parseConfig, SCHEMA_URL } from '../src/lib/yukibana.js';
 
 test('the published JSON schema is the one the parser checks with, generated from it', async () => {
-  // `npm run schema` writes the file (vitest --update); anywhere else, and in
+  // `pnpm --filter @yukibana/client schema` writes the file (vitest --update); anywhere else, and in
   // CI, a committed file that is not exactly this fails.
   await expect(`${JSON.stringify(configJSONSchema(), null, 2)}
 `).toMatchFileSnapshot('../../../docs/cloud/yukibana.schema.json');

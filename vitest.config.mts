@@ -9,10 +9,11 @@ import { defineConfig } from 'vitest/config';
  */
 export default defineConfig({
     test: {
-        projects: ['ide/extensions/*/vitest.config.mts', 'packages/*/vitest.config.ts', 'cloud/web/vitest.config.ts'],
+        // Every package's config, wherever the package is, so that a package's new tests run here without an entry.
+        projects: ['{ide,packages,cloud}/**/vitest.config.{ts,mts}'],
         coverage: {
             provider: 'v8',
-            include: ['ide/{common,extensions/*}/src/**/*.{ts,tsx}', 'packages/*/src/**/*.ts', 'cloud/web/src/**/*.ts'],
+            include: ['{ide,packages,cloud}/**/src/**/*.{ts,tsx}'],
             exclude: ['**/*.spec.ts', '**/typings/**'],
             reporter: ['text', 'html', 'lcov'],
         },
