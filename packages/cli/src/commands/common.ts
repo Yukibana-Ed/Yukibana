@@ -52,9 +52,11 @@ export class Failure extends Error {
     }
 }
 
-export const fail = (...lines: string[]): never => {
+/** Stops the command with `lines` as its reasons, by throwing a `Failure`. A function declaration, not an arrow
+ *  function, so that TypeScript knows the code after a call is not reached. */
+export function fail(...lines: string[]): never {
     throw new Failure(lines);
-};
+}
 
 export function defaultStore(env: NodeJS.ProcessEnv): SessionStore {
     return fileStore(env['YUKIBANA_CONFIG_DIR'] === undefined ? undefined : join(env['YUKIBANA_CONFIG_DIR'], 'session.json'));
@@ -64,7 +66,7 @@ export function defaultStore(env: NodeJS.ProcessEnv): SessionStore {
 export async function registryUrl(inv: Invocation): Promise<string> {
     const url = inv.options.url ?? inv.env['YUKIBANA_URL'] ?? (await inv.store.load())?.url;
     if (url === undefined || url === '') fail('which registry? give --url, set YUKIBANA_URL, or log in first');
-    return url as string;
+    return url;
 }
 
 /** A client as the logged-in person. `YUKIBANA_ACCESS_TOKEN` stands in for a

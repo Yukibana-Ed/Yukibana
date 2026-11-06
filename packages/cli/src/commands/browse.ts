@@ -31,19 +31,22 @@ export async function members(inv: Invocation): Promise<void> {
 
 const ROLES: readonly EditionRole[] = ['student', 'assistant', 'owner'];
 
+/** `true` iff `s` is one of `ROLES`. */
+const isRole = (s: string): s is EditionRole => ROLES.some(r => r === s);
+
 /** `enrol <edition> <email>...` and `unenrol <edition> <email>...`. Every
  *  address is tried; the ones that failed are named at the end. */
 export async function roster(command: 'enrol' | 'unenrol', inv: Invocation): Promise<void> {
     const [edition, ...emails] = inv.args;
     if (edition === undefined || emails.length === 0) fail(`usage: yukibana ${command} <edition> <email>...`);
-    const role = (inv.options.role ?? 'student') as EditionRole;
-    if (!ROLES.includes(role)) fail(`--role must be one of ${ROLES.join(', ')}`);
+    const role = inv.options.role ?? 'student';
+    if (!isRole(role)) fail(`--role must be one of ${ROLES.join(', ')}`);
     const client = await clientFor(inv);
     const problems: string[] = [];
     for (const email of emails) {
         try {
-            if (command === 'enrol') await client.enrol(edition as string, email, role);
-            else await client.unenrol(edition as string, email);
+            if (command === 'enrol') await client.enrol(edition, email, role);
+            else await client.unenrol(edition, email);
             console.log(command === 'enrol' ? `enrolled ${email} as ${role}` : `unenrolled ${email}`);
         } catch (e) {
             problems.push(`${email}: ${e instanceof Error ? e.message : String(e)}`);
