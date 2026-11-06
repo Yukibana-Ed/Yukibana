@@ -28,6 +28,8 @@ on:
   workflow_dispatch:
 
 # One deploy at a time, and none cancelled halfway: a newer one waits, and a newer one still replaces it while it waits.
+# So a push can be replaced before it ran, and the plan compares with the last deploy that succeeded, not with the commit
+# just before: the run that replaced it then includes its changes.
 concurrency:
   group: deploy-cloud
   cancel-in-progress: false
@@ -40,6 +42,9 @@ jobs:
     name: Plan
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
     outputs:
       cloud: ${{ steps.plan.outputs.cloud }}
     steps:
@@ -55,12 +60,22 @@ jobs:
           runtime: node@24.x
           install: false
 
-      # By hand there is no base, so the plan says everything is affected.
+      # The commit of the last run on main that succeeded. One that skipped the deploy is a base too: nothing since the
+      # one before it affected the cloud. None (the first run), or a run by hand, means everything is affected.
+      - name: Last deployed
+        id: base
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy-cloud.yml/runs?branch=main&status=success&per_page=1" --jq '.workflow_runs[0].head_sha // empty')
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
       - name: Plan
         id: plan
         run: node .github/scripts/plan.mts
         env:
-          BASE: ${{ github.event.before }}
+          BASE: ${{ steps.base.outputs.sha }}
 
   deploy:
     name: Deploy

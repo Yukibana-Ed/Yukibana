@@ -26,17 +26,23 @@ export const ALLOWED: ReadonlySet<string> = new Set([
     'Unlicense',
 ]);
 
-/** A package, or a family of them, accepted under one license that {@link ALLOWED} does not cover. */
+/** A package or bundled plugin, or a family of them, accepted under one license that {@link ALLOWED} does not cover. */
 export interface Exception {
-    /** The package's name, or a prefix of names followed by `*` (`@theia/*`). */
+    /**
+     * The npm package's name or the plugin's directory under `ide/plugins`, or a prefix of them followed by `*`
+     * (`@theia/*`).
+     */
     readonly pattern: string;
-    /** The license field accepted, exactly as pnpm reports it: another one fails the check again. */
+    /**
+     * The license accepted, exactly as pnpm reports it for a package or as {@link ReviewedPlugin.license} has it for a
+     * plugin: another one fails the check again.
+     */
     readonly license: string;
     /** Why it is accepted. */
     readonly reason: string;
 }
 
-/** The packages accepted under a license {@link ALLOWED} does not cover. */
+/** The packages and plugins accepted under a license {@link ALLOWED} does not cover. */
 export const EXCEPTIONS: readonly Exception[] = [
     { pattern: '@theia/*', license: 'EPL-2.0 OR GPL-2.0-only WITH Classpath-exception-2.0', reason: 'Theia, used under the EPL-2.0' },
     { pattern: '@theia/*', license: 'EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0', reason: 'Theia, used under the EPL-2.0' },
@@ -51,13 +57,18 @@ export const EXCEPTIONS: readonly Exception[] = [
     { pattern: 'truncate-utf8-bytes', license: 'WTFPL', reason: "permissive; electron-builder's, not shipped" },
     { pattern: 'lightningcss*', license: 'MPL-2.0', reason: "Vite's CSS tool, which runs at build time and is not shipped" },
     { pattern: '@img/sharp-libvips-*', license: 'LGPL-3.0-or-later', reason: "wrangler's local image tool, not shipped" },
+    {
+        pattern: 'redhat.java',
+        license: 'EPL-2.0',
+        reason: 'the Java language server, shipped as its own plugin; the Eclipse JustJ JRE it bundles is GPL-2.0-only WITH Classpath-exception-2.0',
+    },
 ];
 
 /** A bundled plugin, or a family of them, with the license it was reviewed under. */
 export interface ReviewedPlugin {
     /** The plugin's directory under `ide/plugins` (`publisher.name`, lowercase), or a prefix of them followed by `*`. */
     readonly pattern: string;
-    /** The license it is used under, as an SPDX expression. */
+    /** The license it is used under, as an SPDX expression: one {@link ALLOWED} satisfies, or one of {@link EXCEPTIONS}. */
     readonly license: string;
     /** Its manifest's `license` field, exactly; `undefined` when the manifest has none. A different one fails. */
     readonly manifest: string | undefined;
@@ -72,7 +83,6 @@ export const PLUGINS: readonly ReviewedPlugin[] = [
     { pattern: 'ms-ceintl.vscode-language-pack-fr', license: 'MIT', manifest: 'SEE MIT LICENSE IN LICENSE.md' },
     { pattern: 'ms-vscode.js-debug', license: 'MIT', manifest: 'MIT' },
     { pattern: 'ms-vscode.vscode-js-profile-table', license: 'MIT', manifest: 'MIT' },
-    // It bundles an Eclipse JustJ JRE, which is GPL-2.0-only WITH Classpath-exception-2.0.
     { pattern: 'redhat.java', license: 'EPL-2.0', manifest: 'EPL-2.0' },
     { pattern: 'scala-lang.scala', license: 'MIT', manifest: 'SEE LICENSE IN LICENSE.md' },
     { pattern: 'scalameta.metals', license: 'Apache-2.0', manifest: 'Apache-2.0' },
@@ -91,8 +101,11 @@ export function matches(pattern: string, name: string): boolean {
 
 /**
  * `true` iff a license expression is satisfied by licenses in `accepted`: an `OR` needs one side allowed, an `AND` both
- * (`AND` binding tighter, parentheses grouping). `X WITH Y` is one license, and anything that is not an expression
- * (`Unknown`, `MIT/X11`) is one license named that way.
+ * (`AND` binding tighter, parentheses grouping). `X WITH Y` is one license, and a single word that is not a known
+ * identifier (`Unknown`, `MIT/X11`) is a license of that name.
+ *
+ * - Requires: `expression` is well formed (throws otherwise): no unbalanced parenthesis, no dangling operator, and no
+ *   words side by side that are not joined by `AND`, `OR` or `WITH` (`Public Domain`).
  */
 export function satisfies(expression: string, accepted: ReadonlySet<string>): boolean {
     const tokens = expression.match(/\(|\)|[^\s()]+/g) ?? [];
@@ -159,9 +172,12 @@ export interface PackageLicense {
 
 /** Returns the problems with these packages' licenses, one line each; none when every one is accepted. */
 export function packageProblems(packages: readonly PackageLicense[]): string[] {
-    return packages
-        .filter(p => !allowed(p.license) && !EXCEPTIONS.some(e => matches(e.pattern, p.name) && e.license === p.license))
-        .map(p => `${p.name}@${p.versions.join(', ')}: ${p.license}`);
+    return packages.filter(p => !usable(p.name, p.license)).map(p => `${p.name}@${p.versions.join(', ')}: ${p.license}`);
+}
+
+/** `true` iff the package or plugin `name` may be used under `license`: {@link ALLOWED} satisfies it, or an exception names it. */
+function usable(name: string, license: string): boolean {
+    return allowed(license) || EXCEPTIONS.some(e => matches(e.pattern, name) && e.license === license);
 }
 
 /** `true` iff `license` is a license expression that {@link ALLOWED} satisfies. */
@@ -182,16 +198,20 @@ export interface DownloadedPlugin {
 }
 
 /**
- * Returns the problems with the downloaded plugins, one line each: a plugin nobody reviewed, a manifest whose license
- * changed since the review, or a plugin of ide/package.json's `theiaPlugins` that was not downloaded.
+ * Returns the problems with the downloaded plugins, one line each: a plugin that `reviews` (in the check,
+ * {@link PLUGINS}) does not name, one reviewed under a license that is not accepted, a manifest whose license changed
+ * since the review, or a plugin of ide/package.json's `theiaPlugins` (`declared`) that was not downloaded.
  */
-export function pluginProblems(downloaded: readonly DownloadedPlugin[], declared: readonly string[]): string[] {
+export function pluginProblems(downloaded: readonly DownloadedPlugin[], declared: readonly string[], reviews: readonly ReviewedPlugin[]): string[] {
     const problems = downloaded.flatMap(plugin => {
-        const review = PLUGINS.find(p => matches(p.pattern, plugin.id));
+        const review = reviews.find(p => matches(p.pattern, plugin.id));
         if (review === undefined) {
             return [`${plugin.id}: not reviewed (its manifest says ${JSON.stringify(plugin.manifest)}); add it to PLUGINS once its license is checked`];
         }
-        return review.manifest === plugin.manifest ? [] : [`${plugin.id}: its manifest says ${JSON.stringify(plugin.manifest)}, reviewed as ${JSON.stringify(review.manifest)}`];
+        return [
+            ...(usable(plugin.id, review.license) ? [] : [`${plugin.id}: reviewed as ${review.license}, which is neither allowed nor an exception`]),
+            ...(review.manifest === plugin.manifest ? [] : [`${plugin.id}: its manifest says ${JSON.stringify(plugin.manifest)}, reviewed as ${JSON.stringify(review.manifest)}`]),
+        ];
     });
     // The download of a tarball of several plugins (vscode-builtin-extensions) unpacks under other names.
     const missing = declared.filter(id => id.includes('.') && !downloaded.some(p => p.id === id.toLowerCase()));
@@ -255,7 +275,7 @@ function declaredPlugins(): string[] {
 if (import.meta.main) {
     const packages = installedPackages();
     const plugins = downloadedPlugins();
-    const problems = [...packageProblems(packages), ...pluginProblems(plugins, declaredPlugins())];
+    const problems = [...packageProblems(packages), ...pluginProblems(plugins, declaredPlugins(), PLUGINS)];
     if (problems.length > 0) {
         console.error(`Licenses not accepted (see .github/scripts/licenses.mts):\n${problems.map(p => `  ${p}`).join('\n')}`);
         process.exit(1);

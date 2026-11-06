@@ -62,13 +62,5 @@ updates:
       prefix: build
       include: scope
 
-  # The images of the cloud's compose file (the local bucket), once they are pinned to a version rather than latest.
-  - package-ecosystem: docker-compose
-    directory: /cloud/dev
-    schedule:
-      interval: weekly
-    cooldown:
-      default-days: 14
-    commit-message:
-      prefix: build
-      include: scope
+  # No docker-compose entry yet: both images of cloud/dev/compose.yml are `latest`, which Dependabot cannot update.
+  # Add one when they are pinned to versions.

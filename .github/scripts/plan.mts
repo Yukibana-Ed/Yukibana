@@ -7,8 +7,8 @@
 //
 //   BASE=<sha> node .github/scripts/plan.mts     # in CI, which also sets GITHUB_OUTPUT
 //
-// BASE is the commit the run compares with: the pull request's base, the merge queue's base, or the commit a push
-// replaced. Without one (a run by hand, a new branch), everything runs.
+// BASE is the commit the run compares with: the pull request's base, the merge queue's base, the commit a push replaced,
+// or (deploy-cloud.yml) the last commit deployed. Without one (a run by hand, a new branch), everything runs.
 import { execFileSync } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
 import path from 'node:path';
@@ -36,7 +36,10 @@ export type Change =
 
 /** What one CI run does. */
 export interface Plan {
-    /** The names of the packages whose `lint`, `typecheck`, `test` and `build` scripts run, sorted. */
+    /**
+     * The names of the packages whose `lint`, `typecheck`, `test` and `build` scripts run, sorted. `@yukibana/cli` is
+     * one whenever `@yukibana/client` is.
+     */
     readonly packages: readonly string[];
     /** `true` iff the cloud stack runs: the migrations from empty, pgTAP and the Worker's integration tests. */
     readonly cloud: boolean;
@@ -58,6 +61,9 @@ export const CLOUD_PACKAGES: readonly string[] = ['@yukibana/cloud-web', '@yukib
  * `@yukibana/ide`, which holds the scripts and the Theia CLI that build the apps.
  */
 export const IDE_PACKAGES: readonly string[] = ['@yukibana/ide', '@yukibana/ide-browser', '@yukibana/ide-electron', '@yukibana/ide-e2e'];
+
+/** The files whose change runs the license check: what it checks, and its rules. */
+export const LICENSE_INPUTS: readonly string[] = ['pnpm-lock.yaml', 'ide/package.json', '.github/scripts/licenses.mts'];
 
 /**
  * Returns the pnpm selectors of the affected packages: `...[base]`, and `...{dir/**}` for each changed package whose
@@ -88,6 +94,10 @@ export function decide(change: Change, all: readonly string[]): Plan {
     if (unknown.length > 0) {
         throw new Error(`decide: not workspace packages: ${unknown.join(', ')}`);
     }
+    // The built CLI checks the fixture repository in packages/client/tests, which pnpm counts as the client's tests alone.
+    if (packages.includes('@yukibana/client') && !packages.includes('@yukibana/cli') && all.includes('@yukibana/cli')) {
+        packages.push('@yukibana/cli');
+    }
     const { files } = change;
     return {
         packages: packages.sort(),
@@ -95,8 +105,9 @@ export function decide(change: Change, all: readonly string[]): Plan {
         ide: packages.some(p => IDE_PACKAGES.includes(p)),
         // What the container is built from, and the scripts and compose file its start runs.
         devcontainer: files.some(f => f.startsWith('cloud/dev/')),
-        // The npm dependencies are in the lockfile; the plugins are listed in ide/package.json.
-        licenses: files.some(f => f === 'pnpm-lock.yaml' || f === 'ide/package.json'),
+        // The npm dependencies are in the lockfile, the plugins are listed in ide/package.json, and the rules are checked
+        // against the real tree when they change.
+        licenses: files.some(f => LICENSE_INPUTS.includes(f)),
         // A preview runs against production's database, so not with a migration it would not have.
         preview: packages.includes('@yukibana/cloud-web') && !files.some(f => f.startsWith('cloud/db/')),
     };

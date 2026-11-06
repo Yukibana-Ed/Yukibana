@@ -64,6 +64,15 @@ describe('what runs', () => {
         expect(plan).toMatchObject({ packages: ['@yukibana/cli', '@yukibana/client', '@yukibana/ide-browser', '@yukibana/ide-ext'], cloud: false, ide: true });
     });
 
+    test('a change to the license rules checks the licenses', () => {
+        expect(decide({ kind: 'shared', files: ['.github/scripts/licenses.mts'] }, names).licenses).toBe(true);
+    });
+
+    test('a change to the fixture repository alone has the built CLI check it', () => {
+        const plan = decide({ kind: 'packages', affected: ['@yukibana/client'], files: ['packages/client/tests/fixtures/repo.tar.gz'] }, names);
+        expect(plan.packages).toEqual(['@yukibana/cli', '@yukibana/client']);
+    });
+
     test("a change to the IDE's build scripts runs the end-to-end tests", () => {
         expect(decide({ kind: 'packages', affected: ['@yukibana/ide'], files: ['ide/scripts/cli.mts'] }, names).ide).toBe(true);
     });

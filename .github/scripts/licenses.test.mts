@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: MIT
  */
 import { describe, expect, test } from 'vitest';
-import { ALLOWED, matches, packageProblems, pluginProblems, satisfies } from './licenses.mts';
+import { ALLOWED, matches, packageProblems, PLUGINS, pluginProblems, satisfies } from './licenses.mts';
 
 describe('which license expressions are accepted', () => {
     test.each([
@@ -72,18 +72,28 @@ describe('bundled plugins', () => {
     ];
 
     test('reviewed plugins, and every declared one downloaded, pass', () => {
-        expect(pluginProblems(downloaded, declared)).toEqual([]);
+        expect(pluginProblems(downloaded, declared, PLUGINS)).toEqual([]);
     });
 
     test('a plugin that an extension pack newly pulls in fails until it is reviewed', () => {
-        expect(pluginProblems([...downloaded, { id: 'acme.telemetry', manifest: 'MIT' }], declared)).toEqual([expect.stringMatching(/^acme\.telemetry: not reviewed/)]);
+        expect(pluginProblems([...downloaded, { id: 'acme.telemetry', manifest: 'MIT' }], declared, PLUGINS)).toEqual([expect.stringMatching(/^acme\.telemetry: not reviewed/)]);
     });
 
     test('a plugin whose license changed since its review fails', () => {
-        expect(pluginProblems([{ id: 'scalameta.metals', manifest: 'BUSL-1.1' }], ['scalameta.metals'])).toEqual([expect.stringMatching(/BUSL-1\.1/)]);
+        expect(pluginProblems([{ id: 'scalameta.metals', manifest: 'BUSL-1.1' }], ['scalameta.metals'], PLUGINS)).toEqual([expect.stringMatching(/BUSL-1\.1/)]);
+    });
+
+    test('every reviewed plugin is used under a license that is allowed or an exception', () => {
+        const all = PLUGINS.map(p => ({ id: p.pattern.replace('*', 'x'), manifest: p.manifest }));
+        expect(pluginProblems(all, [], PLUGINS)).toEqual([]);
+    });
+
+    test('a reviewed plugin under a license that is neither allowed nor an exception fails, whatever its manifest says', () => {
+        const reviews = [{ pattern: 'acme.lsp', license: 'GPL-3.0-only', manifest: 'GPL-3.0-only' }];
+        expect(pluginProblems([{ id: 'acme.lsp', manifest: 'GPL-3.0-only' }], [], reviews)).toEqual([expect.stringMatching(/^acme\.lsp: reviewed as GPL-3\.0-only/)]);
     });
 
     test('a plugin the IDE lists but nothing downloaded fails, so an empty download is no pass', () => {
-        expect(pluginProblems([], ['scalameta.metals'])).toEqual([expect.stringMatching(/not in ide\/plugins/)]);
+        expect(pluginProblems([], ['scalameta.metals'], PLUGINS)).toEqual([expect.stringMatching(/not in ide\/plugins/)]);
     });
 });

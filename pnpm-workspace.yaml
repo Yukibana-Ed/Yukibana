@@ -15,7 +15,6 @@ changedFilesIgnorePattern:
 testPattern:
   - '**/tests/**'
   - '**/*.spec.ts'
-  - '**/*.spec.tsx'
   - '**/*.test.ts'
 packages:
   - cloud/db

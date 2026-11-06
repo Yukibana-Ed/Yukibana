@@ -30,12 +30,12 @@ export function parseExclusion(entry: string): Exclusion | undefined {
 }
 
 /**
- * Returns what is wrong with one entry, or `undefined` if nothing is.
+ * Returns what is wrong with one `minimumReleaseAgeExclude` entry, or `undefined` if nothing is, as of `now`.
+ * `published` is when the entry's version was published, as the registry's `time` field has it, and `undefined` when
+ * the registry does not know the version; `minutes` is pnpm's `minimumReleaseAge`.
  *
- * @param published when the entry's version was published, as the registry's `time` field has it; `undefined` if the
- *   registry does not know the version.
- * @param minutes pnpm's `minimumReleaseAge`, in minutes.
- * - Requires: `minutes` is a non-negative integer.
+ * - Requires: `minutes` is a non-negative integer (throws otherwise).
+ * - Requires: `published`, when given, is a date string `Date.parse` reads (throws otherwise).
  */
 export function problemWith(entry: string, published: string | undefined, minutes: number, now: Date): string | undefined {
     if (!Number.isInteger(minutes) || minutes < 0) {
@@ -78,7 +78,7 @@ async function publishTime(registry: string, { name, version }: Exclusion): Prom
     if (typeof body !== 'object' || body === null || !('time' in body) || typeof body.time !== 'object' || body.time === null) {
         throw new Error(`${url.href}: the registry's answer has no time field`);
     }
-    const time: unknown = (body.time as Record<string, unknown>)[version];
+    const time: unknown = Object.entries(body.time).find(([v]) => v === version)?.[1];
     return typeof time === 'string' ? time : undefined;
 }
 

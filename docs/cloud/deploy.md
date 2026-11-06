@@ -1,7 +1,11 @@
 # Deploying Yukibana Cloud
 
 > Until the cutover, the cloud still deploys from the yukibana-cloud repository (Workers Builds and its Database
-> workflow). This page describes the pipeline of this repository, which takes over from then on.
+> workflow). This page describes the pipeline of this repository, which takes over from then on. The cutover is done
+> in this order, so that only one repository ever deploys: freeze yukibana-cloud's cloud parts; disconnect its
+> Worker from Workers Builds and disable its `database.yml`; create this repository's `production` and `preview`
+> environments with their secrets (step 5); then merge the pull request that adds these workflows. It changes
+> `.github/`, which no package owns, so its push to `main` is the first deploy from here.
 
 One Supabase project (Postgres and Auth), one Cloudflare Worker, one R2
 bucket. Everything below fits the free tier of both, with one caveat: R2 asks
@@ -37,7 +41,7 @@ queue. Four workflows listen to the repository:
 | --- | --- | --- | --- |
 | **CI** | pull requests, the merge queue, pushes to `main` | lint, typecheck, unit tests and builds of the packages the change affects (pnpm's package graph); `yukibana check` over the fixture; when `cloud/web` or `cloud/db` is affected, the real stack on the runner: every migration from empty, pgTAP, the Realtime policy and event trigger checks, the integration suite; squawk is `cloud/db`'s lint; the devcontainer build when `cloud/dev` changed | nothing secret |
 | **Preview** | CI of a pull request from a branch of this repository that affects `cloud/web` and does not touch `cloud/db` | uploads the build CI made as a preview version (`wrangler versions upload --preview-alias pr-<n>`), and comments its URL | a maintainer's approval of the `preview` environment, and its Cloudflare secrets |
-| **Deploy cloud** | a push to `main` that affects `@yukibana/cloud-web` or `@yukibana/cloud-db` (or a package they use, or a file no package owns), or by hand | checks no placeholder is left, checks every secret is set, lists then applies pending migrations, runs `cloud/db/ops/bootstrap.sql`, prints the settings diff, pushes `cloud/db/supabase/config.toml`'s production block, then builds and deploys the Worker. One run at a time (`concurrency: deploy-cloud`). | the `production` environment's secrets, step 5 |
+| **Deploy cloud** | a push to `main` whose changes since the last successful run affect `@yukibana/cloud-web` or `@yukibana/cloud-db` (or a package they use, or a file no package owns), or by hand | checks no placeholder is left, checks every secret is set, lists then applies pending migrations, runs `cloud/db/ops/bootstrap.sql`, prints the settings diff, pushes `cloud/db/supabase/config.toml`'s production block, then builds and deploys the Worker. One run at a time (`concurrency: deploy-cloud`). | the `production` environment's secrets, step 5 |
 | **Drift** | nightly, or by hand | `supabase db diff` of production against the migrations for `public` and `app`, `cloud/db/ops/realtime-policies.sql` and `cloud/db/ops/event-triggers.sql` | `SUPABASE_DB_URL` only |
 
 Two consequences are worth knowing before the first change:

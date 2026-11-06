@@ -129,7 +129,8 @@ jobs:
           read -ra filters <<<"$FILTERS"
           pnpm "${filters[@]}" run --if-present build
 
-      # The CLI as a course repository's CI runs it, over the fixture repository.
+      # The CLI as a course repository's CI runs it, over the fixture repository. The plan adds the CLI whenever the client
+      # is affected, so a change to the fixture alone (the client's tests) runs it too.
       - name: Check the fixture with the built CLI
         if: contains(fromJSON(needs.plan.outputs.packages), '@yukibana/cli')
         run: |
