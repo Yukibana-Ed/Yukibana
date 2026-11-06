@@ -5,7 +5,7 @@
 import { URI } from '@theia/core';
 import { DialogError } from '@theia/core/lib/browser';
 import { expect } from 'chai';
-import { describe, it } from 'vitest';
+import { afterEach, describe, it } from 'vitest';
 import { DownloadProjectDialog } from './download-project-dialog';
 import { FolderState } from './project-locations';
 
@@ -36,15 +36,25 @@ class TestDialog extends DownloadProjectDialog {
     }
 }
 
+/** The dialogs a test made, disposed after it: React renders a dialog it was not told to stop rendering after jsdom is gone. */
+const dialogs: TestDialog[] = [];
+afterEach(() => {
+    for (const d of dialogs.splice(0)) {
+        d.dispose();
+    }
+});
+
 /** Returns a dialog suggesting `destination`, over folders that are `states`, keyed by path, and free otherwise. */
 function dialog(destination: string, states: Record<string, FolderState> = {}, browsed?: string): TestDialog {
-    return new TestDialog({
+    const d = new TestDialog({
         title: 'Warm up',
         destination: new URI(`file://${destination}`),
         browse: async () => (browsed === undefined ? undefined : new URI(`file://${browsed}`)),
         stateOf: async folder => states[folder.path.toString()] ?? 'free',
         display: uri => uri.path.toString(),
     });
+    dialogs.push(d);
+    return d;
 }
 
 describe('DownloadProjectDialog', () => {
