@@ -140,8 +140,8 @@ Every npm package's license, and every plugin the IDE bundles, must be accepted 
 
 [ci.yml](.github/workflows/ci.yml) runs for pull requests, the merge queue and pushes to `main`. Its plan job
 ([.github/scripts/plan.mts](.github/scripts/plan.mts)) asks pnpm which packages a change affects (the packages changed
-since the base, Markdown aside, and every package depending on them) and runs their `lint`, `typecheck`, `test` and
-`build` scripts; the cloud stack and the IDE's end-to-end tests run only when their packages are affected. A change to a
+since the base, Markdown aside, and every package depending on them) and runs their `lint`, `typecheck` and `build`
+scripts, and their Vitest projects (each named after its package) in the root's one coverage run; the cloud stack and the IDE's end-to-end tests run only when their packages are affected. A change to a
 file that belongs to no package (the lockfile, a root config, `.github/`, `cloud/dev/`) runs every package's scripts,
 the cloud stack and the end-to-end tests. The devcontainer is built when `cloud/dev/` or what installs read
 (`package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`) changed, and the license check runs when what it checks or its
