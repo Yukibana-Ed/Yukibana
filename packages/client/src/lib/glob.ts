@@ -19,39 +19,39 @@
 
 /** The regular expression for one pattern, anchored to the whole path. */
 export function globToRegExp(pattern: string): RegExp {
-  let out = '^';
-  const p = pattern.replace(/^\.?\//, '').replace(/\/+$/, '');
-  for (let i = 0; i < p.length; i++) {
-    const c = p[i];
-    if (c === '*') {
-      if (p[i + 1] === '*') {
-        // `**/` matches zero or more whole segments; a trailing `**` matches the rest.
-        const slash = p[i + 2] === '/';
-        out += slash ? '(?:[^/]+/)*' : '.*';
-        i += slash ? 2 : 1;
-      } else {
-        out += '[^/]*';
-      }
-    } else if (c === '?') {
-      out += '[^/]';
-    } else if (c !== undefined) {
-      out += c.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+    let out = '^';
+    const p = pattern.replace(/^\.?\//, '').replace(/\/+$/, '');
+    for (let i = 0; i < p.length; i++) {
+        const c = p[i];
+        if (c === '*') {
+            if (p[i + 1] === '*') {
+                // `**/` matches zero or more whole segments; a trailing `**` matches the rest.
+                const slash = p[i + 2] === '/';
+                out += slash ? '(?:[^/]+/)*' : '.*';
+                i += slash ? 2 : 1;
+            } else {
+                out += '[^/]*';
+            }
+        } else if (c === '?') {
+            out += '[^/]';
+        } else if (c !== undefined) {
+            out += c.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+        }
     }
-  }
-  return new RegExp(out + '$');
+    return new RegExp(out + '$');
 }
 
 /** A predicate over paths for a set of patterns. A path is matched when it,
  *  or any directory above it, matches any pattern. */
 export function matcher(patterns: readonly string[]): (path: string) => boolean {
-  const regexps = patterns.map(globToRegExp);
-  return (path: string): boolean => {
-    const clean = path.replace(/^\.?\//, '').replace(/\/+$/, '');
-    const parts = clean.split('/');
-    for (let n = parts.length; n >= 1; n--) {
-      const candidate = parts.slice(0, n).join('/');
-      if (regexps.some(r => r.test(candidate))) return true;
-    }
-    return false;
-  };
+    const regexps = patterns.map(globToRegExp);
+    return (path: string): boolean => {
+        const clean = path.replace(/^\.?\//, '').replace(/\/+$/, '');
+        const parts = clean.split('/');
+        for (let n = parts.length; n >= 1; n--) {
+            const candidate = parts.slice(0, n).join('/');
+            if (regexps.some(r => r.test(candidate))) return true;
+        }
+        return false;
+    };
 }

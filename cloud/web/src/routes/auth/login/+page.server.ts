@@ -16,39 +16,39 @@ export const load: PageServerLoad = ({ url }) => ({ next: landing(url.searchPara
  *  code is asked for by `send` and turned into a session by `verify`, here,
  *  without leaving the page. */
 export const actions: Actions = {
-  github: async ({ locals, request, url }) => {
-    const next = landing(text(await request.formData(), 'next'));
-    const { data, error } = await locals.supabase.auth.signInWithOAuth({
-      provider: 'github',
-      options: { redirectTo: `${url.origin}/auth/callback?next=${encodeURIComponent(next)}`, scopes: 'read:user user:email' },
-    });
-    if (error !== null || data.url === null) {
-      return fail(502, { error: report('login', error?.message ?? 'GitHub gave no URL to send you to') });
-    }
-    // To the Auth server, and only to it: SvelteKit 3 refuses a redirect
-    // to another origin unless it is named.
-    redirect(303, data.url, { external: [new URL(workerConfig().supabaseUrl).origin] });
-  },
+    github: async ({ locals, request, url }) => {
+        const next = landing(text(await request.formData(), 'next'));
+        const { data, error } = await locals.supabase.auth.signInWithOAuth({
+            provider: 'github',
+            options: { redirectTo: `${url.origin}/auth/callback?next=${encodeURIComponent(next)}`, scopes: 'read:user user:email' },
+        });
+        if (error !== null || data.url === null) {
+            return fail(502, { error: report('login', error?.message ?? 'GitHub gave no URL to send you to') });
+        }
+        // To the Auth server, and only to it: SvelteKit 3 refuses a redirect
+        // to another origin unless it is named.
+        redirect(303, data.url, { external: [new URL(workerConfig().supabaseUrl).origin] });
+    },
 
-  send: async ({ locals, request }) => {
-    const form = await request.formData();
-    const next = landing(text(form, 'next'));
-    const email = addressOf(text(form, 'email'));
-    if (email === null) return fail(400, { error: 'That is not an email address.', next });
-    const sent = await sendCode(locals.supabase.auth, email);
-    if (!sent.ok) return fail(sent.status, { error: sent.message, next });
-    return { sent: email, next };
-  },
+    send: async ({ locals, request }) => {
+        const form = await request.formData();
+        const next = landing(text(form, 'next'));
+        const email = addressOf(text(form, 'email'));
+        if (email === null) return fail(400, { error: 'That is not an email address.', next });
+        const sent = await sendCode(locals.supabase.auth, email);
+        if (!sent.ok) return fail(sent.status, { error: sent.message, next });
+        return { sent: email, next };
+    },
 
-  verify: async ({ locals, request }) => {
-    const form = await request.formData();
-    const next = landing(text(form, 'next'));
-    const email = addressOf(text(form, 'email'));
-    if (email === null) return fail(400, { error: 'That is not an email address.', next });
-    const code = codeOf(text(form, 'code'));
-    if (code === null) return fail(400, { error: 'A code is the digits from the mail.', sent: email, next });
-    const verified = await verifyCode(locals.supabase.auth, email, code);
-    if (!verified.ok) return fail(verified.status, { error: verified.message, sent: email, next });
-    redirect(303, next);
-  },
+    verify: async ({ locals, request }) => {
+        const form = await request.formData();
+        const next = landing(text(form, 'next'));
+        const email = addressOf(text(form, 'email'));
+        if (email === null) return fail(400, { error: 'That is not an email address.', next });
+        const code = codeOf(text(form, 'code'));
+        if (code === null) return fail(400, { error: 'A code is the digits from the mail.', sent: email, next });
+        const verified = await verifyCode(locals.supabase.auth, email, code);
+        if (!verified.ok) return fail(verified.status, { error: verified.message, sent: email, next });
+        redirect(303, next);
+    },
 };

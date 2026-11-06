@@ -21,7 +21,7 @@ export type Tx = TransactionSql;
  *  real connections. `fetch_types: false` saves a round trip we do not need,
  *  and `prepare: false` keeps a transaction-mode pooler honest. */
 export function connect(url: string): Sql {
-  return postgres(url, { max: 2, fetch_types: false, prepare: false, connect_timeout: 10 });
+    return postgres(url, { max: 2, fetch_types: false, prepare: false, connect_timeout: 10 });
 }
 
 /** The Worker is connected to the database as the wrong role.
@@ -47,37 +47,37 @@ export class Misconfigured extends Error {}
  *  deliberately do not do — so on that connection the authorisation model
  *  was off, and nothing said so. */
 async function become(tx: Tx, role: string, claims: string): Promise<void> {
-  try {
-    await tx`select set_config('role', ${role}, true),
+    try {
+        await tx`select set_config('role', ${role}, true),
                     set_config('request.jwt.claims', ${claims}, true)`;
-  } catch (e) {
-    const why = e instanceof Error ? e.message : String(e);
-    throw new Misconfigured(
-      report('db', `the database connection cannot become ${role} (${why}); it must be the yukibana_app role, so check the user in the Hyperdrive configuration`),
-    );
-  }
+    } catch (e) {
+        const why = e instanceof Error ? e.message : String(e);
+        throw new Misconfigured(
+            report('db', `the database connection cannot become ${role} (${why}); it must be the yukibana_app role, so check the user in the Hyperdrive configuration`),
+        );
+    }
 }
 
 /** Runs `run` in one transaction as the person the claims describe. */
 export async function asUser<T>(sql: Sql, claims: Claims, run: (tx: Tx) => Promise<T>): Promise<T> {
-  let result!: T;
-  await sql.begin(async tx => {
-    await become(tx, 'authenticated', claimsJson(claims));
-    result = await run(tx);
-  });
-  return result;
+    let result!: T;
+    await sql.begin(async tx => {
+        await become(tx, 'authenticated', claimsJson(claims));
+        result = await run(tx);
+    });
+    return result;
 }
 
 /** Runs `run` in one transaction as the publisher: the role a request with
  *  a project token gets, which can turn that token into a release and read
  *  nothing at all. */
 export async function asPublisher<T>(sql: Sql, run: (tx: Tx) => Promise<T>): Promise<T> {
-  let result!: T;
-  await sql.begin(async tx => {
-    await become(tx, 'yukibana_publisher', '');
-    result = await run(tx);
-  });
-  return result;
+    let result!: T;
+    await sql.begin(async tx => {
+        await become(tx, 'yukibana_publisher', '');
+        result = await run(tx);
+    });
+    return result;
 }
 
 /** The HTTP status a database error deserves, for a route to answer with.
@@ -88,20 +88,20 @@ export async function asPublisher<T>(sql: Sql, run: (tx: Tx) => Promise<T>): Pro
  *  error did not come from the database, and is the one part of an
  *  unexpected failure safe to put in a response. */
 export function statusOf(e: unknown): { status: number; message: string; code: string } {
-  const code = typeof e === 'object' && e !== null && 'code' in e ? String(e.code) : '';
-  const message = e instanceof Error ? e.message : String(e);
-  switch (code) {
-    case '42501':
-      return { status: 403, message, code };
-    case 'P0002':
-      return { status: 404, message, code };
-    case '23505':
-    case '23514':
-    case '23503':
-      return { status: 409, message, code };
-    default:
-      return { status: 500, message, code };
-  }
+    const code = typeof e === 'object' && e !== null && 'code' in e ? String(e.code) : '';
+    const message = e instanceof Error ? e.message : String(e);
+    switch (code) {
+        case '42501':
+            return { status: 403, message, code };
+        case 'P0002':
+            return { status: 404, message, code };
+        case '23505':
+        case '23514':
+        case '23503':
+            return { status: 409, message, code };
+        default:
+            return { status: 500, message, code };
+    }
 }
 
 /** The unique constraint `e` broke, by name, or '' when `e` is anything
@@ -111,6 +111,6 @@ export function statusOf(e: unknown): { status: number; message: string; code: s
  *  which constraint means which field says so in its own words instead.
  *  postgres.js carries the name as `constraint_name`. */
 export function clashOf(e: unknown): string {
-  if (statusOf(e).code !== '23505') return '';
-  return typeof e === 'object' && e !== null && 'constraint_name' in e ? String(e.constraint_name) : '';
+    if (statusOf(e).code !== '23505') return '';
+    return typeof e === 'object' && e !== null && 'constraint_name' in e ? String(e.constraint_name) : '';
 }

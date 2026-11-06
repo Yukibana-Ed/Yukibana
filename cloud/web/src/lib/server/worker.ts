@@ -14,10 +14,10 @@ import { configOf, type Config } from './env.ts';
 
 /** The checked configuration, or an error naming the first missing value. */
 export function workerConfig(): Config {
-  return configOf(env);
+    return configOf(env);
 }
 
 /** Lets `promise` finish after the response has gone, as the Worker allows. */
 export function afterResponse(promise: Promise<unknown>): void {
-  waitUntil(promise);
+    waitUntil(promise);
 }

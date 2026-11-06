@@ -26,8 +26,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** A uuid from outside — a route parameter, a form field — or null when it is
  *  not one. Lowercased, so the same id is always the same string. */
 export function uuidOf<T extends string>(value: string | null | undefined): T | null {
-  if (value === null || value === undefined || !UUID.test(value)) return null;
-  return value.toLowerCase() as T;
+    if (value === null || value === undefined || !UUID.test(value)) return null;
+    return value.toLowerCase() as T;
 }
 
 /** An id the database returned. Not checked: the database is the source. */

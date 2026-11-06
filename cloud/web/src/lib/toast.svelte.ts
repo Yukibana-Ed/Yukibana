@@ -7,10 +7,10 @@
 import { untrack } from 'svelte';
 
 export interface Toast {
-  readonly id: number;
-  readonly message: string;
-  /** Text to offer under "Copy details" (an incident's report), or null. */
-  readonly details: string | null;
+    readonly id: number;
+    readonly message: string;
+    /** Text to offer under "Copy details" (an incident's report), or null. */
+    readonly details: string | null;
 }
 
 /** The notices on screen now, oldest first. Read by Toasts.svelte only. */
@@ -33,15 +33,15 @@ let next = 0;
  *  layout's effect re-raised a refusal the moment it was dismissed or timed
  *  out, so the notice could not be closed. */
 export function toast(message: string, details: string | null = null): void {
-  if (untrack(() => toasts.some(t => t.message === message))) return;
-  const id = next++;
-  toasts.push({ id, message, details });
-  if (details === null) setTimeout(() => dismiss(id), SHOWN_MS);
+    if (untrack(() => toasts.some(t => t.message === message))) return;
+    const id = next++;
+    toasts.push({ id, message, details });
+    if (details === null) setTimeout(() => dismiss(id), SHOWN_MS);
 }
 
 /** Takes notice `id` away now, before its time; one already gone is
  *  nothing to do. */
 export function dismiss(id: number): void {
-  const i = toasts.findIndex(t => t.id === id);
-  if (i !== -1) toasts.splice(i, 1);
+    const i = toasts.findIndex(t => t.id === id);
+    if (i !== -1) toasts.splice(i, 1);
 }

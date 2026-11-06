@@ -5,6 +5,6 @@ import { answering, requireClaims, withContext } from '#lib/server/context.ts';
 
 /** The editions the caller is enrolled in, with their role in each. */
 export const GET: RequestHandler = async event => {
-  const claims = requireClaims(event);
-  return json(await withContext(ctx => answering('api/editions', () => editions(ctx, claims))));
+    const claims = requireClaims(event);
+    return json(await withContext(ctx => answering('api/editions', () => editions(ctx, claims))));
 };

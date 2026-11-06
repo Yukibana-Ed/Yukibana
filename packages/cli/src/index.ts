@@ -51,70 +51,70 @@ const USAGE = `usage: yukibana <command> [arguments] [options]
   token for publish.`;
 
 const COMMANDS: Record<string, (inv: Invocation) => Promise<void>> = {
-  login,
-  logout: logoutCommand,
-  whoami,
-  editions,
-  members,
-  projects,
-  project,
-  releases,
-  submissions,
-  starter,
-  pack,
-  submit,
-  check: inv => release('check', inv),
-  build: inv => release('build', inv),
-  publish: inv => release('publish', inv),
-  download,
-  assemble: assembleCommand,
-  enrol: inv => roster('enrol', inv),
-  unenrol: inv => roster('unenrol', inv),
+    login,
+    logout: logoutCommand,
+    whoami,
+    editions,
+    members,
+    projects,
+    project,
+    releases,
+    submissions,
+    starter,
+    pack,
+    submit,
+    check: inv => release('check', inv),
+    build: inv => release('build', inv),
+    publish: inv => release('publish', inv),
+    download,
+    assemble: assembleCommand,
+    enrol: inv => roster('enrol', inv),
+    unenrol: inv => roster('unenrol', inv),
 };
 
 async function main(): Promise<void> {
-  const { values, positionals } = parseArgs({
-    allowPositionals: true,
-    options: {
-      out: { type: 'string' },
-      folder: { type: 'string' },
-      label: { type: 'string' },
-      url: { type: 'string' },
-      token: { type: 'string' },
-      project: { type: 'string' },
-      edition: { type: 'string' },
-      'student-submissions': { type: 'string', multiple: true },
-      student: { type: 'string', multiple: true },
-      submission: { type: 'string', multiple: true },
-      release: { type: 'string' },
-      role: { type: 'string' },
-      teacher: { type: 'string' },
-      'all-versions': { type: 'boolean' },
-      latest: { type: 'boolean' },
-      assemble: { type: 'boolean' },
-      archive: { type: 'boolean' },
-      force: { type: 'boolean' },
-      json: { type: 'boolean' },
-      open: { type: 'boolean' },
-      yes: { type: 'boolean', short: 'y' },
-      help: { type: 'boolean', short: 'h' },
-    },
-  });
-  const [command, ...args] = positionals;
-  if (values.help === true) {
-    console.log(USAGE);
-    return;
-  }
-  const run = command === undefined ? undefined : COMMANDS[command];
-  if (run === undefined) {
-    console.error(command === undefined ? USAGE : `unknown command "${command}"\n\n${USAGE}`);
-    process.exit(2);
-  }
-  await run({ options: values, args, env: process.env, store: defaultStore(process.env) });
+    const { values, positionals } = parseArgs({
+        allowPositionals: true,
+        options: {
+            out: { type: 'string' },
+            folder: { type: 'string' },
+            label: { type: 'string' },
+            url: { type: 'string' },
+            token: { type: 'string' },
+            project: { type: 'string' },
+            edition: { type: 'string' },
+            'student-submissions': { type: 'string', multiple: true },
+            student: { type: 'string', multiple: true },
+            submission: { type: 'string', multiple: true },
+            release: { type: 'string' },
+            role: { type: 'string' },
+            teacher: { type: 'string' },
+            'all-versions': { type: 'boolean' },
+            latest: { type: 'boolean' },
+            assemble: { type: 'boolean' },
+            archive: { type: 'boolean' },
+            force: { type: 'boolean' },
+            json: { type: 'boolean' },
+            open: { type: 'boolean' },
+            yes: { type: 'boolean', short: 'y' },
+            help: { type: 'boolean', short: 'h' },
+        },
+    });
+    const [command, ...args] = positionals;
+    if (values.help === true) {
+        console.log(USAGE);
+        return;
+    }
+    const run = command === undefined ? undefined : COMMANDS[command];
+    if (run === undefined) {
+        console.error(command === undefined ? USAGE : `unknown command "${command}"\n\n${USAGE}`);
+        process.exit(2);
+    }
+    await run({ options: values, args, env: process.env, store: defaultStore(process.env) });
 }
 
 main().catch((e: unknown) => {
-  const lines = e instanceof Failure ? e.lines : [e instanceof Error ? e.message : String(e)];
-  for (const line of lines) console.error(`error: ${line}`);
-  process.exit(1);
+    const lines = e instanceof Failure ? e.lines : [e instanceof Error ? e.message : String(e)];
+    for (const line of lines) console.error(`error: ${line}`);
+    process.exit(1);
 });

@@ -45,18 +45,18 @@ const FORM_TYPES = new Set(['application/x-www-form-urlencoded', 'multipart/form
  *  The answer is a sentence for the person or program refused. It names
  *  the origin the request came from, never anything about the session. */
 export function forgery(request: Request, self: string): string | null {
-  if (SAFE.has(request.method)) return null;
-  if (/^Bearer\s+\S+$/i.test(request.headers.get('authorization') ?? '')) return null;
-  const origin = request.headers.get('origin');
-  const from = origin === null ? 'with no Origin' : `from ${origin}`;
-  const why = `This ${request.method} came ${from}, so it was not sent by one of this site's own pages.`;
-  const instead = 'A page here writes by submitting its forms; a program sends its session as an Authorization: Bearer header.';
-  if (origin !== self) return `${why} ${instead}`;
-  const site = request.headers.get('sec-fetch-site');
-  if (site !== null && site !== 'same-origin') return `This ${request.method} came from a ${site} page, not one of this site's own. ${instead}`;
-  const type = (request.headers.get('content-type') ?? '').split(';')[0]?.trim().toLowerCase() ?? '';
-  if (!FORM_TYPES.has(type)) {
-    return `This ${request.method} is ${type === '' ? 'not a form' : type}, and without a bearer only a form submitted by one of this site's pages may write. ${instead}`;
-  }
-  return null;
+    if (SAFE.has(request.method)) return null;
+    if (/^Bearer\s+\S+$/i.test(request.headers.get('authorization') ?? '')) return null;
+    const origin = request.headers.get('origin');
+    const from = origin === null ? 'with no Origin' : `from ${origin}`;
+    const why = `This ${request.method} came ${from}, so it was not sent by one of this site's own pages.`;
+    const instead = 'A page here writes by submitting its forms; a program sends its session as an Authorization: Bearer header.';
+    if (origin !== self) return `${why} ${instead}`;
+    const site = request.headers.get('sec-fetch-site');
+    if (site !== null && site !== 'same-origin') return `This ${request.method} came from a ${site} page, not one of this site's own. ${instead}`;
+    const type = (request.headers.get('content-type') ?? '').split(';')[0]?.trim().toLowerCase() ?? '';
+    if (!FORM_TYPES.has(type)) {
+        return `This ${request.method} is ${type === '' ? 'not a form' : type}, and without a bearer only a form submitted by one of this site's pages may write. ${instead}`;
+    }
+    return null;
 }

@@ -16,18 +16,18 @@ import { gunzip } from './lib/gzip.js';
 /** Returns the entries of `bytes`, a `.tar.gz`, the one format every
  *  archive is in. */
 export async function readArchive(bytes: Uint8Array): Promise<Entry[]> {
-  if (bytes[0] !== 0x1f || bytes[1] !== 0x8b) throw new Error('not a .tar.gz');
-  return readTar(await gunzip(bytes));
+    if (bytes[0] !== 0x1f || bytes[1] !== 0x8b) throw new Error('not a .tar.gz');
+    return readTar(await gunzip(bytes));
 }
 
 /** `true` iff `dir` is missing or empty: the only places this writes into. */
 export async function isEmptyDir(dir: string): Promise<boolean> {
-  try {
-    return (await readdir(dir)).length === 0;
-  } catch (e) {
-    if ((e as NodeJS.ErrnoException).code === 'ENOENT') return true;
-    throw e;
-  }
+    try {
+        return (await readdir(dir)).length === 0;
+    } catch (e) {
+        if ((e as NodeJS.ErrnoException).code === 'ENOENT') return true;
+        throw e;
+    }
 }
 
 /** Writes `entries` under `dir`, which is created. Returns the paths it
@@ -39,46 +39,46 @@ export async function isEmptyDir(dir: string): Promise<boolean> {
  *  every entry it accepts, so a caller can remove exactly those when a
  *  write fails. Refused entries are never added. */
 export async function writeEntries(dir: string, entries: readonly Entry[], wrote = new Set<string>()): Promise<string[]> {
-  const root = resolve(dir);
-  await mkdir(root, { recursive: true });
-  const refused: string[] = [];
-  const target = (path: string): string | null => {
-    if (path === '' || path.startsWith('/') || path.split('/').some(s => s === '..' || s === '') || path.includes('\\')) return null;
-    const full = resolve(root, ...path.split('/'));
-    return full.startsWith(root + sep) ? full : null;
-  };
-  const links: Entry[] = [];
-  for (const e of entries) {
-    const full = target(e.path);
-    if (full === null) {
-      refused.push(`${e.path}: outside the folder`);
-      continue;
+    const root = resolve(dir);
+    await mkdir(root, { recursive: true });
+    const refused: string[] = [];
+    const target = (path: string): string | null => {
+        if (path === '' || path.startsWith('/') || path.split('/').some(s => s === '..' || s === '') || path.includes('\\')) return null;
+        const full = resolve(root, ...path.split('/'));
+        return full.startsWith(root + sep) ? full : null;
+    };
+    const links: Entry[] = [];
+    for (const e of entries) {
+        const full = target(e.path);
+        if (full === null) {
+            refused.push(`${e.path}: outside the folder`);
+            continue;
+        }
+        if (e.type !== 'symlink') wrote.add(join(root, e.path.split('/')[0] ?? ''));
+        if (e.type === 'dir') {
+            await mkdir(full, { recursive: true });
+        } else if (e.type === 'file') {
+            await mkdir(dirname(full), { recursive: true });
+            await writeFile(full, e.data, { mode: e.mode & 0o777 || 0o644 });
+        } else {
+            links.push(e);
+        }
     }
-    if (e.type !== 'symlink') wrote.add(join(root, e.path.split('/')[0] ?? ''));
-    if (e.type === 'dir') {
-      await mkdir(full, { recursive: true });
-    } else if (e.type === 'file') {
-      await mkdir(dirname(full), { recursive: true });
-      await writeFile(full, e.data, { mode: e.mode & 0o777 || 0o644 });
-    } else {
-      links.push(e);
+    for (const e of links) {
+        if (e.linkTarget === undefined || escapes(e.path, e.linkTarget)) {
+            refused.push(`${e.path}: a symlink out of the folder`);
+            continue;
+        }
+        const full = join(root, ...e.path.split('/'));
+        wrote.add(join(root, e.path.split('/')[0] ?? ''));
+        try {
+            await mkdir(dirname(full), { recursive: true });
+            await symlink(e.linkTarget, full);
+        } catch (err) {
+            refused.push(`${e.path}: ${(err as NodeJS.ErrnoException).code ?? 'not created'}`);
+        }
     }
-  }
-  for (const e of links) {
-    if (e.linkTarget === undefined || escapes(e.path, e.linkTarget)) {
-      refused.push(`${e.path}: a symlink out of the folder`);
-      continue;
-    }
-    const full = join(root, ...e.path.split('/'));
-    wrote.add(join(root, e.path.split('/')[0] ?? ''));
-    try {
-      await mkdir(dirname(full), { recursive: true });
-      await symlink(e.linkTarget, full);
-    } catch (err) {
-      refused.push(`${e.path}: ${(err as NodeJS.ErrnoException).code ?? 'not created'}`);
-    }
-  }
-  return refused;
+    return refused;
 }
 
 /** Unpacks `archive`, a starter as the registry serves it (a `.tar.gz`),
@@ -104,28 +104,28 @@ export async function writeEntries(dir: string, entries: readonly Entry[], wrote
  *  copy, which was a second way to fail and once deleted the system's
  *  temporary directory. */
 export async function unpackStarter(archive: Uint8Array, folder: string): Promise<string[]> {
-  const entries = submissionRoot(await readArchive(archive));
-  const root = resolve(folder);
-  // lstat, not stat: a link to a folder elsewhere would unpack there.
-  const found = await lstat(root).catch((e: unknown) => {
-    if ((e as NodeJS.ErrnoException).code === 'ENOENT') return null;
-    throw e;
-  });
-  if (found !== null && !found.isDirectory()) throw new Error(`${root} is not a folder; nothing was unpacked`);
-  if (found !== null && !(await isEmptyDir(root))) throw new Error(`${root} already has files in it; nothing was unpacked`);
-  // The first folder this had to create, or undefined when `root` was there.
-  const created = await mkdir(root, { recursive: true });
-  const wrote = new Set<string>();
-  try {
-    return await writeEntries(root, entries, wrote);
-  } catch (e) {
-    // Only what writeEntries accepted. This once took the top level of every
-    // entry, refused ones included: `../notes` made it remove the parent of
-    // `folder`, and `/etc/x` made it loop for ever.
-    const written = created !== undefined ? [created] : [...wrote];
-    const left: string[] = [];
-    for (const path of written) await rm(path, { recursive: true, force: true }).catch(() => left.push(path));
-    const why = e instanceof Error ? e.message : String(e);
-    throw new Error(left.length === 0 ? why : `${why}; and could not remove what was written: ${left.join(', ')}`, { cause: e });
-  }
+    const entries = submissionRoot(await readArchive(archive));
+    const root = resolve(folder);
+    // lstat, not stat: a link to a folder elsewhere would unpack there.
+    const found = await lstat(root).catch((e: unknown) => {
+        if ((e as NodeJS.ErrnoException).code === 'ENOENT') return null;
+        throw e;
+    });
+    if (found !== null && !found.isDirectory()) throw new Error(`${root} is not a folder; nothing was unpacked`);
+    if (found !== null && !(await isEmptyDir(root))) throw new Error(`${root} already has files in it; nothing was unpacked`);
+    // The first folder this had to create, or undefined when `root` was there.
+    const created = await mkdir(root, { recursive: true });
+    const wrote = new Set<string>();
+    try {
+        return await writeEntries(root, entries, wrote);
+    } catch (e) {
+        // Only what writeEntries accepted. This once took the top level of every
+        // entry, refused ones included: `../notes` made it remove the parent of
+        // `folder`, and `/etc/x` made it loop for ever.
+        const written = created !== undefined ? [created] : [...wrote];
+        const left: string[] = [];
+        for (const path of written) await rm(path, { recursive: true, force: true }).catch(() => left.push(path));
+        const why = e instanceof Error ? e.message : String(e);
+        throw new Error(left.length === 0 ? why : `${why}; and could not remove what was written: ${left.join(', ')}`, { cause: e });
+    }
 }

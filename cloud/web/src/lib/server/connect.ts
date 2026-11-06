@@ -23,8 +23,8 @@ export type ConsentAuth = Pick<Supabase['auth']['oauth'], 'getAuthorizationDetai
  *  registry's own client, coming back to its one redirect URI, asking for
  *  nothing but `email`. */
 export interface Expected {
-  readonly clientId: string;
-  readonly returnUrl: string;
+    readonly clientId: string;
+    readonly returnUrl: string;
 }
 
 export type Approved = { readonly ok: true; readonly redirect: URL } | { readonly ok: false; readonly status: number; readonly message: string };
@@ -43,56 +43,56 @@ const AGAIN = 'Start the login again from your IDE or terminal.';
  *  redirect at once; that answer can only be checked after the fact, which
  *  `toReturn` does. */
 export async function approve(auth: ConsentAuth, authorizationId: string, expected: Expected): Promise<Approved> {
-  const details = await auth.getAuthorizationDetails(authorizationId);
-  if (details.error !== null) return refused(details.error.message);
-  if (!('authorization_id' in details.data)) return toReturn(details.data.redirect_url, expected.returnUrl);
-  const d = details.data;
-  const scopes = d.scope.split(/\s+/).filter(s => s !== '');
-  if (d.client.id !== expected.clientId || d.redirect_uri !== expected.returnUrl || scopes.length !== 1 || scopes[0] !== 'email') {
-    report('connect', `refused to approve an authorization for client ${d.client.id}, redirect ${d.redirect_uri}, scope "${d.scope}"`);
-    return { ok: false, status: 400, message: `This is not a login request this site started. ${AGAIN}` };
-  }
-  const approved = await auth.approveAuthorization(authorizationId, { skipBrowserRedirect: true });
-  if (approved.error !== null) return refused(approved.error.message);
-  return toReturn(approved.data.redirect_url, expected.returnUrl);
+    const details = await auth.getAuthorizationDetails(authorizationId);
+    if (details.error !== null) return refused(details.error.message);
+    if (!('authorization_id' in details.data)) return toReturn(details.data.redirect_url, expected.returnUrl);
+    const d = details.data;
+    const scopes = d.scope.split(/\s+/).filter(s => s !== '');
+    if (d.client.id !== expected.clientId || d.redirect_uri !== expected.returnUrl || scopes.length !== 1 || scopes[0] !== 'email') {
+        report('connect', `refused to approve an authorization for client ${d.client.id}, redirect ${d.redirect_uri}, scope "${d.scope}"`);
+        return { ok: false, status: 400, message: `This is not a login request this site started. ${AGAIN}` };
+    }
+    const approved = await auth.approveAuthorization(authorizationId, { skipBrowserRedirect: true });
+    if (approved.error !== null) return refused(approved.error.message);
+    return toReturn(approved.data.redirect_url, expected.returnUrl);
 }
 
 function toReturn(redirect: string, returnUrl: string): Approved {
-  let url: URL;
-  try {
-    url = new URL(redirect);
-  } catch {
-    return { ok: false, status: 502, message: report('connect', 'Auth answered with a redirect that is not an address') };
-  }
-  const expected = new URL(returnUrl);
-  if (url.origin !== expected.origin || url.pathname !== expected.pathname) {
-    // The origin and path only: the query may carry a code.
-    return { ok: false, status: 502, message: report('connect', `Auth sent the browser to ${url.origin}${url.pathname}, not to ${returnUrl}`) };
-  }
-  return { ok: true, redirect: url };
+    let url: URL;
+    try {
+        url = new URL(redirect);
+    } catch {
+        return { ok: false, status: 502, message: report('connect', 'Auth answered with a redirect that is not an address') };
+    }
+    const expected = new URL(returnUrl);
+    if (url.origin !== expected.origin || url.pathname !== expected.pathname) {
+        // The origin and path only: the query may carry a code.
+        return { ok: false, status: 502, message: report('connect', `Auth sent the browser to ${url.origin}${url.pathname}, not to ${returnUrl}`) };
+    }
+    return { ok: true, redirect: url };
 }
 
 /** An authorization that is gone (expired after three minutes, used, or
  *  another person's) and one Auth refused for its own reasons read the
  *  same: start again. */
 function refused(why: string): Approved {
-  report('connect', why);
-  return { ok: false, status: 400, message: `This login request has expired or was already used. ${AGAIN}` };
+    report('connect', why);
+    return { ok: false, status: 400, message: `This login request has expired or was already used. ${AGAIN}` };
 }
 
 /** What a route does: send the browser somewhere, or show an error; and
  *  either way, which connect cookies to delete. */
 export interface Decision {
-  readonly to: { readonly redirect: URL } | { readonly status: number; readonly message: string };
-  readonly spend: readonly string[];
+    readonly to: { readonly redirect: URL } | { readonly status: number; readonly message: string };
+    readonly spend: readonly string[];
 }
 
 const fail = (status: number, message: string, spend: readonly string[]): Decision => ({ to: { status, message }, spend });
 
 /** A cookie as the browser sent it. */
 export interface HeldCookie {
-  readonly name: string;
-  readonly value: string;
+    readonly name: string;
+    readonly value: string;
 }
 
 /** What Auth names an authorization by, and all the consent route accepts. */
@@ -113,22 +113,22 @@ const AUTHORIZATION_ID = /^[A-Za-z0-9_-]{1,255}$/;
  *  the match on spends every connect cookie this browser holds, so nothing
  *  half-done is left to reuse. */
 export async function consent(input: {
-  readonly authorizationId: string | null;
-  readonly signedIn: boolean;
-  readonly cookies: readonly HeldCookie[];
-  readonly auth: ConsentAuth;
-  readonly expected: Expected;
+    readonly authorizationId: string | null;
+    readonly signedIn: boolean;
+    readonly cookies: readonly HeldCookie[];
+    readonly auth: ConsentAuth;
+    readonly expected: Expected;
 }): Promise<Decision> {
-  const held = input.cookies.filter(c => c.name.startsWith(CONNECT_COOKIE_PREFIX));
-  const id = input.authorizationId ?? '';
-  if (!AUTHORIZATION_ID.test(id)) return fail(400, `This is not a login request. ${AGAIN}`, []);
-  const mine = held.find(c => c.value === id);
-  if (mine === undefined) return fail(400, `This login was not confirmed in this browser. ${AGAIN}`, []);
-  const all = held.map(c => c.name);
-  if (!input.signedIn) return fail(401, `You are not signed in to the website any more. ${AGAIN}`, all);
-  const approved = await approve(input.auth, id, input.expected);
-  if (!approved.ok) return fail(approved.status, approved.message, all);
-  return relay(approved.redirect.searchParams, { accept: [mine.name], refused: all, codes: true });
+    const held = input.cookies.filter(c => c.name.startsWith(CONNECT_COOKIE_PREFIX));
+    const id = input.authorizationId ?? '';
+    if (!AUTHORIZATION_ID.test(id)) return fail(400, `This is not a login request. ${AGAIN}`, []);
+    const mine = held.find(c => c.value === id);
+    if (mine === undefined) return fail(400, `This login was not confirmed in this browser. ${AGAIN}`, []);
+    const all = held.map(c => c.name);
+    if (!input.signedIn) return fail(401, `You are not signed in to the website any more. ${AGAIN}`, all);
+    const approved = await approve(input.auth, id, input.expected);
+    if (!approved.ok) return fail(approved.status, approved.message, all);
+    return relay(approved.redirect.searchParams, { accept: [mine.name], refused: all, codes: true });
 }
 
 /** `/auth/connect/return`, decided: the OAuth client's registered URI.
@@ -138,27 +138,27 @@ export async function consent(input: {
  *  A code is never relayed from here, and a refusal spends nothing: a page
  *  elsewhere cannot know a nonce, and must not cancel a login by guessing. */
 export function returned(query: URLSearchParams, cookies: readonly string[]): Decision {
-  const held = cookies.filter(n => n.startsWith(CONNECT_COOKIE_PREFIX));
-  return relay(query, { accept: held, refused: [], codes: false });
+    const held = cookies.filter(n => n.startsWith(CONNECT_COOKIE_PREFIX));
+    return relay(query, { accept: held, refused: [], codes: false });
 }
 
 /** Relays Auth's `answer` to the loopback in its state, if the state's
  *  nonce names a cookie in `accept`; otherwise refuses and spends
  *  `refused`. A code is relayed only when `codes`. */
 function relay(answer: URLSearchParams, opts: { readonly accept: readonly string[]; readonly refused: readonly string[]; readonly codes: boolean }): Decision {
-  const r = relayOf(answer.get('state'));
-  if (r === null) return fail(400, `This is not the end of a login this site started. ${AGAIN}`, opts.refused);
-  const name = connectCookie(r.nonce);
-  if (!opts.accept.includes(name)) return fail(400, `This login was not confirmed in this browser. ${AGAIN}`, opts.refused);
-  if (!opts.codes && answer.has('code')) return fail(400, `This is not the end of a login this site started. ${AGAIN}`, opts.refused);
-  return { to: { redirect: deliveryUrl(r, answer) }, spend: [name] };
+    const r = relayOf(answer.get('state'));
+    if (r === null) return fail(400, `This is not the end of a login this site started. ${AGAIN}`, opts.refused);
+    const name = connectCookie(r.nonce);
+    if (!opts.accept.includes(name)) return fail(400, `This login was not confirmed in this browser. ${AGAIN}`, opts.refused);
+    if (!opts.codes && answer.has('code')) return fail(400, `This is not the end of a login this site started. ${AGAIN}`, opts.refused);
+    return { to: { redirect: deliveryUrl(r, answer) }, spend: [name] };
 }
 
 /** What "Continue" does: send the browser somewhere, or show an error; and
  *  the connect cookie to set, if any. */
 export interface Started {
-  readonly to: { readonly redirect: URL } | { readonly status: number; readonly message: string };
-  readonly cookie: HeldCookie | null;
+    readonly to: { readonly redirect: URL } | { readonly status: number; readonly message: string };
+    readonly cookie: HeldCookie | null;
 }
 
 /** "Continue", carried out. Requests `authorize` (`authorizeUrl` in
@@ -180,50 +180,50 @@ export interface Started {
  *  from here makes the same authorization the browser would have.
  *  `fetchFn` is the Worker's `fetch`, or a test's. */
 export async function start(input: { readonly authorize: URL; readonly site: string; readonly nonce: string; readonly fetchFn: typeof fetch }): Promise<Started> {
-  const failed = (message: string): Started => ({ to: { status: 502, message: report('connect', message) }, cookie: null });
-  let res: Response;
-  try {
-    res = await input.fetchFn(input.authorize, { redirect: 'manual' });
-  } catch (e) {
-    return failed(`could not reach Auth's OAuth server: ${e instanceof Error ? e.message : String(e)}`);
-  }
-  const location = res.headers.get('location');
-  if (res.status < 300 || res.status > 399 || location === null) {
-    const said = await res.text().catch(() => '');
-    return failed(`Auth's OAuth server answered ${res.status} to an authorization request: ${said.slice(0, 300)}`);
-  }
-  await res.body?.cancel();
-  let at: URL;
-  try {
-    at = new URL(location, input.authorize);
-  } catch {
-    return failed(`Auth's OAuth server sent an authorization request to ${location}, which is not an address`);
-  }
-  const consentAt = new URL('/auth/connect/consent', input.site);
-  const returnAt = new URL(returnUrlOf(input.site));
-  const where = `${at.origin}${at.pathname}`;
-  if (where === `${consentAt.origin}${consentAt.pathname}`) {
-    const id = at.searchParams.get('authorization_id') ?? '';
-    if (!AUTHORIZATION_ID.test(id)) return failed(`Auth's OAuth server named an authorization "${id.slice(0, 64)}" this site cannot take`);
-    consentAt.searchParams.set('authorization_id', id);
-    return { to: { redirect: consentAt }, cookie: { name: connectCookie(input.nonce), value: id } };
-  }
-  if (where === `${returnAt.origin}${returnAt.pathname}`) {
-    const r = relayOf(at.searchParams.get('state'));
-    if (r === null || r.nonce !== input.nonce || at.searchParams.has('code')) return failed(`Auth's OAuth server answered an authorization request with ${location}`);
-    report('connect', `Auth's OAuth server refused an authorization request: ${at.searchParams.get('error') ?? ''} ${at.searchParams.get('error_description') ?? ''}`);
-    return { to: { redirect: deliveryUrl(r, at.searchParams) }, cookie: null };
-  }
-  return failed(`Auth's OAuth server sent an authorization request to ${where}, not to ${consentAt.origin}${consentAt.pathname}: is its site_url ${input.site}?`);
+    const failed = (message: string): Started => ({ to: { status: 502, message: report('connect', message) }, cookie: null });
+    let res: Response;
+    try {
+        res = await input.fetchFn(input.authorize, { redirect: 'manual' });
+    } catch (e) {
+        return failed(`could not reach Auth's OAuth server: ${e instanceof Error ? e.message : String(e)}`);
+    }
+    const location = res.headers.get('location');
+    if (res.status < 300 || res.status > 399 || location === null) {
+        const said = await res.text().catch(() => '');
+        return failed(`Auth's OAuth server answered ${res.status} to an authorization request: ${said.slice(0, 300)}`);
+    }
+    await res.body?.cancel();
+    let at: URL;
+    try {
+        at = new URL(location, input.authorize);
+    } catch {
+        return failed(`Auth's OAuth server sent an authorization request to ${location}, which is not an address`);
+    }
+    const consentAt = new URL('/auth/connect/consent', input.site);
+    const returnAt = new URL(returnUrlOf(input.site));
+    const where = `${at.origin}${at.pathname}`;
+    if (where === `${consentAt.origin}${consentAt.pathname}`) {
+        const id = at.searchParams.get('authorization_id') ?? '';
+        if (!AUTHORIZATION_ID.test(id)) return failed(`Auth's OAuth server named an authorization "${id.slice(0, 64)}" this site cannot take`);
+        consentAt.searchParams.set('authorization_id', id);
+        return { to: { redirect: consentAt }, cookie: { name: connectCookie(input.nonce), value: id } };
+    }
+    if (where === `${returnAt.origin}${returnAt.pathname}`) {
+        const r = relayOf(at.searchParams.get('state'));
+        if (r === null || r.nonce !== input.nonce || at.searchParams.has('code')) return failed(`Auth's OAuth server answered an authorization request with ${location}`);
+        report('connect', `Auth's OAuth server refused an authorization request: ${at.searchParams.get('error') ?? ''} ${at.searchParams.get('error_description') ?? ''}`);
+        return { to: { redirect: deliveryUrl(r, at.searchParams) }, cookie: null };
+    }
+    return failed(`Auth's OAuth server sent an authorization request to ${where}, not to ${consentAt.origin}${consentAt.pathname}: is its site_url ${input.site}?`);
 }
 
 /** A fresh nonce for the connect cookie: 16 random bytes, base64url. */
 export function nonce(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  return btoa(String.fromCharCode(...bytes))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    return btoa(String.fromCharCode(...bytes))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
 }
 
 /** The connect cookie's attributes: what `__Host-` demands (Secure, path

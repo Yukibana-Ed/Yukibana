@@ -26,16 +26,16 @@ import { packTar, unpackTar, type TarEntry, type TarHeader } from 'modern-tar';
 export type EntryType = 'file' | 'dir' | 'symlink';
 
 export interface Entry {
-  /** Forward-slash path, no leading `./`, no trailing slash. */
-  readonly path: string;
-  readonly type: EntryType;
-  /** Unix permission bits. Kept, so `sbt`, `gradlew` and scripts stay executable. */
-  readonly mode: number;
-  /** Seconds since the epoch. */
-  readonly mtime: number;
-  readonly data: Uint8Array;
-  /** For a symlink: where it points. */
-  readonly linkTarget?: string;
+    /** Forward-slash path, no leading `./`, no trailing slash. */
+    readonly path: string;
+    readonly type: EntryType;
+    /** Unix permission bits. Kept, so `sbt`, `gradlew` and scripts stay executable. */
+    readonly mode: number;
+    /** Seconds since the epoch. */
+    readonly mtime: number;
+    readonly data: Uint8Array;
+    /** For a symlink: where it points. */
+    readonly linkTarget?: string;
 }
 
 const clean = (path: string): string => path.replace(/^(\.\/)+/, '').replace(/\/+$/, '');
@@ -49,25 +49,25 @@ const NONE = new Uint8Array(0);
  *  An archive that ends between entries gives the entries before the end;
  *  one that ends inside a file throws, rather than hand back part of it. */
 export async function readTar(bytes: Uint8Array): Promise<Entry[]> {
-  const entries: Entry[] = [];
-  for (const { header: h, data } of await unpackTar(bytes)) {
-    // An old (v7) archive marks a directory only by its trailing slash.
-    const isDir = h.type === 'directory' || (h.type === 'file' && h.name.endsWith('/'));
-    const path = clean(h.name);
-    if (path === '') continue;
-    const mode = (h.mode ?? 0) & 0o7777;
-    const mtime = Math.floor((h.mtime?.getTime() ?? 0) / 1000);
-    if (isDir) {
-      entries.push({ path, type: 'dir', mode, mtime, data: NONE });
-    } else if (h.type === 'symlink') {
-      entries.push({ path, type: 'symlink', mode, mtime, data: NONE, linkTarget: h.linkname ?? '' });
-    } else if (h.type === 'file') {
-      // The library returns what there was of a file the archive cut short.
-      if ((data?.length ?? 0) !== h.size) throw new Error(`the archive ends inside ${path} (${data?.length ?? 0} of ${h.size} bytes)`);
-      entries.push({ path, type: 'file', mode, mtime, data: data ?? NONE });
+    const entries: Entry[] = [];
+    for (const { header: h, data } of await unpackTar(bytes)) {
+        // An old (v7) archive marks a directory only by its trailing slash.
+        const isDir = h.type === 'directory' || (h.type === 'file' && h.name.endsWith('/'));
+        const path = clean(h.name);
+        if (path === '') continue;
+        const mode = (h.mode ?? 0) & 0o7777;
+        const mtime = Math.floor((h.mtime?.getTime() ?? 0) / 1000);
+        if (isDir) {
+            entries.push({ path, type: 'dir', mode, mtime, data: NONE });
+        } else if (h.type === 'symlink') {
+            entries.push({ path, type: 'symlink', mode, mtime, data: NONE, linkTarget: h.linkname ?? '' });
+        } else if (h.type === 'file') {
+            // The library returns what there was of a file the archive cut short.
+            if ((data?.length ?? 0) !== h.size) throw new Error(`the archive ends inside ${path} (${data?.length ?? 0} of ${h.size} bytes)`);
+            entries.push({ path, type: 'file', mode, mtime, data: data ?? NONE });
+        }
     }
-  }
-  return entries;
+    return entries;
 }
 
 const TYPE = { file: 'file', dir: 'directory', symlink: 'symlink' } as const satisfies Record<EntryType, TarHeader['type']>;
@@ -78,25 +78,25 @@ const TYPE = { file: 'file', dir: 'directory', symlink: 'symlink' } as const sat
  *  and unnamed, so the archive says nothing about the machine it was made
  *  on. */
 export function writeTar(entries: readonly Entry[]): Promise<Uint8Array<ArrayBuffer>> {
-  return packTar(
-    entries.map((e): TarEntry => {
-      // The ustar field holds 0 to 8^11 - 1 seconds, and the library writes
-      // anything else as garbage; outside that, a pax record carries the date.
-      const fits = e.mtime >= 0 && e.mtime < 8 ** 11;
-      const header: TarHeader = {
-        name: e.type === 'dir' ? `${e.path}/` : e.path,
-        type: TYPE[e.type],
-        size: e.type === 'file' ? e.data.length : 0,
-        mode: e.mode,
-        mtime: new Date((fits ? e.mtime : 0) * 1000),
-        uid: 0,
-        gid: 0,
-        uname: '',
-        gname: '',
-      };
-      if (!fits) header.pax = { mtime: String(e.mtime) };
-      if (e.linkTarget !== undefined) header.linkname = e.linkTarget;
-      return e.type === 'file' ? { header, body: e.data } : { header };
-    }),
-  );
+    return packTar(
+        entries.map((e): TarEntry => {
+            // The ustar field holds 0 to 8^11 - 1 seconds, and the library writes
+            // anything else as garbage; outside that, a pax record carries the date.
+            const fits = e.mtime >= 0 && e.mtime < 8 ** 11;
+            const header: TarHeader = {
+                name: e.type === 'dir' ? `${e.path}/` : e.path,
+                type: TYPE[e.type],
+                size: e.type === 'file' ? e.data.length : 0,
+                mode: e.mode,
+                mtime: new Date((fits ? e.mtime : 0) * 1000),
+                uid: 0,
+                gid: 0,
+                uname: '',
+                gname: '',
+            };
+            if (!fits) header.pax = { mtime: String(e.mtime) };
+            if (e.linkTarget !== undefined) header.linkname = e.linkTarget;
+            return e.type === 'file' ? { header, body: e.data } : { header };
+        }),
+    );
 }

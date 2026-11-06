@@ -9,12 +9,12 @@ import { workerConfig } from '#lib/server/worker.ts';
  *  connect on, all public. Asked before anyone is logged in, so it needs no
  *  session and opens no database connection. */
 export const GET: RequestHandler = ({ url }) => {
-  const config = workerConfig();
-  const body: AuthConfigJson = {
-    supabaseUrl: config.supabaseUrl,
-    publishableKey: config.supabasePublishableKey,
-    oauthClientId: config.oauthClientId,
-    siteUrl: siteOrigin(config.siteUrl, url),
-  };
-  return json(body);
+    const config = workerConfig();
+    const body: AuthConfigJson = {
+        supabaseUrl: config.supabaseUrl,
+        publishableKey: config.supabasePublishableKey,
+        oauthClientId: config.oauthClientId,
+        siteUrl: siteOrigin(config.siteUrl, url),
+    };
+    return json(body);
 };

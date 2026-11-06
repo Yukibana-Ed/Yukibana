@@ -45,8 +45,8 @@ import { CONFIG_FILE, parseConfig, type Config } from './yukibana.js';
 
 /** One version of a file. `mode` holds the permission bits, as in `Entry`. */
 export interface Version {
-  readonly data: Uint8Array;
-  readonly mode: number;
+    readonly data: Uint8Array;
+    readonly mode: number;
 }
 
 /** What the folder holds at a path: a regular file, or `other` for a
@@ -60,14 +60,14 @@ export type Folder = ReadonlyMap<string, FolderEntry>;
 
 /** Why a `choose` cannot be a line merge. */
 export type ChooseReason =
-  /** Both changed it, and one of the versions is not text (or not a file). */
-  | 'binary'
-  /** Both created a file at a path the base did not have, differently. */
-  | 'bothAdded'
-  /** The student deleted it; the teacher changed it. */
-  | 'deletedByStudent'
-  /** The teacher deleted it (or made it hidden); the student changed it. */
-  | 'deletedByTeacher';
+    /** Both changed it, and one of the versions is not text (or not a file). */
+    | 'binary'
+    /** Both created a file at a path the base did not have, differently. */
+    | 'bothAdded'
+    /** The student deleted it; the teacher changed it. */
+    | 'deletedByStudent'
+    /** The teacher deleted it (or made it hidden); the student changed it. */
+    | 'deletedByTeacher';
 
 /** One path's fate.
  *
@@ -81,41 +81,41 @@ export type ChooseReason =
  *  `base` and `theirs` on `merge` and `choose` are the two releases'
  *  versions, null where that release has no file. */
 export type Change =
-  | {
-      readonly kind: 'write';
-      readonly path: string;
-      readonly theirs: Version;
-      readonly protected: boolean;
-      readonly editedByStudent: boolean;
-      readonly newlyProtected: boolean;
-    }
-  | {
-      readonly kind: 'delete';
-      readonly path: string;
-      readonly protected: boolean;
-      readonly editedByStudent: boolean;
-      readonly newlyProtected: boolean;
-    }
-  | { readonly kind: 'merge'; readonly path: string; readonly base: Version | null; readonly theirs: Version }
-  | { readonly kind: 'choose'; readonly path: string; readonly reason: ChooseReason; readonly base: Version | null; readonly theirs: Version | null };
+    | {
+          readonly kind: 'write';
+          readonly path: string;
+          readonly theirs: Version;
+          readonly protected: boolean;
+          readonly editedByStudent: boolean;
+          readonly newlyProtected: boolean;
+      }
+    | {
+          readonly kind: 'delete';
+          readonly path: string;
+          readonly protected: boolean;
+          readonly editedByStudent: boolean;
+          readonly newlyProtected: boolean;
+      }
+    | { readonly kind: 'merge'; readonly path: string; readonly base: Version | null; readonly theirs: Version }
+    | { readonly kind: 'choose'; readonly path: string; readonly reason: ChooseReason; readonly base: Version | null; readonly theirs: Version | null };
 
 /** What updating a student's folder to the newest starter would change, path by path. */
 export interface UpdatePlan {
-  /** The release the folder is updated to, as the newest starter's config
-   *  says; null for a starter built without one. */
-  readonly to: string | null;
-  /** The release the folder started from, as the base starter's config says. */
-  readonly from: string | null;
-  /** The newest release's config. */
-  readonly config: Config;
-  /** One change per path that differs, in the order a host applies the
-   *  decided ones: deletes, then writes, `yukibana.json` last, each group by
-   *  path. Deletes go first so that a rename that only changes case does not
-   *  delete the new file on a case-insensitive disk. `yukibana.json` goes
-   *  last because it carries the stamp: a host that stops halfway leaves a
-   *  folder that still says it is on the old release. `merge` and `choose`
-   *  come after, by path. A path where nothing is to be done is not listed. */
-  readonly changes: readonly Change[];
+    /** The release the folder is updated to, as the newest starter's config
+     *  says; null for a starter built without one. */
+    readonly to: string | null;
+    /** The release the folder started from, as the base starter's config says. */
+    readonly from: string | null;
+    /** The newest release's config. */
+    readonly config: Config;
+    /** One change per path that differs, in the order a host applies the
+     *  decided ones: deletes, then writes, `yukibana.json` last, each group by
+     *  path. Deletes go first so that a rename that only changes case does not
+     *  delete the new file on a case-insensitive disk. `yukibana.json` goes
+     *  last because it carries the stamp: a host that stops halfway leaves a
+     *  folder that still says it is on the old release. `merge` and `choose`
+     *  come after, by path. A path where nothing is to be done is not listed. */
+    readonly changes: readonly Change[];
 }
 
 /** The outcome of `planUpdate`: a plan, or the one sentence that says why there is none. */
@@ -126,13 +126,13 @@ export type Planned = { readonly ok: true; readonly plan: UpdatePlan } | { reado
  *  has. A folder file that neither starter has matters only when it is
  *  protected: an update deletes it, as the assembly would ignore or flag it. */
 export function wantedPaths(base: readonly Entry[], newest: readonly Entry[], folderPaths: Iterable<string>): string[] {
-  const configs = bothConfigs(base, newest);
-  const wanted = new Set<string>([...filesOf(base).keys(), ...filesOf(newest).keys()]);
-  if (configs.ok) {
-    const isProtected = protectedIn(configs.base, configs.newest);
-    for (const p of folderPaths) if (isProtected(p)) wanted.add(p);
-  }
-  return [...wanted].toSorted();
+    const configs = bothConfigs(base, newest);
+    const wanted = new Set<string>([...filesOf(base).keys(), ...filesOf(newest).keys()]);
+    if (configs.ok) {
+        const isProtected = protectedIn(configs.base, configs.newest);
+        for (const p of folderPaths) if (isProtected(p)) wanted.add(p);
+    }
+    return [...wanted].toSorted();
 }
 
 /** Classifies every path of either starter, and every protected path of
@@ -140,21 +140,21 @@ export function wantedPaths(base: readonly Entry[], newest: readonly Entry[], fo
  *  (`readArchive`), wrapped in a folder or not; `folder` is the student's
  *  folder at least at `wantedPaths`. */
 export function planUpdate(base: readonly Entry[], newest: readonly Entry[], folder: Folder): Planned {
-  const configs = bothConfigs(base, newest);
-  if (!configs.ok) return configs;
-  const isProtected = protectedIn(configs.base, configs.newest);
-  const wasProtected = protectedIn(configs.base);
-  const before = filesOf(base);
-  const after = filesOf(newest);
-  const paths = new Set([...before.keys(), ...after.keys(), ...[...folder.keys()].filter(isProtected)]);
+    const configs = bothConfigs(base, newest);
+    if (!configs.ok) return configs;
+    const isProtected = protectedIn(configs.base, configs.newest);
+    const wasProtected = protectedIn(configs.base);
+    const before = filesOf(base);
+    const after = filesOf(newest);
+    const paths = new Set([...before.keys(), ...after.keys(), ...[...folder.keys()].filter(isProtected)]);
 
-  const changes: Change[] = [];
-  for (const path of paths) {
-    const change = decide(path, before.get(path) ?? null, after.get(path) ?? null, folder.get(path) ?? null, isProtected(path), wasProtected(path));
-    if (change !== null) changes.push(change);
-  }
-  changes.sort((a, b) => rank(a) - rank(b) || (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
-  return { ok: true, plan: { from: configs.base.releaseId, to: configs.newest.releaseId, config: configs.newest, changes } };
+    const changes: Change[] = [];
+    for (const path of paths) {
+        const change = decide(path, before.get(path) ?? null, after.get(path) ?? null, folder.get(path) ?? null, isProtected(path), wasProtected(path));
+        if (change !== null) changes.push(change);
+    }
+    changes.sort((a, b) => rank(a) - rank(b) || (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+    return { ok: true, plan: { from: configs.base.releaseId, to: configs.newest.releaseId, config: configs.newest, changes } };
 }
 
 /** Whether the plan changes nothing but `yukibana.json`, which the student
@@ -162,86 +162,86 @@ export function planUpdate(base: readonly Entry[], newest: readonly Entry[], fol
  *  student does not receive (hidden tests, the teacher archive) or in the
  *  config itself. A host can then move the stamp without asking. */
 export function onlyTheStamp(plan: UpdatePlan): boolean {
-  return plan.changes.every(c => c.path === CONFIG_FILE && c.kind === 'write' && !c.editedByStudent);
+    return plan.changes.every(c => c.path === CONFIG_FILE && c.kind === 'write' && !c.editedByStudent);
 }
 
 function decide(path: string, b: Version | null, t: Version | null, m: FolderEntry | null, isProtected: boolean, wasProtected: boolean): Change | null {
-  if (m !== null && t !== null && same(m, t)) return null;
-  if (m === null && t === null) return null;
+    if (m !== null && t !== null && same(m, t)) return null;
+    if (m === null && t === null) return null;
 
-  const studentChanged = m === null ? b !== null : b === null || !same(m, b);
-  if (!isProtected) {
-    if (sameVersion(b, t)) return null;
-    if (studentChanged) return toSettle(path, b, t, m);
-  }
-  // Protected, or only the teacher changed it: the teacher's version
-  const flags = { protected: isProtected, editedByStudent: isProtected && m !== null && studentChanged, newlyProtected: isProtected && !wasProtected && path !== CONFIG_FILE };
-  return t === null ? { kind: 'delete', path, ...flags } : { kind: 'write', path, theirs: t, ...flags };
+    const studentChanged = m === null ? b !== null : b === null || !same(m, b);
+    if (!isProtected) {
+        if (sameVersion(b, t)) return null;
+        if (studentChanged) return toSettle(path, b, t, m);
+    }
+    // Protected, or only the teacher changed it: the teacher's version
+    const flags = { protected: isProtected, editedByStudent: isProtected && m !== null && studentChanged, newlyProtected: isProtected && !wasProtected && path !== CONFIG_FILE };
+    return t === null ? { kind: 'delete', path, ...flags } : { kind: 'write', path, theirs: t, ...flags };
 }
 
 /** A path both changed, which the student settles: merged when it can be, else chosen. */
 function toSettle(path: string, b: Version | null, t: Version | null, m: FolderEntry | null): Change {
-  if (m === null) return { kind: 'choose', path, reason: 'deletedByStudent', base: b, theirs: t };
-  if (t === null) return { kind: 'choose', path, reason: 'deletedByTeacher', base: b, theirs: t };
-  if (b === null) return { kind: 'choose', path, reason: 'bothAdded', base: b, theirs: t };
-  if (m.kind !== 'file' || !isText(m.data) || !isText(b.data) || !isText(t.data)) return { kind: 'choose', path, reason: 'binary', base: b, theirs: t };
-  return { kind: 'merge', path, base: b, theirs: t };
+    if (m === null) return { kind: 'choose', path, reason: 'deletedByStudent', base: b, theirs: t };
+    if (t === null) return { kind: 'choose', path, reason: 'deletedByTeacher', base: b, theirs: t };
+    if (b === null) return { kind: 'choose', path, reason: 'bothAdded', base: b, theirs: t };
+    if (m.kind !== 'file' || !isText(m.data) || !isText(b.data) || !isText(t.data)) return { kind: 'choose', path, reason: 'binary', base: b, theirs: t };
+    return { kind: 'merge', path, base: b, theirs: t };
 }
 
 function rank(c: Change): number {
-  if (c.kind === 'delete') return 0;
-  if (c.kind === 'write') return c.path === CONFIG_FILE ? 2 : 1;
-  return 3;
+    if (c.kind === 'delete') return 0;
+    if (c.kind === 'write') return c.path === CONFIG_FILE ? 2 : 1;
+    return 3;
 }
 
 /** The regular files of a starter, by path relative to its root (a
  *  starter `git archive` made is wrapped in one folder). */
 function filesOf(entries: readonly Entry[]): Map<string, Version> {
-  const files = new Map<string, Version>();
-  for (const e of submissionRoot(entries)) if (e.type === 'file') files.set(e.path, { data: e.data, mode: e.mode });
-  return files;
+    const files = new Map<string, Version>();
+    for (const e of submissionRoot(entries)) if (e.type === 'file') files.set(e.path, { data: e.data, mode: e.mode });
+    return files;
 }
 
 type Configs = { ok: true; base: Config; newest: Config } | { ok: false; problem: string };
 
 function bothConfigs(base: readonly Entry[], newest: readonly Entry[]): Configs {
-  const b = configOf(base, 'the release this folder started from');
-  if (!b.ok) return b;
-  const n = configOf(newest, 'the newest release');
-  if (!n.ok) return n;
-  return { ok: true, base: b.config, newest: n.config };
+    const b = configOf(base, 'the release this folder started from');
+    if (!b.ok) return b;
+    const n = configOf(newest, 'the newest release');
+    if (!n.ok) return n;
+    return { ok: true, base: b.config, newest: n.config };
 }
 
 function configOf(entries: readonly Entry[], which: string): { ok: true; config: Config } | { ok: false; problem: string } {
-  const file = filesOf(entries).get(CONFIG_FILE);
-  if (file === undefined) return { ok: false, problem: `${which} has no ${CONFIG_FILE}` };
-  const parsed = parseConfig(new TextDecoder().decode(file.data));
-  return parsed.ok ? { ok: true, config: parsed.config } : { ok: false, problem: `${which}: ${parsed.error}` };
+    const file = filesOf(entries).get(CONFIG_FILE);
+    if (file === undefined) return { ok: false, problem: `${which} has no ${CONFIG_FILE}` };
+    const parsed = parseConfig(new TextDecoder().decode(file.data));
+    return parsed.ok ? { ok: true, config: parsed.config } : { ok: false, problem: `${which}: ${parsed.error}` };
 }
 
 function protectedIn(...configs: readonly Config[]): (path: string) => boolean {
-  // Not protectedPaths: hidden paths are the teacher's to grade, but a student's own file there is not the update's to delete
-  const matches = configs.map(c => matcher(c.readOnly));
-  return path => path === CONFIG_FILE || matches.some(m => m(path));
+    // Not protectedPaths: hidden paths are the teacher's to grade, but a student's own file there is not the update's to delete
+    const matches = configs.map(c => matcher(c.readOnly));
+    return path => path === CONFIG_FILE || matches.some(m => m(path));
 }
 
 function same(m: FolderEntry, v: Version): boolean {
-  return m.kind === 'file' && sameVersion(m, v);
+    return m.kind === 'file' && sameVersion(m, v);
 }
 
 function sameVersion(a: Version | null, b: Version | null): boolean {
-  if (a === null || b === null) return a === b;
-  return (a.mode & 0o111) === (b.mode & 0o111) && a.data.length === b.data.length && a.data.every((x, i) => x === b.data[i]);
+    if (a === null || b === null) return a === b;
+    return (a.mode & 0o111) === (b.mode & 0o111) && a.data.length === b.data.length && a.data.every((x, i) => x === b.data[i]);
 }
 
 /** `true` iff a person would merge the bytes line by line: UTF-8, and no NUL,
  *  which is how git tells too. */
 export function isText(bytes: Uint8Array): boolean {
-  if (bytes.includes(0)) return false;
-  try {
-    new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-    return true;
-  } catch {
-    return false;
-  }
+    if (bytes.includes(0)) return false;
+    try {
+        new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+        return true;
+    } catch {
+        return false;
+    }
 }

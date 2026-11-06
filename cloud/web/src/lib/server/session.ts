@@ -18,13 +18,13 @@ import { SESSION_COOKIE_OPTIONS } from '#lib/session-cookie.ts';
  *  schema is empty. Saying so keeps the type honest: an `any` schema would
  *  let `supabase.from('project')` typecheck. */
 type NoSchema = {
-  public: {
-    Tables: Record<string, never>;
-    Views: Record<string, never>;
-    Functions: Record<string, never>;
-    Enums: Record<string, never>;
-    CompositeTypes: Record<string, never>;
-  };
+    public: {
+        Tables: Record<string, never>;
+        Views: Record<string, never>;
+        Functions: Record<string, never>;
+        Enums: Record<string, never>;
+        CompositeTypes: Record<string, never>;
+    };
 };
 export type Supabase = SupabaseClient<NoSchema>;
 
@@ -59,10 +59,10 @@ export type CookieSerializeOptions = NonNullable<Parameters<Cookies['set']>[2]>;
  *  back from a GitHub login, a navigation another site starts, and the
  *  person would land logged out. */
 export function sessionCookieOptions(options: CookieSerializeOptions): CookieSerializeOptions & { path: '/'; secure: true } {
-  const strict = options.sameSite === 'strict' || options.sameSite === true;
-  const kept: CookieSerializeOptions = { ...options };
-  delete kept.domain;
-  return { ...kept, path: '/', secure: true, sameSite: strict ? 'strict' : 'lax' };
+    const strict = options.sameSite === 'strict' || options.sameSite === true;
+    const kept: CookieSerializeOptions = { ...options };
+    delete kept.domain;
+    return { ...kept, path: '/', secure: true, sameSite: strict ? 'strict' : 'lax' };
 }
 
 /** The names among `names` that are session cookies from before they were
@@ -74,7 +74,7 @@ export function sessionCookieOptions(options: CookieSerializeOptions): CookieSer
  *  cannot be deleted from here, and does not need to be: it is ignored the
  *  same way. */
 export function staleSessionCookies(names: readonly string[]): string[] {
-  return names.filter(name => /^sb-[A-Za-z0-9-]+-auth-token(?:-code-verifier|-user)?(?:\.\d+)?$/.test(name));
+    return names.filter(name => /^sb-[A-Za-z0-9-]+-auth-token(?:-code-verifier|-user)?(?:\.\d+)?$/.test(name));
 }
 
 /** A Supabase client whose session lives in this request's cookies: it
@@ -85,22 +85,22 @@ export function staleSessionCookies(names: readonly string[]): string[] {
  *  session. `url` and `key` are the Auth server and its publishable key,
  *  from the Worker's configuration. */
 export function supabaseFor(cookies: Cookies, url: string, key: string): Supabase {
-  return createServerClient<NoSchema>(url, key, {
-    cookieOptions: SESSION_COOKIE_OPTIONS,
-    cookies: {
-      getAll: () => cookies.getAll(),
-      setAll: list => {
-        for (const { name, value, options } of list) cookies.set(name, value, sessionCookieOptions(options));
-      },
-    },
-  });
+    return createServerClient<NoSchema>(url, key, {
+        cookieOptions: SESSION_COOKIE_OPTIONS,
+        cookies: {
+            getAll: () => cookies.getAll(),
+            setAll: list => {
+                for (const { name, value, options } of list) cookies.set(name, value, sessionCookieOptions(options));
+            },
+        },
+    });
 }
 
 /** The verified claims of this request, or null. A bearer token wins over
  *  cookies when both are present: the IDE extension is explicit about who
  *  it is. */
 export async function claimsFor(supabase: Supabase, authorization: string | null): Promise<Claims | null> {
-  return (await identify(supabase, authorization)).claims;
+    return (await identify(supabase, authorization)).claims;
 }
 
 /** Who is asking, as `claimsFor` finds out, and, when they are nobody, why.
@@ -114,16 +114,16 @@ export async function claimsFor(supabase: Supabase, authorization: string | null
  *  logged in" with no word anywhere, and a page told a signed-in person to
  *  log in. The hook reports `refused` and the layout says it. */
 export async function identify(
-  supabase: Supabase,
-  authorization: string | null,
+    supabase: Supabase,
+    authorization: string | null,
 ): Promise<{ claims: Claims; refused: null } | { claims: null; refused: string | null; by: 'bearer' | 'cookie' }> {
-  const bearer = authorization?.match(/^Bearer\s+(\S+)$/i)?.[1];
-  const { data, error } = await supabase.auth.getClaims(bearer);
-  const by = bearer === undefined ? 'cookie' : 'bearer';
-  if (error === null && data !== null) {
-    const claims = claimsOf(data.claims);
-    return claims === null ? { claims: null, refused: 'the token describes no logged-in person (it is anonymous or malformed)', by } : { claims, refused: null };
-  }
-  const refused = error === null ? null : `${error.message}${error.code === undefined ? '' : ` (${error.code})`}`;
-  return { claims: null, refused, by };
+    const bearer = authorization?.match(/^Bearer\s+(\S+)$/i)?.[1];
+    const { data, error } = await supabase.auth.getClaims(bearer);
+    const by = bearer === undefined ? 'cookie' : 'bearer';
+    if (error === null && data !== null) {
+        const claims = claimsOf(data.claims);
+        return claims === null ? { claims: null, refused: 'the token describes no logged-in person (it is anonymous or malformed)', by } : { claims, refused: null };
+    }
+    const refused = error === null ? null : `${error.message}${error.code === undefined ? '' : ` (${error.code})`}`;
+    return { claims: null, refused, by };
 }

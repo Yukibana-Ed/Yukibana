@@ -24,17 +24,17 @@ export type Refused = { readonly ok: false; readonly status: number; readonly me
  *  (`enable_confirmations` in cloud/db/supabase/config.toml), so asking for a code
  *  for someone else's address links nothing. `email` is from `addressOf`. */
 export async function sendCode(auth: CodeAuth, email: string): Promise<{ readonly ok: true } | Refused> {
-  const { error } = await auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
-  if (error === null) return { ok: true };
-  if (error.status === 429) return { ok: false, status: 429, message: 'Too many codes asked for just now. Wait a minute and try again.' };
-  return { ok: false, status: 502, message: report('login', `could not send a code to ${email}: ${error.message}`) };
+    const { error } = await auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
+    if (error === null) return { ok: true };
+    if (error.status === 429) return { ok: false, status: 429, message: 'Too many codes asked for just now. Wait a minute and try again.' };
+    return { ok: false, status: 502, message: report('login', `could not send a code to ${email}: ${error.message}`) };
 }
 
 /** Turns the code into a session on `auth`'s client, which for the page is
  *  this request's cookies. A code works once. Wrong and expired are one
  *  answer: Auth does not tell them apart, and neither should a guesser. */
 export async function verifyCode(auth: CodeAuth, email: string, code: string): Promise<{ readonly ok: true; readonly userId: UserId } | Refused> {
-  const { data, error } = await auth.verifyOtp({ email, token: code, type: 'email' });
-  if (error === null && data.user !== null) return { ok: true, userId: trustId<UserId>(data.user.id) };
-  return { ok: false, status: 400, message: 'That code is wrong or has expired. Ask for a new one.' };
+    const { data, error } = await auth.verifyOtp({ email, token: code, type: 'email' });
+    if (error === null && data.user !== null) return { ok: true, userId: trustId<UserId>(data.user.id) };
+    return { ok: false, status: 400, message: 'That code is wrong or has expired. Ask for a new one.' };
 }

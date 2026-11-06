@@ -10,14 +10,14 @@ import { uuidParam } from '#lib/server/form.ts';
  *  caller's own for a student. `?latest=true` keeps each author's newest,
  *  the one that counts; `?author=<user id>` keeps one author's. */
 export const GET: RequestHandler = async event => {
-  const claims = requireClaims(event);
-  const project = uuidOf<ProjectId>(event.params.project);
-  if (project === null) error(404, 'No such project.');
-  const givenAuthor = event.url.searchParams.get('author');
-  const author = givenAuthor === null ? null : uuidOf<UserId>(givenAuthor);
-  if (givenAuthor !== null && author === null) error(400, '`author` is a user id.');
-  const latest = event.url.searchParams.get('latest') === 'true';
-  return json(await withContext(ctx => answering('api/submissions', () => submissions(ctx, claims, project, { latest, author }))));
+    const claims = requireClaims(event);
+    const project = uuidOf<ProjectId>(event.params.project);
+    if (project === null) error(404, 'No such project.');
+    const givenAuthor = event.url.searchParams.get('author');
+    const author = givenAuthor === null ? null : uuidOf<UserId>(givenAuthor);
+    if (givenAuthor !== null && author === null) error(400, '`author` is a user id.');
+    const latest = event.url.searchParams.get('latest') === 'true';
+    return json(await withContext(ctx => answering('api/submissions', () => submissions(ctx, claims, project, { latest, author }))));
 };
 
 /** A submission: the archive as the request body, `Content-Type:
@@ -27,16 +27,16 @@ export const GET: RequestHandler = async event => {
  *  is what an IDE extension calls. The body is read whole: the cap is small
  *  enough that streaming buys nothing yet. */
 export const POST: RequestHandler = async event => {
-  const claims = requireClaims(event);
-  const project = uuidOf<ProjectId>(event.params.project);
-  if (project === null) error(404, 'No such project.');
-  const base = uuidParam<ReleaseId>(event.url, 'release');
-  const declared = Number(event.request.headers.get('content-length') ?? '');
-  if (!Number.isFinite(declared)) error(411, 'Send a Content-Length.');
-  const accepted = await withContext(async ctx => {
-    if (declared > ctx.config.submissionMaxBytes) error(413, `The submission is larger than ${ctx.config.submissionMaxBytes} bytes.`);
-    const body = new Uint8Array(await event.request.arrayBuffer());
-    return acceptSubmission(ctx, claims, project, body, base);
-  });
-  return json(accepted, { status: 201 });
+    const claims = requireClaims(event);
+    const project = uuidOf<ProjectId>(event.params.project);
+    if (project === null) error(404, 'No such project.');
+    const base = uuidParam<ReleaseId>(event.url, 'release');
+    const declared = Number(event.request.headers.get('content-length') ?? '');
+    if (!Number.isFinite(declared)) error(411, 'Send a Content-Length.');
+    const accepted = await withContext(async ctx => {
+        if (declared > ctx.config.submissionMaxBytes) error(413, `The submission is larger than ${ctx.config.submissionMaxBytes} bytes.`);
+        const body = new Uint8Array(await event.request.arrayBuffer());
+        return acceptSubmission(ctx, claims, project, body, base);
+    });
+    return json(accepted, { status: 201 });
 };

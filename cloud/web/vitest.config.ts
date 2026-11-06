@@ -4,9 +4,9 @@ import { defineConfig } from 'vitest/config';
  *  Everything that needs a database or a bucket is in tests/integration and
  *  runs with `pnpm test:integration` against the local stack. */
 export default defineConfig({
-  test: {
-    environment: 'node',
-    include: ['tests/**/*.test.ts'],
-    exclude: ['tests/integration/**', 'node_modules/**'],
-  },
+    test: {
+        environment: 'node',
+        include: ['tests/**/*.test.ts'],
+        exclude: ['tests/integration/**', 'node_modules/**'],
+    },
 });

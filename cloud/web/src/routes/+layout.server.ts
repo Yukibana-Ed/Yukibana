@@ -18,29 +18,29 @@ import { topicsFor } from '#lib/topics.ts';
  *  had at first while every page said "log in". `sessionRefused` says why a
  *  session that was there stopped counting, for the layout to tell. */
 export const load: LayoutServerLoad = async ({ locals, url }) => {
-  // Reading the URL is what makes SvelteKit rerun this load when it changes.
-  void url.href;
-  const claims = locals.claims;
-  if (claims === null) return { user: null, live: null, sessionRefused: locals.sessionRefused };
-  const config = workerConfig();
-  const memberships = await withContext(ctx =>
-    asUser(
-      ctx.sql,
-      claims,
-      tx => tx<{ edition_id: EditionId; role: EditionRole }[]>`
+    // Reading the URL is what makes SvelteKit rerun this load when it changes.
+    void url.href;
+    const claims = locals.claims;
+    if (claims === null) return { user: null, live: null, sessionRefused: locals.sessionRefused };
+    const config = workerConfig();
+    const memberships = await withContext(ctx =>
+        asUser(
+            ctx.sql,
+            claims,
+            tx => tx<{ edition_id: EditionId; role: EditionRole }[]>`
       select edition_id, role::text as role from enrollment where user_id = ${claims.sub}`,
-    ),
-  );
-  return {
-    sessionRefused: null,
-    user: { id: claims.sub, email: claims.email },
-    live: {
-      url: config.supabaseUrl,
-      key: config.supabasePublishableKey,
-      topics: topicsFor(
-        claims.sub,
-        memberships.map(m => ({ editionId: m.edition_id, role: m.role })),
-      ),
-    },
-  };
+        ),
+    );
+    return {
+        sessionRefused: null,
+        user: { id: claims.sub, email: claims.email },
+        live: {
+            url: config.supabaseUrl,
+            key: config.supabasePublishableKey,
+            topics: topicsFor(
+                claims.sub,
+                memberships.map(m => ({ editionId: m.edition_id, role: m.role })),
+            ),
+        },
+    };
 };

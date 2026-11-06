@@ -15,19 +15,19 @@ console.log(`Checking ${url} and ${bucket}`);
 
 let failed = false;
 const check = async (name, target, init = {}, ok = res => res.ok) => {
-  try {
-    const res = await fetch(target, init);
-    if (!ok(res)) {
-      throw new Error(`HTTP ${res.status}`);
+    try {
+        const res = await fetch(target, init);
+        if (!ok(res)) {
+            throw new Error(`HTTP ${res.status}`);
+        }
+        console.log(`OK   ${name}`);
+    } catch (e) {
+        // The URL, always: "fetch failed" on its own says nothing about which
+        // host was unreachable, and the host is the thing that differs between
+        // a laptop, a devcontainer and a runner.
+        console.error(`FAIL ${name}: ${target}: ${e.message}`);
+        failed = true;
     }
-    console.log(`OK   ${name}`);
-  } catch (e) {
-    // The URL, always: "fetch failed" on its own says nothing about which
-    // host was unreachable, and the host is the thing that differs between
-    // a laptop, a devcontainer and a runner.
-    console.error(`FAIL ${name}: ${target}: ${e.message}`);
-    failed = true;
-  }
 };
 const auth = { headers: { apikey: key, Authorization: `Bearer ${key}` } };
 

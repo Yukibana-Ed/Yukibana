@@ -8,10 +8,10 @@
  */
 
 export interface Tab {
-  readonly id: string;
-  readonly label: string;
-  /** Shown beside the label, like a number of submissions. */
-  readonly count?: number;
+    readonly id: string;
+    readonly label: string;
+    /** Shown beside the label, like a number of submissions. */
+    readonly count?: number;
 }
 
 /** The tab `url` asks for, if this person has it, else the first. Only the
@@ -19,8 +19,8 @@ export interface Tab {
  *  person does not have (a student given `?tab=tokens`) is never shown: it
  *  falls back rather than rendering an empty or forbidden section. */
 export function tabOf(url: { readonly searchParams: { get(name: string): string | null } }, tabs: readonly Tab[]): string {
-  const asked = url.searchParams.get('tab');
-  return tabs.find(t => t.id === asked)?.id ?? tabs[0]?.id ?? '';
+    const asked = url.searchParams.get('tab');
+    return tabs.find(t => t.id === asked)?.id ?? tabs[0]?.id ?? '';
 }
 
 /** The action URL for a form inside tab `tab`. */

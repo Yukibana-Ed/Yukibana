@@ -5,6 +5,6 @@
  *  file, with no imports, so that it declares the module rather than
  *  augmenting one. */
 declare module 'cloudflare:workers' {
-  export const env: Cloudflare.Env;
-  export function waitUntil(promise: Promise<unknown>): void;
+    export const env: Cloudflare.Env;
+    export function waitUntil(promise: Promise<unknown>): void;
 }

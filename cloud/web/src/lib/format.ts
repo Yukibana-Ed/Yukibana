@@ -6,7 +6,7 @@
  *  pass `viewer.zone` (#lib/viewer.svelte), never nothing: the runtime's
  *  own zone is the Worker's on a first load and the browser's afterwards. */
 export const when = (d: Date | null, zone: string): string =>
-  d === null ? '—' : new Date(d).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone: zone });
+    d === null ? '—' : new Date(d).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone: zone });
 
 /** A size in kilobytes, never below 1. */
 export const kb = (n: number): string => `${Math.max(1, Math.round(n / 1024))} KB`;
@@ -18,6 +18,6 @@ export const kb = (n: number): string => `${Math.max(1, Math.round(n / 1024))} K
  *  terminal or an IDE wherever its reader is: the Worker has no viewer's
  *  zone to use, and a time without one would be read as local. */
 export function utc(d: Date): string {
-  const iso = new Date(d).toISOString();
-  return `${iso.slice(0, iso.slice(17, 19) === '00' ? 16 : 19).replace('T', ' ')} UTC`;
+    const iso = new Date(d).toISOString();
+    return `${iso.slice(0, iso.slice(17, 19) === '00' ? 16 : 19).replace('T', ' ')} UTC`;
 }

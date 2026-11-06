@@ -8,17 +8,17 @@ import type { UserConfig } from 'vite';
  *  WORKERS_CI_COMMIT_SHA, a checkout in git. Without either, SvelteKit's
  *  default, the build's time, still tells one deploy from another. */
 function commit(): string | undefined {
-  const fromCi = process.env['WORKERS_CI_COMMIT_SHA'];
-  if (fromCi !== undefined && fromCi !== '') return fromCi.slice(0, 12);
-  try {
-    return (
-      execSync('git rev-parse --short=12 HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
-        .toString()
-        .trim() || undefined
-    );
-  } catch {
-    return undefined;
-  }
+    const fromCi = process.env['WORKERS_CI_COMMIT_SHA'];
+    if (fromCi !== undefined && fromCi !== '') return fromCi.slice(0, 12);
+    try {
+        return (
+            execSync('git rev-parse --short=12 HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
+                .toString()
+                .trim() || undefined
+        );
+    } catch {
+        return undefined;
+    }
 }
 const name = commit();
 
@@ -28,14 +28,14 @@ const name = commit();
  *  shape on a laptop as in production. SvelteKit 3 takes its configuration
  *  here, in the plugin; there is no svelte.config.js. */
 export default {
-  plugins: [
-    sveltekit({
-      ...(name === undefined ? {} : { version: { name } }),
-      adapter: adapter({
-        // The Worker's configuration, beside this file, which `wrangler
-        // deploy` reads too. Development reads the same file.
-        platformProxy: { configPath: './wrangler.jsonc', persist: true },
-      }),
-    }),
-  ],
+    plugins: [
+        sveltekit({
+            ...(name === undefined ? {} : { version: { name } }),
+            adapter: adapter({
+                // The Worker's configuration, beside this file, which `wrangler
+                // deploy` reads too. Development reads the same file.
+                platformProxy: { configPath: './wrangler.jsonc', persist: true },
+            }),
+        }),
+    ],
 } satisfies UserConfig;

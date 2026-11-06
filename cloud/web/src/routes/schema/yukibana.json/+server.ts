@@ -8,10 +8,10 @@ import schema from '../../../../../../docs/cloud/yukibana.schema.json?raw';
  *  editor that a file's `$schema` points here. Anyone may fetch it, from any
  *  origin; it changes only with a deploy, so a day's caching is safe. */
 export const GET: RequestHandler = () =>
-  new Response(schema, {
-    headers: {
-      'content-type': 'application/schema+json',
-      'access-control-allow-origin': '*',
-      'cache-control': 'public, max-age=86400',
-    },
-  });
+    new Response(schema, {
+        headers: {
+            'content-type': 'application/schema+json',
+            'access-control-allow-origin': '*',
+            'cache-control': 'public, max-age=86400',
+        },
+    });

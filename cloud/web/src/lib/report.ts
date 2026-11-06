@@ -4,7 +4,7 @@
  *  reading Worker logs; the return value is for the person in front of the
  *  app. */
 export function report(where: string, what: string): string {
-  const line = `${where}: ${what}`;
-  console.error(line);
-  return line;
+    const line = `${where}: ${what}`;
+    console.error(line);
+    return line;
 }
