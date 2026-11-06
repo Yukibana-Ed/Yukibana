@@ -1,6 +1,7 @@
 # Every check, for pull requests, the merge queue and pushes to main. The plan job decides from pnpm's package graph
 # what a change affects (.github/scripts/plan.mts), and every other job runs only when its package is affected. So the
 # triggers have no paths filters: the workflow always runs, and ci-ok, the one required check, always reports.
+# pnpm/setup's `node@24.x` runs pnpm and the plan; every script pnpm runs uses the exact release of devEngines.
 name: CI
 
 on:

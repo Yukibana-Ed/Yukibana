@@ -123,7 +123,9 @@ Every dependency's version is in the catalog of [pnpm-workspace.yaml](pnpm-works
 `catalog:` (`catalog:ts6` for `cloud/web`'s TypeScript 6), and a workspace package through the catalog's
 `workspace:*`. The exception is `electron`, whose exact version Theia's CLI checks. pnpm only installs versions that are
 at least 14 days old (`minimumReleaseAge`), and refuses a lockfile that holds a younger one. Dependabot waits as long
-before proposing an update.
+before proposing an update. The Node.js release in the root `package.json` (`devEngines`) is neither in the catalog nor
+updated by Dependabot: whoever handles dependencies bumps it by hand to the newest 24.x release that is at least 14 days
+old, on every Node.js security release and otherwise once a month.
 
 `minimumReleaseAgeExclude` lets a younger release in. It is only for a fix to a vulnerability that affects us and is
 being exploited, after checking the release's diff, provenance and announcement, and each entry names one exact
