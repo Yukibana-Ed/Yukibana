@@ -21,7 +21,7 @@
     "new:ext": "node ide/scripts/cli.mts new:ext",
     "clean": "pnpm -r --if-present run clean",
     "lint": "pnpm run lint:root && pnpm -r run lint",
-    "lint:root": "oxlint .github/scripts cloud/dev cloud/db/supabase/functions oxfmt.config.mts vitest.config.mts",
+    "lint:root": "oxlint .github/scripts cloud/dev oxfmt.config.mts vitest.config.mts",
     "lint:fix": "oxlint --fix",
     "typecheck": "pnpm run typecheck:root && pnpm -r run typecheck",
     "typecheck:root": "tsc -p .github/scripts",

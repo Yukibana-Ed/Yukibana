@@ -443,6 +443,9 @@ importers:
 
   cloud/db:
     devDependencies:
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.89.0(oxlint-tsgolint@7.0.2005)
       squawk-cli:
         specifier: 'catalog:'
         version: 2.70.0

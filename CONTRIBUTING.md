@@ -109,8 +109,8 @@ More information can be found in [docs/architecture.md](docs/architecture.md).
 with the Supabase CLI and squawk) and [packages/cli](packages/cli) (`@yukibana/cli`) are packages of the same
 workspace. `pnpm setup:cloud` or `pnpm setup:cli` installs them, and each has its own scripts, e.g.
 `pnpm --filter @yukibana/cloud-web dev`, `pnpm --filter @yukibana/cli build`. The database's are `lint` (squawk over the
-migrations), `start`, `stop`, `reset` and `test:db` (pgTAP), and any other Supabase command runs in `cloud/db` with
-`pnpm --filter @yukibana/cloud-db exec supabase <command>`. The library the CLI and the IDE share,
+migrations, oxlint over the Edge Functions), `start`, `stop`, `reset` and `test:db` (pgTAP), and any other Supabase
+command runs in `cloud/db` with `pnpm --filter @yukibana/cloud-db exec supabase <command>`. The library the CLI and the IDE share,
 [@yukibana/client](packages/client), compiles into its `lib` on install; rebuild it after changing it with
 `pnpm --filter @yukibana/client prepare`. Their guide is [docs/cloud/CLAUDE.md](docs/cloud/CLAUDE.md).
 
