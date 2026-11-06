@@ -22,6 +22,7 @@ import { escapes } from './starter.js';
 import type { Entry } from './tar.js';
 import { CONFIG_FILE, NEVER_SUBMITTED, buildOutput, type Config } from './yukibana.js';
 
+/** What `planSubmission` decides a submission holds, and why it might not be sent. */
 export interface Packing {
     /** What goes in the archive, paths relative to the project root, no
      *  wrapper folder, in the tree's order. `yukibana.json` is always among

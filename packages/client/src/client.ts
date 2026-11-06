@@ -115,6 +115,8 @@ export class YukibanaClient {
         return this.#json('GET', `/api/projects${q}`, decodeList(decodeProject, 'projects'));
     }
 
+    /** Returns the project `project` as the person sees it. Fails with 404 when it does not exist or the person may
+     *  not see it, which the registry does not tell apart. */
     project(project: string): Promise<Project> {
         return this.#json('GET', `/api/projects/${seg(project)}`, decodeProject);
     }

@@ -48,14 +48,24 @@ import { CONFIG_FILE, parseConfig, type Config } from './yukibana.js';
 
 /** One version of a file. `mode` holds the permission bits, as in `Entry`. */
 export interface Version {
+    /** The file's contents. */
     readonly data: Uint8Array;
+    /** The file's Unix permission bits. */
     readonly mode: number;
 }
 
 /** What the folder holds at a path: a regular file, or `other` for a
  *  symlink, a directory or anything else where a file could be. A path
  *  that is not in the map is absent. */
-export type FolderEntry = ({ readonly kind: 'file' } & Version) | { readonly kind: 'other' };
+export type FolderEntry =
+    | ({
+          /** What is at the path: a regular file. */
+          readonly kind: 'file';
+      } & Version)
+    | {
+          /** What is at the path: a symlink, a directory or anything else. */
+          readonly kind: 'other';
+      };
 
 /** The folder's paths the plan needs (see `wantedPaths`), relative to the
  *  folder's root with forward slashes. */
@@ -74,6 +84,10 @@ export type ChooseReason =
 
 /** One path's fate.
  *
+ *  `path`: the path, relative to the folder's root with forward slashes.
+ *  `kind`: what a host does there: `write` the newest release's version
+ *  (`theirs`), `delete` the folder's file, offer a three-way `merge` of the
+ *  folder's text with the two releases', or ask the person to `choose`, for `reason`.
  *  `protected`: read-only in either release, or `yukibana.json`.
  *  `editedByStudent`: the folder's copy differs from the base release's, so
  *  writing or deleting it replaces something the student did; a host warns
@@ -122,7 +136,19 @@ export interface UpdatePlan {
 }
 
 /** The outcome of `planUpdate`: a plan, or the one sentence that says why there is none. */
-export type Planned = { readonly ok: true; readonly plan: UpdatePlan } | { readonly ok: false; readonly problem: string };
+export type Planned =
+    | {
+          /** `true` iff there is a plan. */
+          readonly ok: true;
+          /** The plan. */
+          readonly plan: UpdatePlan;
+      }
+    | {
+          /** `true` iff there is a plan. */
+          readonly ok: false;
+          /** Why there is none, in a sentence. */
+          readonly problem: string;
+      };
 
 /** The paths of `folderPaths` (every file in the folder, relative) whose
  *  contents `planUpdate` needs, together with every path either starter

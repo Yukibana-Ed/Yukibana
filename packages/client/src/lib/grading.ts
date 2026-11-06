@@ -18,13 +18,21 @@
 
 /** A release as the decision needs it: the project's list, newest first. */
 export interface ReleaseRef {
+    /** The release's id, a uuid. */
     readonly releaseId: string;
+    /** The label the teacher gave the release, or '' for one without. */
     readonly label: string;
 }
 
 /** What `--release` asked for: each submission's own release (the
  *  default), the newest, or one release of the project by id. */
-export type Wanted = 'own' | 'newest' | { readonly releaseId: string };
+export type Wanted =
+    | 'own'
+    | 'newest'
+    | {
+          /** The id of the release asked for, one of the project's (`wantedRelease` checks it). */
+          readonly releaseId: string;
+      };
 
 /** The releases an assembly of one submission takes, as `chooseReleases` decides them: the one it grades against and the one the student started from. */
 export interface Choice<R extends ReleaseRef> {

@@ -40,9 +40,12 @@ import { expectation, fieldOf } from './issues.js';
  *  starter. */
 export const CONFIG_FILE = 'yukibana.json';
 
+/** Every project kind this version knows: the build system a project uses, which decides its build output. */
 export const KINDS = ['rust-cargo', 'scala-sbt'] as const;
+/** A project kind, one of `KINDS`. */
 export type Kind = (typeof KINDS)[number];
 
+/** What a submission from the project holds, where it goes and how large it may be. */
 export interface SubmissionRules {
     /** When not null, only paths matching one of these are submitted. */
     readonly include: readonly string[] | null;
@@ -65,26 +68,37 @@ export interface SubmissionRules {
 
 /** Which of the IDE's helpers a project has on. */
 export interface Features {
+    /** `true` iff code completion in the editor is on. */
     readonly codeSuggestions: boolean;
     /** Error and warning underlines in the editor. */
     readonly squiggles: boolean;
+    /** `true` iff inline actions in the editor (code lenses) are on. */
     readonly codeLenses: boolean;
+    /** `true` iff the IDE's AI features are on. */
     readonly ai: boolean;
 }
 
 /** Which of the IDE's views a project shows; each is shown unless set false. */
 export interface Widgets {
+    /** `true` iff the file explorer shows. */
     readonly files: boolean;
+    /** `true` iff the search view shows. */
     readonly search: boolean;
+    /** `true` iff the source control view shows. */
     readonly vcs: boolean;
+    /** `true` iff the debug view shows. */
     readonly debug: boolean;
+    /** `true` iff the test view shows. */
     readonly testing: boolean;
+    /** `true` iff the outline view shows. */
     readonly outline: boolean;
+    /** `true` iff the AI chat view shows. */
     readonly aiChat: boolean;
 }
 
 /** How the IDE lays out a project's window. */
 export interface Layout {
+    /** Which of the IDE's own views show. */
     readonly widgets: Widgets;
     /** View containers by id, shown iff true; one not named is left as it is. */
     readonly containers: Readonly<Record<string, boolean>>;
@@ -103,7 +117,9 @@ export interface Telemetry {
 export interface Settings {
     /** The file the IDE opens as the assignment, relative to the root. */
     readonly assignmentFile: string;
+    /** Which of the IDE's helpers are on. */
     readonly features: Features;
+    /** How the IDE lays out the project's window. */
     readonly layout: Layout;
     /** Files the IDE opens when the project opens. */
     readonly openFiles: readonly string[];
@@ -111,7 +127,9 @@ export interface Settings {
      *  a submission holds under them with the teacher's version, and says so
      *  when the two differ. */
     readonly readOnly: readonly string[];
+    /** What a submission holds and where it goes. */
     readonly submission: SubmissionRules;
+    /** What telemetry the IDE sends. */
     readonly telemetry: Telemetry;
     /** The registry project this folder submits to. Only a starter's copy has
      *  one (`starterConfig` writes it); in a course repository it is null. */
@@ -120,7 +138,9 @@ export interface Settings {
 
 /** The whole file, as a course repository and a starter carry it. */
 export interface Config extends Settings {
+    /** The file format's version; this one reads only 1. */
     readonly version: 1;
+    /** The project's kind. */
     readonly kind: Kind;
     /** Paths a student must never receive, as globs relative to the root. */
     readonly hidden: readonly string[];
@@ -170,6 +190,7 @@ const KIND_OUTPUT: Record<Kind, readonly string[]> = {
     'scala-sbt': ['target', 'project/target', 'project/project', '.bsp', '.bloop', '.metals', '.scala-build', '.idea'],
 };
 
+/** Returns the root paths the build of a `kind` project leaves, which no archive carries. */
 export function buildOutput(kind: Kind): readonly string[] {
     return KIND_OUTPUT[kind];
 }
@@ -186,7 +207,22 @@ export function protectedPaths(config: Config): readonly string[] {
     return [CONFIG_FILE, ...config.readOnly, ...config.hidden];
 }
 
-export type Parsed = { ok: true; config: Config; warnings: readonly string[] } | { ok: false; error: string };
+/** The outcome of `parseConfig`: the config and what in the file was ignored, or the one sentence that says why it is not one. */
+export type Parsed =
+    | {
+          /** `true` iff the file is a valid config. */
+          readonly ok: true;
+          /** The config, with every default filled in. */
+          readonly config: Config;
+          /** What the file has that this version ignores, in sentences. */
+          readonly warnings: readonly string[];
+      }
+    | {
+          /** `true` iff the file is a valid config. */
+          readonly ok: false;
+          /** What is wrong with the file, in a sentence that names the field. */
+          readonly error: string;
+      };
 
 /** `true` iff `s` is a uuid, in any case. Release ids are the database's
  *  uuids, so this is the whole check the CLI can make of one. */

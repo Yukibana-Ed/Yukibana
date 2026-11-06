@@ -8,24 +8,33 @@
 
 import { decodePublished, type Published } from './lib/wire.js';
 
+/** What `publish` sends: where, as whom, to which project, and the two archives a release is made of. */
 export interface PublishInput {
     /** The registry, like https://yukibana.example.org */
     readonly url: string;
     /** A project token (`yk_…`) from CI, or a person's access token. */
     readonly token: string;
+    /** The project the release is for. A project token must name this project, and a person's token must be its owner's. */
     readonly projectId: string;
     /** The id written into the starter's yukibana.json, which the release
      *  row is given; null lets the registry choose, for archives that carry
      *  none. A taken id is refused (409) and nothing is stored. */
     readonly releaseId: string | null;
+    /** The starter archive, gzipped tar: what students receive. */
     readonly starter: Uint8Array;
+    /** The teacher archive, gzipped tar: the whole project, hidden files included, which assemblies take from. */
     readonly teacher: Uint8Array;
+    /** The release's label for people, such as a tag or a branch; may be ''. */
     readonly label: string;
+    /** The commit the archives were built from, or null when unknown (a build outside git). */
     readonly commit: string | null;
 }
 
 export type { Published };
 
+/** Uploads `input`'s two archives as one release and returns what the registry recorded. Throws `RegistryError` with
+ *  the registry's status and sentence when it refuses, and `Unexpected` when it answers something this version cannot
+ *  read. `fetchFn` is for tests. */
 export async function publish(input: PublishInput, fetchFn: typeof fetch = fetch): Promise<Published> {
     const form = new FormData();
     form.set('starter', new Blob([buffer(input.starter)], { type: 'application/gzip' }), 'starter.tar.gz');

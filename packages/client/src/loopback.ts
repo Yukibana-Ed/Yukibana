@@ -23,8 +23,19 @@ import type { AddressInfo } from 'node:net';
 import { startLogin, type Session } from './session.js';
 
 /** How the browser's visit ended, for the host's page to say. */
-export type CallbackOutcome = { readonly ok: true } | { readonly ok: false; readonly reason: string };
+export type CallbackOutcome =
+    | {
+          /** `true` iff the browser came back with a login. */
+          readonly ok: true;
+      }
+    | {
+          /** `true` iff the browser came back with a login. */
+          readonly ok: false;
+          /** Why it did not, in the Auth server's words or ours; not escaped. */
+          readonly reason: string;
+      };
 
+/** What `loginWithLoopback` needs from its host: how to show the address and what page the browser lands on. */
 export interface LoopbackOptions {
     /** Shows the person the sign-in address: opens a browser, prints it, or
      *  both. Called once, before waiting. */
@@ -36,6 +47,7 @@ export interface LoopbackOptions {
     /** How long to wait for the browser, in milliseconds. Ten minutes: long
      *  enough to log in to the website first, an emailed code included. */
     readonly timeoutMs?: number;
+    /** The `fetch` the login's calls to the registry and Auth use; the global one when absent. For tests. */
     readonly fetch?: typeof fetch;
 }
 

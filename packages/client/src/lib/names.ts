@@ -13,9 +13,13 @@
 
 /** A student as `folderNames` names them: their account id, which is unique, and whatever names the registry has for them, any of which may be missing. */
 export interface Person {
+    /** The account's id, unique; the folder name falls back to it when the person has no other name. */
     readonly userId: string;
+    /** The person's full name, or null when the registry has none. */
     readonly fullName: string | null;
+    /** The person's GitHub login, or null when the registry has none. */
     readonly githubLogin: string | null;
+    /** The person's email address, or null when the registry has none. */
     readonly email: string | null;
 }
 

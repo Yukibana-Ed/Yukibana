@@ -26,16 +26,20 @@
 
 import { packTar, unpackTar, type TarEntry, type TarHeader } from 'modern-tar';
 
+/** What an archive entry is: a regular file, a directory or a symlink. Nothing else is kept. */
 export type EntryType = 'file' | 'dir' | 'symlink';
 
+/** One entry of an archive, as `readTar` returns it and `writeTar` takes it. */
 export interface Entry {
     /** Forward-slash path, no leading `./`, no trailing slash. */
     readonly path: string;
+    /** What the entry is. */
     readonly type: EntryType;
     /** Unix permission bits. Kept, so `sbt`, `gradlew` and scripts stay executable. */
     readonly mode: number;
     /** Seconds since the epoch. */
     readonly mtime: number;
+    /** The file's contents; empty for a directory or a symlink. */
     readonly data: Uint8Array;
     /** For a symlink: where it points. */
     readonly linkTarget?: string;

@@ -23,6 +23,7 @@ import { readTree } from './tree.js';
 export interface BundleFile {
     /** Relative to the project root, forward slashes. */
     readonly path: string;
+    /** What the path is: a regular file or a symlink; a bundle lists no directories. */
     readonly type: Exclude<EntryType, 'dir'>;
     /** Bytes, uncompressed; 0 for a symlink. */
     readonly size: number;
@@ -65,7 +66,19 @@ export interface SubmissionBundle {
 const NO_CONFIG = `there is no ${CONFIG_FILE} here; submit from the folder the starter unpacked into`;
 
 /** The outcome of bundling a folder: a bundle, or the reasons none could be made, in sentences. */
-export type BundleResult = { ok: true; bundle: SubmissionBundle } | { ok: false; problems: readonly string[] };
+export type BundleResult =
+    | {
+          /** `true` iff a bundle was made. */
+          readonly ok: true;
+          /** The bundle, which may still have `problems` of its own. */
+          readonly bundle: SubmissionBundle;
+      }
+    | {
+          /** `true` iff a bundle was made. */
+          readonly ok: false;
+          /** Why no bundle could be made, in sentences; never empty. */
+          readonly problems: readonly string[];
+      };
 
 /** Returns a bundle of the folder `dir`, which must hold the starter's
  *  `yukibana.json`. Fails, with reasons, only when the config is missing or

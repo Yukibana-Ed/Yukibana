@@ -42,13 +42,15 @@
 import { decodeAuthConfig } from './lib/wire.js';
 import { authorizeUrl, connectReturnUrl, connectUrl, isLoopback, pkce, state as newState } from './lib/pkce.js';
 
+/** A login to one registry: the tokens Auth issued and what a refresh needs. Saved whole by a `SessionStore`. */
 export interface Session {
     /** The registry, like https://cloud.yukibana.dev */
     readonly url: string;
-    /** Its Auth server, and the publishable key that server wants with every
-     *  call. Neither is secret; both are remembered so a refresh does not ask
-     *  the registry again. */
+    /** Its Auth server. Not secret; remembered so a refresh does not ask the
+     *  registry again. */
     readonly supabaseUrl: string;
+    /** The publishable key that Auth server wants with every call. Not secret;
+     *  remembered for the same reason. */
     readonly publishableKey: string;
     /** What the registry is sent as a bearer. Short-lived: an hour. */
     readonly accessToken: string;
@@ -68,8 +70,11 @@ export interface Session {
 
 /** Where a session is kept between runs. */
 export interface SessionStore {
+    /** Returns the session saved last, or null when there is none. */
     load(): Promise<Session | null>;
+    /** Replaces the saved session with `session`. */
     save(session: Session): Promise<void>;
+    /** Forgets the saved session; `load` then returns null. */
     clear(): Promise<void>;
 }
 
@@ -92,6 +97,7 @@ export function memoryStore(initial: Session | null = null): SessionStore {
  *  answer is to log in again, which is why this is its own class. */
 export class NotLoggedIn extends Error {}
 
+/** A login that `startLogin` began: the address to open, and how to finish it with the address the browser returns to. */
 export interface PendingLogin {
     /** Open this in a browser. */
     readonly authorizeUrl: URL;
@@ -231,7 +237,9 @@ export function tokenProvider(store: SessionStore, fetchFn: typeof fetch = fetch
  *  session; when it did not, `why` says why in a sentence a host can show,
  *  because the refresh token then still works until it expires. */
 export interface LoggedOut {
+    /** `true` iff the Auth server ended the session. */
     readonly revoked: boolean;
+    /** Why the Auth server did not end it, in a sentence; null iff `revoked`. */
     readonly why: string | null;
 }
 

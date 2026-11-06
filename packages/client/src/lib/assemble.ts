@@ -47,10 +47,12 @@ export interface Tampering {
     readonly added: readonly string[];
 }
 
+/** A submission assembled with a release: the project to grade and what the teacher should know about it. */
 export interface Assembly {
     /** The assembled project, paths relative to its root, sorted so that a
      *  directory comes before what is in it. */
     readonly entries: readonly Entry[];
+    /** What the student did to files they were not meant to touch. */
     readonly tampering: Tampering;
     /** Paths in `tampering` that the grading release does not protect, so the
      *  student's version (or its absence) is what the assembly holds. Empty
@@ -65,7 +67,22 @@ export interface Assembly {
     readonly refused: readonly string[];
 }
 
-export type Assembled = { ok: true; assembly: Assembly; config: Config } | { ok: false; problem: string };
+/** The outcome of `assemble`: an assembly and the grading release's config, or the one sentence that says why there is none. */
+export type Assembled =
+    | {
+          /** `true` iff the submission could be assembled. */
+          readonly ok: true;
+          /** The assembled project. */
+          readonly assembly: Assembly;
+          /** The grading release's `yukibana.json`, parsed. */
+          readonly config: Config;
+      }
+    | {
+          /** `true` iff the submission could be assembled. */
+          readonly ok: false;
+          /** Why it could not, in a sentence. */
+          readonly problem: string;
+      };
 
 /** Whether an assembly found anything a teacher should look at. */
 export const tampered = (t: Tampering): boolean => t.modified.length + t.deleted.length + t.added.length > 0;
