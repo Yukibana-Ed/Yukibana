@@ -7,7 +7,7 @@ import { FileDialogService } from '@theia/filesystem/lib/browser';
 import { FileService } from '@theia/filesystem/lib/browser/file-service';
 import { TelemetryService } from '@theia/telemetry/lib/common';
 import { WorkspaceService } from '@theia/workspace/lib/browser';
-import { Project } from '@yukibana/cli';
+import { Project } from '@yukibana/client';
 import { localizeMarkdown } from 'yukibana-common/lib/localize-markdown';
 import { CloudService } from '../common/cloud-protocol';
 import { CloudTelemetry } from '../common/cloud-telemetry';

@@ -6,7 +6,7 @@
 import { ILogger } from '@theia/core';
 import { Deferred } from '@theia/core/lib/common/promise-util';
 import { MockLogger } from '@theia/core/lib/common/test/mock-logger';
-import { Project } from '@yukibana/cli';
+import { Project } from '@yukibana/client';
 import { expect } from 'chai';
 import { describe, it } from 'vitest';
 import { CanSubmitStatus, CloudAccount, CloudAuth, CloudService, SubmissionResult } from '../common/cloud-protocol';

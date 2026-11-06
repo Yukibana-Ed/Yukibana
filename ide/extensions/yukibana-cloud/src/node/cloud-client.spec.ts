@@ -1,7 +1,7 @@
 /**
  * SPDX-License-Identifier: MIT
  */
-import { Project } from '@yukibana/cli';
+import { Project } from '@yukibana/client';
 import { expect } from 'chai';
 import { describe, it } from 'vitest';
 import { CanSubmitStatus } from '../common/cloud-protocol';

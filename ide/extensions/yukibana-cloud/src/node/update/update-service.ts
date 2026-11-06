@@ -20,8 +20,8 @@ import {
     UpdatePlan,
     Version,
     wantedPaths,
-} from '@yukibana/cli';
-import { buildOutput, Config, CONFIG_FILE, NEVER_SUBMITTED } from '@yukibana/cli/config';
+} from '@yukibana/client';
+import { buildOutput, Config, CONFIG_FILE, NEVER_SUBMITTED } from '@yukibana/client/config';
 import * as fs from 'fs';
 import * as path from 'path';
 import { messageOf } from '../../common/errors';

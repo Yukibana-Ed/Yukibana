@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: MIT
  */
 import { OS, Path, URI } from '@theia/core';
-import { Project } from '@yukibana/cli';
+import { Project } from '@yukibana/client';
 
 /*
  * Words, since the registry and the IDE disagree on them: the registry's "project" is what the

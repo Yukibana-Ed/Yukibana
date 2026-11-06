@@ -3,13 +3,13 @@
  */
 import { FileUri } from '@theia/core/lib/node';
 import { injectable } from '@theia/core/shared/inversify';
-import { createSubmissionBundle, SubmissionBundle } from '@yukibana/cli';
+import { createSubmissionBundle, SubmissionBundle } from '@yukibana/client';
 import { randomUUID } from 'crypto';
 import * as fs from 'fs';
 import { SubmissionPreview, SubmissionService } from '../common/submission-protocol';
 
 /**
- * Submissions packed by `@yukibana/cli`, so the IDE sends exactly the files `yukibana submit` would, held in memory
+ * Submissions packed by `@yukibana/client`, so the IDE sends exactly the files `yukibana submit` would, held in memory
  * under an id from `prepare` until `release`. Nothing is written to disk unless `save` is asked to.
  */
 @injectable()

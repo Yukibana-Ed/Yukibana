@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: MIT
  */
 import { URI } from '@theia/core/lib/common/uri';
-import type { ChooseReason } from '@yukibana/cli';
+import type { ChooseReason } from '@yukibana/client';
 
 /**
  * Bringing a student's folder up to the newest release of its project.

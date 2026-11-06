@@ -1,4 +1,5 @@
-/** `@yukibana/cli` as a library: what the Theia extension imports.
+/** `@yukibana/client`: the library the Theia extensions and the CLI's
+ *  commands (`packages/cli`) share.
  *
  *  Three things, each usable without the others:
  *
@@ -29,12 +30,15 @@
  *
  *  The pure pieces under `lib/` (the config parser, the plans, tar, the
  *  assembly) are exported too, for an extension that wants to show what a
- *  read-only or hidden pattern matches.
+ *  read-only or hidden pattern matches, and so are the pieces only the CLI's
+ *  commands use today (the release build's plans, the grading choices, the
+ *  folder names): this package is the only way into them.
  *
  *  The library is headless: it owns the protocol, the data, the disk and the
  *  network, and nothing a person sees. Opening a browser, the page the
  *  browser lands on after a login, and every word on a screen belong to the
- *  host (the CLI's are in `commands/`, the demo's in `demo/electron`).
+ *  host (the CLI's are in `packages/cli/src/commands/`, the IDE's in its
+ *  extensions).
  *  Errors carry a status and the registry's own sentence for the host to
  *  show or translate.
  */
@@ -57,10 +61,16 @@ export {
 export { loginWithLoopback, type CallbackOutcome, type LoopbackOptions } from './loopback.js';
 export { loginCode } from './lib/pkce.js';
 export { fileStore, defaultSessionPath } from './store.js';
-export { readArchive, unpackStarter, writeEntries } from './extract.js';
+export { readArchive, unpackStarter, writeEntries, isEmptyDir } from './extract.js';
+export { readTree, type TreeOptions } from './tree.js';
 export { publish, type PublishInput } from './publish.js';
 export { assemble, submissionRoot, teacherRoot, tampered, type Assembled, type Assembly, type Tampering } from './lib/assemble.js';
 export { planSubmission, type Packing } from './lib/pack.js';
+export { planStarter, planTeacher, type Plan } from './lib/starter.js';
+export { behind, chooseReleases, nameOf, wantedRelease, type Choice, type ReleaseRef, type Wanted } from './lib/grading.js';
+export { folderNames, stampOf, type Person } from './lib/names.js';
+export { sha256Hex } from './lib/bytes.js';
+export { gzip } from './lib/gzip.js';
 export {
   planUpdate,
   wantedPaths,
@@ -83,6 +93,8 @@ export {
   CONFIG_FILE,
   DEFAULT_SETTINGS,
   KINDS,
+  isProjectId,
+  isUuid,
   type Config,
   type Features,
   type Kind,

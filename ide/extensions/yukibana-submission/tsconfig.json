@@ -11,7 +11,10 @@
       "path": "../yukibana"
     },
     {
-      "path": "../../packages/yukibana-common"
+      "path": "../../common"
+    },
+    {
+      "path": "../../../packages/client/tsconfig.build.json"
     }
   ]
 }

@@ -1,7 +1,7 @@
 /**
  * SPDX-License-Identifier: MIT
  */
-import type { Folder, FolderEntry, Version } from '@yukibana/cli';
+import type { Folder, FolderEntry, Version } from '@yukibana/client';
 import { createHash } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';

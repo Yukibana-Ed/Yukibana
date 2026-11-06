@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: MIT
  */
 import { inject, injectable } from '@theia/core/shared/inversify';
-import { NotLoggedIn, Project, RegistryError, tokenProvider, YukibanaClient } from '@yukibana/cli';
+import { NotLoggedIn, Project, RegistryError, tokenProvider, YukibanaClient } from '@yukibana/client';
 import { CloudSessionManager, DEFAULT_REGISTRY } from './cloud-session-manager';
 import { CanSubmitStatus, SubmitAvailability } from '../common/cloud-protocol';
 

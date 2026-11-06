@@ -15,7 +15,7 @@
     "@theia/scm": "catalog:",
     "@theia/telemetry": "catalog:",
     "@theia/workspace": "catalog:",
-    "@yukibana/cli": "catalog:",
+    "@yukibana/client": "catalog:",
     "yukibana-common": "catalog:",
     "yukibana-ext": "catalog:",
     "yukibana-submission-ext": "catalog:"

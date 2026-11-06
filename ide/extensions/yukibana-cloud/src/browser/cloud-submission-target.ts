@@ -3,7 +3,7 @@
  */
 import { nls } from '@theia/core';
 import { inject, injectable } from '@theia/core/shared/inversify';
-import { Project } from '@yukibana/cli';
+import { Project } from '@yukibana/client';
 import { SubmissionResult, SubmissionTarget, SubmissionTargetAvailability } from 'yukibana-submission-ext/lib/common/submission-target';
 import { CanSubmitStatus, CloudAccount, CloudService } from '../common/cloud-protocol';
 import { CloudAccountService, CloudAccountState } from './cloud-account-service';

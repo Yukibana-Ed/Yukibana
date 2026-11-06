@@ -45,7 +45,7 @@ export function state(random: (n: number) => Uint8Array = randomBytes): string {
 
 /** Whether `redirect` is a loopback callback the registry's connect page
  *  will send a code to: `http://127.0.0.1:<port>/callback`, nothing else
- *  (the page checks the same, see app/src/lib/connect.ts). */
+ *  (the page checks the same, see cloud/web/src/lib/connect.ts). */
 export function isLoopback(redirect: string): boolean {
   const m = /^http:\/\/127\.0\.0\.1:([1-9][0-9]{0,4})\/callback$/.exec(redirect);
   return m !== null && Number(m[1]) <= 65535;
@@ -66,7 +66,7 @@ export function connectUrl(registry: string, redirect: string, challenge: string
 /** Four characters the CLI prints and the website shows beside "Continue",
  *  so the person can see the page is asking about the login they started.
  *  A courtesy, not a check. The website makes the same from the same state
- *  (`loginCode` in app/src/lib/connect.ts). Null for an address that is not
+ *  (`loginCode` in cloud/web/src/lib/connect.ts). Null for an address that is not
  *  a connect page. */
 export function loginCode(url: URL): string | null {
   const st = url.pathname === '/auth/connect' ? url.searchParams.get('state') : null;
@@ -79,7 +79,7 @@ export const connectReturnUrl = (registry: string): string => `${new URL(registr
 
 /** Where the browser goes without the website: Supabase Auth's GitHub sign-in, coming back to
  *  `redirect` with `?code=`. Supabase only redirects to addresses on its
- *  allow list, which is why `supabase/config.toml` lists the loopback with
+ *  allow list, which is why `cloud/db/supabase/config.toml` lists the loopback with
  *  any port. The scopes are the ones the web login asks for, so the profile
  *  is the same however someone first logs in. */
 export function authorizeUrl(supabaseUrl: string, redirect: string, challenge: string): URL {

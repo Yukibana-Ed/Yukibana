@@ -6,7 +6,7 @@ import { CommandService, ILogger, MessageService, URI } from '@theia/core';
 import { MockLogger } from '@theia/core/lib/common/test/mock-logger';
 import { TelemetryService } from '@theia/telemetry/lib/common';
 import { WorkspaceService } from '@theia/workspace/lib/browser';
-import { Project } from '@yukibana/cli';
+import { Project } from '@yukibana/client';
 import { expect } from 'chai';
 import { describe, it } from 'vitest';
 import { CloudService, DownloadResult, ProjectLookup } from '../common/cloud-protocol';

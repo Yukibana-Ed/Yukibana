@@ -4,7 +4,7 @@
 import { ILogger } from '@theia/core';
 import { MockLogger } from '@theia/core/lib/common/test/mock-logger';
 import { FileUri } from '@theia/core/lib/node';
-import { Entry, NotLoggedIn, Project, RegistryError, SubmissionBundle, writeTar } from '@yukibana/cli';
+import { Entry, NotLoggedIn, Project, RegistryError, SubmissionBundle, writeTar } from '@yukibana/client';
 import { expect } from 'chai';
 import { describe, it, afterAll } from 'vitest';
 import * as fs from 'fs';

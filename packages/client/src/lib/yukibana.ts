@@ -3,7 +3,7 @@
  *  reads for which widgets it shows, which files open and which are
  *  read-only, and the file the builder reads for the build system, what a
  *  student must never receive and what a submission holds.
- *  `docs/yukibana.schema.json` is its schema and `docs/yukibana-json.md`
+ *  `docs/cloud/yukibana.schema.json` is its schema and `docs/cloud/yukibana-json.md`
  *  the prose.
  *
  *  ```json
@@ -314,7 +314,7 @@ export const configSchema = z.object({
 export const SCHEMA_URL = 'https://cloud.yukibana.dev/schema/yukibana.json';
 
 /** Returns the JSON Schema of the file, generated from `configSchema`, as
- *  `docs/yukibana.schema.json` holds it and the registry serves it at
+ *  `docs/cloud/yukibana.schema.json` holds it and the registry serves it at
  *  `SCHEMA_URL`. A test fails when the committed file is not this. */
 export function configJSONSchema(): Record<string, unknown> {
   const generated = z.toJSONSchema(configSchema, { io: 'input', target: 'draft-2020-12' }) as Record<string, unknown>;
@@ -323,7 +323,7 @@ export function configJSONSchema(): Record<string, unknown> {
     $id: SCHEMA_URL,
     title: CONFIG_FILE,
     description:
-      "A project's configuration: its build system, what the student's IDE shows, which files the student may not change, what the student never receives, and what a submission holds. Lives at the project root. docs/yukibana-json.md in yukibana-cloud is the prose.",
+      "A project's configuration: its build system, what the student's IDE shows, which files the student may not change, what the student never receives, and what a submission holds. Lives at the project root. docs/cloud/yukibana-json.md in ISC-HEI/Yukibana is the prose.",
     ...generated,
   };
 }

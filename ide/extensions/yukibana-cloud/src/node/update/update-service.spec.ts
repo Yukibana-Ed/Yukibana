@@ -5,7 +5,7 @@ import { ILogger } from '@theia/core';
 import { EnvVariablesServer } from '@theia/core/lib/common/env-variables';
 import { MockLogger } from '@theia/core/lib/common/test/mock-logger';
 import { FileUri } from '@theia/core/lib/node';
-import { Entry, Project, writeTar } from '@yukibana/cli';
+import { Entry, Project, writeTar } from '@yukibana/client';
 import { expect } from 'chai';
 import * as fs from 'fs';
 import * as os from 'os';

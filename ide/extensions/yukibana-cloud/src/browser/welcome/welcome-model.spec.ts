@@ -3,7 +3,7 @@
  */
 /* eslint-disable no-null/no-null */ // the registry sends missing dates as null
 import { Path, URI } from '@theia/core';
-import { Project } from '@yukibana/cli';
+import { Project } from '@yukibana/client';
 import { expect } from 'chai';
 import { describe, it } from 'vitest';
 import { avatarColour, AVATAR_COLOURS, calendarDays, dueAssignments, initials, matches, projectIdOf, recentProject, roughly } from './welcome-model';

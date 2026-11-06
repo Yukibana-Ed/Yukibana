@@ -14,7 +14,7 @@ import * as path from 'path';
 import { expect, test } from '../src/fixtures';
 
 /** The Electron app's folder. */
-const electronApp = path.resolve(__dirname, '..', '..', 'electron-app');
+const electronApp = path.resolve(__dirname, '..', '..', 'electron');
 
 test.describe('Native modules', () => {
     // The Electron app bundles the builds of the native modules that pnpm installs for Node.js, which only load

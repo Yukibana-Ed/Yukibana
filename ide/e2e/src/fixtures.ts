@@ -10,15 +10,15 @@ import * as path from 'path';
 
 export { expect } from '@playwright/test';
 
-/** A Theia app, in the folder `<app>-app`, and the Playwright project that tests it. */
+/** A Theia app, in the folder `ide/<app>`, and the Playwright project that tests it. */
 export type App = 'browser' | 'electron';
 
-/** Repository root. */
-const root = path.resolve(__dirname, '..', '..');
+/** The IDE's folder, `ide`. */
+const ide = path.resolve(__dirname, '..', '..');
 /** Folder of the downloaded plugins. */
-const plugins = path.join(root, 'plugins');
+const plugins = path.join(ide, 'plugins');
 /** Returns `app`'s folder. */
-const appDir = (app: App): string => path.join(root, `${app}-app`);
+const appDir = (app: App): string => path.join(ide, app);
 
 /**
  * A workspace in a new temporary folder, at a path without symbolic links.

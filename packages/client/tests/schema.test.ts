@@ -6,7 +6,7 @@ test('the published JSON schema is the one the parser checks with, generated fro
   // `npm run schema` writes the file (vitest --update); anywhere else, and in
   // CI, a committed file that is not exactly this fails.
   await expect(`${JSON.stringify(configJSONSchema(), null, 2)}
-`).toMatchFileSnapshot('../../docs/yukibana.schema.json');
+`).toMatchFileSnapshot('../../../docs/cloud/yukibana.schema.json');
 });
 
 test('the schema says where it lives and what a file must have', () => {

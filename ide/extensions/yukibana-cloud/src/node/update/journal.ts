@@ -1,7 +1,7 @@
 /**
  * SPDX-License-Identifier: MIT
  */
-import { CONFIG_FILE } from '@yukibana/cli/config';
+import { CONFIG_FILE } from '@yukibana/client/config';
 import * as fs from 'fs';
 import * as path from 'path';
 import { DecidedRow, PendingRow } from '../../common/update-protocol';

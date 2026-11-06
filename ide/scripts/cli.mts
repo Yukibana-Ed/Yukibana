@@ -7,8 +7,8 @@
 //   pnpm build [browser|electron] [--dev]      both apps by default, production unless --dev
 //   pnpm start [browser|electron] [--prod]     electron by default, builds in development mode
 //              [-- <theia start arguments>]
-//   pnpm package [--preview]                   packages the electron app into electron-app/dist
-//   pnpm download:plugins                      downloads the plugins listed in package.json
+//   pnpm package [--preview]                   packages the electron app into ide/electron/dist
+//   pnpm download:plugins                      downloads the plugins listed in ide/package.json
 //   pnpm watch                                 recompiles the extensions on every change
 //
 // The native modules (node-pty, keytar, drivelist, native-keymap) use Node-API, so the builds that pnpm installs
@@ -21,13 +21,15 @@ import * as path from 'node:path';
 import { parseArgs, type ParseArgsOptionsConfig } from 'node:util';
 import { initExtension } from './extension.mts';
 
-/** A Theia app, in the folder `<app>-app`. */
+/** A Theia app, in the folder `ide/<app>`. */
 type App = 'browser' | 'electron';
 /** Every app. */
 const APPS: App[] = ['browser', 'electron'];
 
-/** Repository root. */
-const root = path.resolve(import.meta.dirname, '..');
+/** The IDE's folder, `ide`. */
+const ide = path.resolve(import.meta.dirname, '..');
+/** Repository root, whose tsconfig.json builds the IDE's extensions and the packages they use. */
+const root = path.resolve(ide, '..');
 /** Theia CLI's script. */
 const theia = createRequire(import.meta.url).resolve('@theia/cli/bin/theia.js');
 /** TypeScript's tsc script, which its package exports only as a bin. */
@@ -37,7 +39,7 @@ const tsc = (() => {
 })();
 
 /** Returns `app`'s folder. */
-const appDir = (app: App): string => path.join(root, `${app}-app`);
+const appDir = (app: App): string => path.join(ide, app);
 
 /** Runs `script` with `args` in Node.js in `cwd`, and exits with its status if it fails. */
 function exec(cwd: string, script: string, args: string[]): void {
@@ -60,27 +62,27 @@ function build(apps: App[], dev: boolean): void {
 }
 
 /**
- * Downloads the plugins listed in package.json, unless the same list was downloaded into the plugins folder before.
+ * Downloads the plugins listed in ide/package.json into ide/plugins, unless the same list was downloaded there before.
  *
  * Theia skips every plugin that is already there, so the plugins downloaded before are deleted first.
  */
 function downloadPlugins(): void {
-    const pluginsDir = path.join(root, 'plugins');
+    const pluginsDir = path.join(ide, 'plugins');
     // Outside the plugins folder, where Theia would take it for a plugin.
     const stampFile = path.join(root, 'node_modules', '.plugins-download-inputs');
-    const { theiaPlugins, theiaPluginsExcludeIds } = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+    const { theiaPlugins, theiaPluginsExcludeIds } = JSON.parse(fs.readFileSync(path.join(ide, 'package.json'), 'utf8'));
     const inputs = JSON.stringify({ theiaPlugins, theiaPluginsExcludeIds });
     if (fs.existsSync(pluginsDir) && fs.existsSync(stampFile) && fs.readFileSync(stampFile, 'utf8') === inputs) {
         console.log('Plugins: up to date');
         return;
     }
     fs.rmSync(pluginsDir, { recursive: true, force: true });
-    exec(root, theia, ['download:plugins', '--rate-limit=15', '--parallel=false']);
+    exec(ide, theia, ['download:plugins', '--rate-limit=15', '--parallel=false']);
     makeWritable(pluginsDir);
     fs.writeFileSync(stampFile, inputs);
 }
 
-/** Packages the Electron app into electron-app/dist, as an unpacked folder iff `preview`. */
+/** Packages the Electron app into ide/electron/dist, as an unpacked folder iff `preview`. */
 function packageElectron(preview: boolean): void {
     const dir = appDir('electron');
     fs.rmSync(path.join(dir, 'dist'), { recursive: true, force: true });
@@ -150,7 +152,7 @@ function parseNewExtension(positionals: string[], lang: boolean = false, force: 
     if (ext.includes('/')) {
         fail(`Extension name cannot contain '/'`);
     }
-    const extPath = path.join(root, 'theia-extensions', 'langs', ext);
+    const extPath = path.join(ide, 'extensions', 'langs', ext);
     if (!force && !notFoundOrEmpty(extPath)) {
         fail(`Directory ${extPath} already exists`);
     }

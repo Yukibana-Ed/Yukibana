@@ -1,6 +1,6 @@
 /** What the registry's JSON API answers, as the CLI relies on it.
  *
- *  `app/src/lib/api.ts` is the other side and says the same in the same
+ *  `cloud/web/src/lib/api.ts` is the other side and says the same in the same
  *  words. Every response is `unknown` until one of the decoders here has
  *  looked at it: a registry of another version answers something else, and
  *  "the registry answered `deadline` as a number" is a better sentence than

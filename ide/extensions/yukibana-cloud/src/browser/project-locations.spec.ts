@@ -6,7 +6,7 @@ import { URI } from '@theia/core';
 import { EnvVariablesServer } from '@theia/core/lib/common/env-variables';
 import { FileService } from '@theia/filesystem/lib/browser/file-service';
 import { WorkspaceService } from '@theia/workspace/lib/browser';
-import { Project } from '@yukibana/cli';
+import { Project } from '@yukibana/client';
 import { expect } from 'chai';
 import { describe, it } from 'vitest';
 import { folderNameProblem, ProjectLocations } from './project-locations';

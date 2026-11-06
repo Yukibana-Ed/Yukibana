@@ -4,7 +4,7 @@
 import { Emitter, ILogger } from '@theia/core';
 import { KeyStoreService } from '@theia/core/lib/common/key-store';
 import { inject, injectable, named } from '@theia/core/shared/inversify';
-import { CallbackOutcome, loginCode, logout as endSession, loginWithLoopback, memoryStore, Session, SessionStore } from '@yukibana/cli';
+import { CallbackOutcome, loginCode, logout as endSession, loginWithLoopback, memoryStore, Session, SessionStore } from '@yukibana/client';
 import { LoginResult } from '../common/cloud-protocol';
 
 export const DEFAULT_REGISTRY = 'https://cloud.yukibana.dev';

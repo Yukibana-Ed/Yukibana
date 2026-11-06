@@ -15,7 +15,7 @@
     "@theia/workspace": "catalog:",
     "yukibana-common": "catalog:",
     "yukibana-ext": "catalog:",
-    "@yukibana/cli": "catalog:"
+    "@yukibana/client": "catalog:"
   },
   "devDependencies": {
     "@types/react": "catalog:",

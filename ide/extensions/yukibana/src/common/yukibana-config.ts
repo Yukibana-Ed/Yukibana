@@ -1,7 +1,7 @@
 /**
  * SPDX-License-Identifier: MIT
  */
-import { DEFAULT_SETTINGS, parseSettings, Settings } from '@yukibana/cli/config';
+import { DEFAULT_SETTINGS, parseSettings, Settings } from '@yukibana/client/config';
 
 /**
  * What a workspace is set up with: its `yukibana.json`, read with the schema the CLI checks a release with, so the IDE

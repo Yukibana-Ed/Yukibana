@@ -28,7 +28,7 @@
  *     back to for a session.
  *
  *  The redirect address must be on the Auth server's allow list
- *  (`supabase/config.toml`): the loopback on any port is, and an IDE that
+ *  (`cloud/db/supabase/config.toml`): the loopback on any port is, and an IDE that
  *  comes back somewhere else needs its address added there.
  *
  *  A session is kept by a `SessionStore`: a file for the terminal
