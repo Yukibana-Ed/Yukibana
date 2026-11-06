@@ -89,11 +89,10 @@ jobs:
       - name: Check formatting
         run: pnpm run format:check
 
-      - name: Lint, typecheck and test the files no package owns
+      - name: Lint and typecheck the files no package owns
         run: |
           pnpm run lint:root
           pnpm run typecheck:root
-          pnpm run test:root
 
       - name: Check for expired minimumReleaseAgeExclude entries
         run: pnpm run check:release-age
@@ -116,11 +115,19 @@ jobs:
           read -ra filters <<<"$FILTERS"
           pnpm "${filters[@]}" run --if-present typecheck
 
+      # In one run of the root's Vitest, for one coverage report: each affected package's project (named after the package;
+      # one without unit tests has none and is skipped), and ci-scripts, the files no package owns.
       - name: Unit tests
-        if: needs.plan.outputs.packages != '[]'
         run: |
-          read -ra filters <<<"$FILTERS"
-          pnpm "${filters[@]}" run --if-present test
+          read -ra projects < <(jq -r 'map("--project=" + .) | join(" ")' <<<"$PACKAGES")
+          pnpm exec vitest run --coverage --project=ci-scripts "${projects[@]}"
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 5
 
       # The CLI and the Worker are the packages with a build.
       - name: Build
