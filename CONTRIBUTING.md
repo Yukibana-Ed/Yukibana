@@ -64,8 +64,8 @@ so only the ones that changed are recompiled.
 - `pnpm lint`, `pnpm typecheck`: run every package's `lint` (oxlint) or `typecheck` script, after `lint:root` or
   `typecheck:root` for the files no package owns; one package's with e.g. `pnpm --filter @yukibana/cli lint`.
   `pnpm lint:fix` fixes what oxlint can across the whole project
-- `pnpm format` / `pnpm format:check`: format the whole project with oxfmt, or only check it (oxfmt reads neither
-  Markdown nor Svelte components)
+- `pnpm format` / `pnpm format:check`: format the whole project with oxfmt, or only check it (Markdown is excluded in
+  `oxfmt.config.mts`; oxfmt does not read Svelte components)
 - `pnpm test`: run every package's unit tests with Vitest, straight from the sources, each with its package's
   `vitest.config` (the same as `pnpm -r test`, in one run);
   `pnpm test:watch` reruns them on every change. What a spec imports from another extension
