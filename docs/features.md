@@ -55,12 +55,12 @@ Views and containers can thus be toggled through the configuration file.
 
 ## Toolbar setup
 
-A custom toolbar is defined in [yukibana/src/browser/yukibana-toolbar-contribution.ts](../ide/extensions/yukibana/src/browser/yukibana-toolbar-contribution.ts).
+A custom toolbar is defined in [yukibana/src/browser/yukibana-toolbar-contributions.ts](../ide/extensions/yukibana/src/browser/yukibana-toolbar-contributions.ts).
 
 ## Initial layout definition
 
 The initial layout for when a workspace is opened is controlled by `YukibanaLayoutContribution`
-in [yukibana/src/browser/yukibana-toolbar-contribution.ts](../ide/extensions/yukibana/src/browser/yukibana-toolbar-contribution.ts).
+in [yukibana/src/browser/yukibana-layout-contribution.ts](../ide/extensions/yukibana/src/browser/yukibana-layout-contribution.ts).
 
 Additionally, we define a custom layout restorer to always start with
 the configured initial layout. When initialized, the module also rebinds layout
@@ -74,7 +74,7 @@ to configuration keys.
 ## Inline suggestions disabling
 
 Inline suggestions are toggled by conditionally dropping completion item provider
-registration requests, in [yukibana/src/browser/yukibana-suggestions-contribution.ts](../ide/extensions/yukibana/src/browser/yukibana-suggestions-contribution.ts).
+registration requests, in [yukibana/src/browser/languages/suggestions-provider.ts](../ide/extensions/yukibana/src/browser/languages/suggestions-provider.ts).
 
 > [!NOTE]
 > This could be improved by wrapping the providers methods instead to allow
@@ -103,7 +103,7 @@ The frontend contribution is defined in [yukibana-submission/src/browser/submiss
 The backend service is defined in [yukibana-submission/src/node/submission-service.ts](../ide/extensions/yukibana-submission/src/node/submission-service.ts).
 
 The two communicate through JSON-Rpc, as set up in [yukibana-submission/src/node/submission-backend-module.ts](../ide/extensions/yukibana-submission/src/node/submission-backend-module.ts)
-and [yukibana-submission/src/browser/submission-fronted-module.ts](../ide/extensions/yukibana-submission/src/browser/submission-fronted-module.ts).
+and [yukibana-submission/src/browser/submission-frontend-module.ts](../ide/extensions/yukibana-submission/src/browser/submission-frontend-module.ts).
 
 Additionally, translations for the action and feedback message are provided by
 a `LocalizationContribution` in [yukibana-submission/src/node/submission-localization-contribution.ts](../ide/extensions/yukibana-submission/src/node/submission-localization-contribution.ts).
@@ -168,6 +168,6 @@ and [yukibana-submission/src/browser/submission-frontend-contribution.ts](../ide
 To ignore specific notifications, we may not always be able to disable them
 at the root (in the emitter), because they may come from external extensions.
 
-Instead, we rebind the `MessageService` to a custom implementation in [yukibana/src/common/yukibana-message-service.ts](../ide/extensions/yukibana/src/common/yukibana-message-service.ts).
+Instead, we rebind the `MessageService` to a custom implementation in [yukibana/src/browser/yukibana-message-service.ts](../ide/extensions/yukibana/src/browser/yukibana-message-service.ts).
 This custom service can ignore notifications and auto-select actions
 without showing the choices to the user.
