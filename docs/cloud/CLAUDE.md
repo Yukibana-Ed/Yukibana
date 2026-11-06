@@ -184,9 +184,10 @@ At the root: `pnpm lint`, `pnpm typecheck` and `pnpm test` run every
 package's scripts (one package's with `pnpm --filter <name> <script>`):
 `@yukibana/cloud-web`, `@yukibana/client`, `@yukibana/cli`, and
 `@yukibana/cloud-db`, whose `lint` is squawk over the migrations (see its
-`.squawk.toml`). Formatting follows the old repository's oxfmt settings:
-single quotes (double only where they spare an escape), lines up to 180
-characters. With the stack running: `pnpm --filter @yukibana/cloud-db reset`,
+`.squawk.toml`). `pnpm format` / `pnpm format:check` at the root format
+every package with the repository's one oxfmt config (`oxfmt.config.mts`: 4
+spaces, single quotes, 180 columns); oxfmt does not read Svelte components,
+which keep their 2-space indent, nor Markdown. With the stack running: `pnpm --filter @yukibana/cloud-db reset`,
 `pnpm --filter @yukibana/cloud-db test:db`, and
 `pnpm --filter @yukibana/cloud-web test:integration`.
 On `main`, the database deploys only after CI is green (migrations,
