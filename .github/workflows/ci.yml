@@ -60,7 +60,7 @@ jobs:
   check:
     name: Lint, typecheck and unit tests
     needs: plan
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
       PACKAGES: ${{ needs.plan.outputs.packages }}
@@ -330,7 +330,7 @@ jobs:
     name: Licenses
     needs: plan
     if: needs.plan.outputs.licenses == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - name: Checkout
