@@ -1,6 +1,6 @@
 {
   "extends": "../configs/base.tsconfig.json",
-  "include": ["*"],
+  "include": ["*", "../configs/*.ts"],
   "compilerOptions": {
     "composite": true,
     "allowJs": true,

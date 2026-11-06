@@ -28,7 +28,7 @@ registerHooks({
 // jsdom`), what Theia's frontend modules expect when they are loaded: what
 // Theia's own enableJSDOM() adds to JSDOM, and an application config.
 if (typeof document !== 'undefined') {
-    (document as { queryCommandSupported?: () => boolean }).queryCommandSupported ??= () => false;
+    (document as { queryCommandSupported?: (commandId: string) => boolean }).queryCommandSupported ??= () => false;
     const { FrontendApplicationConfigProvider } = await import('@theia/core/lib/browser/frontend-application-config-provider');
     FrontendApplicationConfigProvider.set({});
 }
