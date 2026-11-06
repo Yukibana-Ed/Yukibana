@@ -16,9 +16,14 @@
     in
     {
       devShells = forAllSystems (pkgs: {
-        # Node 24, as the root's devEngines requires; npm comes with it.
+        # pnpm, which installs and runs the workspace: it switches itself to the root's packageManager release and runs
+        # every script on the exact Node.js release of the root's devEngines, which it downloads. That download is a
+        # generic Linux binary, so on NixOS it needs nix-ld (programs.nix-ld.enable). Node 24 is for pnpm itself.
         default = pkgs.mkShell {
-          packages = [ pkgs.nodejs_24 ];
+          packages = [
+            pkgs.nodejs_24
+            pkgs.pnpm
+          ];
         };
       });
     };
