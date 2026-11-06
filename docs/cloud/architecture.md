@@ -69,9 +69,9 @@ Object keys are `starters/<project>/<uuid>.tar.gz`,
 
 | Element | When | Does |
 | --- | --- | --- |
-| **CI** (`ci.yml`, `ci-devcontainer.yml`) | every push and pull request | lint, typecheck, unit tests, a build; the whole stack from empty migrations, pgTAP, integration tests; the devcontainer. |
-| **Database** (`database.yml`) | after CI succeeds on `main`, or by hand | migrations, `cloud/db/ops/bootstrap.sql`, Supabase settings. |
-| **Cloudflare Workers Builds** | every push | builds the Worker; deploys it on `main`, uploads a preview version elsewhere. |
+| **CI** (`ci.yml`) | pull requests, the merge queue, pushes to `main` | for the packages a change affects: lint, typecheck, unit tests, a build; the whole stack from empty migrations, pgTAP, integration tests; the devcontainer. |
+| **Deploy cloud** (`deploy-cloud.yml`) | a push to `main` that affects the cloud, or by hand | migrations, `cloud/db/ops/bootstrap.sql`, Supabase settings, then the Worker. |
+| **Preview** (`preview.yml`) | a pull request's CI, once a maintainer approves | uploads the pull request's Worker as a preview version. |
 | **Drift** (`drift.yml`) | nightly | fails if production differs from the migrations. |
 
 ## 2. How they relate
@@ -195,7 +195,7 @@ The same elements exist three times, wired the same way.
 | --- | --- | --- | --- |
 | Postgres, Auth, Realtime | `supabase start` | `supabase start` on the runner | a Supabase project |
 | Bucket | RustFS, `cloud/dev/compose.yml` | RustFS | R2 bucket `yukibana-cloud` |
-| Worker | `pnpm --filter @yukibana/cloud-web dev`, configured by `cloud/web/.dev.vars` | a production build, and the integration suite against the server modules | Workers Builds, `wrangler.jsonc` |
+| Worker | `pnpm --filter @yukibana/cloud-web dev`, configured by `cloud/web/.dev.vars` | a production build, and the integration suite against the server modules | `deploy-cloud.yml`, `wrangler.jsonc` |
 | Database connection | `localConnectionString` in `wrangler.jsonc` | the same | Hyperdrive, as `yukibana_app` |
 | Mail | the stack's catcher at :54324 | none | Resend |
 
@@ -241,9 +241,9 @@ outlives the check that made it.
 **The schema changes only through migrations, and migrations only add.**
 *Why:* the database is the rule book, so it is reviewed like code; and
 because nothing is ever removed in the same step, an old Worker against a
-new schema keeps working. That is what lets the Worker and the database
-deploy independently (see `deploy.md`). *How it is enforced:* squawk lints
-every migration, CI rebuilds the database from empty on every push, and the
+new schema keeps working. That is what lets the database deploy before the
+Worker, with the old Worker still running in between (see `deploy.md`). *How it is enforced:* squawk lints
+every migration, CI rebuilds the database from empty for every change to the cloud, and the
 nightly drift job fails if production differs. *Cost:* a removal takes two
 deploys, and a mistake is fixed by a new migration, never by editing one.
 

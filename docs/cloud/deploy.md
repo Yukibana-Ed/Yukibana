@@ -1,7 +1,7 @@
 # Deploying Yukibana Cloud
 
-> The commands and paths below (`app/`, `ops/`, `supabase/`, `scripts/`) are those of the yukibana-cloud repository,
-> which deploys the cloud until it is deployed from here.
+> Until the cutover, the cloud still deploys from the yukibana-cloud repository (Workers Builds and its Database
+> workflow). This page describes the pipeline of this repository, which takes over from then on.
 
 One Supabase project (Postgres and Auth), one Cloudflare Worker, one R2
 bucket. Everything below fits the free tier of both, with one caveat: R2 asks
@@ -10,98 +10,87 @@ is genuinely free.
 
 This page has two halves. The first is how a change reaches production once
 an environment exists; the second, from step 1, is setting one up.
-`architecture.md` says what the pieces are and how they connect.
+`architecture.md` says what the pieces are and how they connect. Commands run
+from the repository root.
 
 ## The pipeline
 
-After the first setup, deploying is `git push` to `main`. Four things
-listen to the repository:
+After the first setup, deploying is merging to `main` through the merge
+queue. Four workflows listen to the repository:
 
 ```
- push / pull request ──▶ CI (ci.yml, ci-devcontainer.yml)
-                           │ success on main
-                           ▼
-                         Database (database.yml)
-                           placeholders → secrets → migration list → db push
-                           → ops/bootstrap.sql → config diff → config push
-
- push to main ─────────▶ Cloudflare Workers Builds
-                           npm run build → npx wrangler deploy
- push to another branch ▶ Cloudflare Workers Builds
-                           npm run build → a preview version, not deployed
-
- 03:17 UTC daily ──────▶ Drift (drift.yml)
-                           production vs migrations, Realtime policies
+ pull request, merge queue ─▶ CI (ci.yml)
+                                plan → the affected packages' checks, the cloud stack, …
+                                → ci-ok, the one required check
+                                and, for a pull request without a migration, a preview build
+ CI of a pull request ──────▶ Preview (preview.yml), once a maintainer approves
+                                wrangler versions upload → a preview URL on the pull request
+ push to main ──────────────▶ Deploy cloud (deploy-cloud.yml), when the cloud is affected
+                                placeholders → secrets → migration list → db push
+                                → cloud/db/ops/bootstrap.sql → config diff → config push
+                                → build → wrangler deploy
+ 03:17 UTC daily ───────────▶ Drift (drift.yml)
+                                production vs migrations, Realtime policies, event triggers
 ```
 
 | | Triggered by | Does | Needs |
 | --- | --- | --- | --- |
-| **CI** | every push and pull request, any branch | `npm run check`, the app and CLI builds, `yukibana check` over the fixture; then the real stack on the runner: squawk, every migration from empty, pgTAP, the Realtime policy check, the integration suite; and, separately, the devcontainer build | nothing secret |
-| **Database** | CI finishing successfully on `main` (`workflow_run`), or by hand | checks no placeholder is left, checks every secret is set, lists then applies pending migrations, runs `ops/bootstrap.sql`, prints the settings diff, pushes `supabase/config.toml`'s production block. One run at a time (`concurrency: deploy`). | the repository secrets in step 5 |
-| **Workers Builds** | every push to any branch, from Cloudflare's own connection to the repository | `npm run build` (installs and builds `app/`); on `main`, `npx wrangler deploy` with `wrangler.jsonc`; on any other branch, a preview version with its own URL, which the bot links on the pull request | the Worker secrets in step 4, set once |
-| **Drift** | nightly, or by hand | `supabase db diff` of production against the migrations for `public` and `app`, and `ops/realtime-policies.sql` | `SUPABASE_DB_URL` only |
+| **CI** | pull requests, the merge queue, pushes to `main` | lint, typecheck, unit tests and builds of the packages the change affects (pnpm's package graph); `yukibana check` over the fixture; when `cloud/web` or `cloud/db` is affected, the real stack on the runner: every migration from empty, pgTAP, the Realtime policy and event trigger checks, the integration suite; squawk is `cloud/db`'s lint; the devcontainer build when `cloud/dev` changed | nothing secret |
+| **Preview** | CI of a pull request from a branch of this repository that affects `cloud/web` and does not touch `cloud/db` | uploads the build CI made as a preview version (`wrangler versions upload --preview-alias pr-<n>`), and comments its URL | a maintainer's approval of the `preview` environment, and its Cloudflare secrets |
+| **Deploy cloud** | a push to `main` that affects `@yukibana/cloud-web` or `@yukibana/cloud-db` (or a package they use, or a file no package owns), or by hand | checks no placeholder is left, checks every secret is set, lists then applies pending migrations, runs `cloud/db/ops/bootstrap.sql`, prints the settings diff, pushes `cloud/db/supabase/config.toml`'s production block, then builds and deploys the Worker. One run at a time (`concurrency: deploy-cloud`). | the `production` environment's secrets, step 5 |
+| **Drift** | nightly, or by hand | `supabase db diff` of production against the migrations for `public` and `app`, `cloud/db/ops/realtime-policies.sql` and `cloud/db/ops/event-triggers.sql` | `SUPABASE_DB_URL` only |
 
 Two consequences are worth knowing before the first change:
 
-* **The database waits for CI; the Worker does not.** Workers Builds is
-  Cloudflare's, not a GitHub workflow, so it deploys every push to `main`
-  whether CI passes or not. Keep `main` green by merging pull requests whose
-  CI passed, not by relying on the deploy to stop.
-* **A preview is production with other code.** A branch's preview URL runs
-  the branch's Worker with production's bindings and secrets: the same
-  database, the same bucket, the same accounts. Log in there only to look,
-  and remember that the production schema is what it sees, so a preview of
-  code that needs an unapplied migration will fail where it reads it.
-* **Neither half knows about the other**, so nothing orders them. What keeps
-  the site up is the rule that migrations only ever add: an old Worker
-  against a new schema is fine. The other direction is not.
+* **The database goes first, then the Worker, in one run.** What keeps the
+  site up between the two steps is the rule that migrations only ever add:
+  the Worker still running is old code against a new schema, which is fine.
+  The other direction is not, which is why removing something takes two
+  deploys (below).
+* **A preview is production with other code.** A preview URL runs the pull
+  request's Worker with production's bindings and secrets: the same
+  database, the same bucket, the same accounts. Log in there only to look.
+  That is also why a maintainer approves each one, and why a pull request
+  with a migration gets none: the production schema is what it would see.
 
 ## Shipping a change
 
-**Code only** (pages, API, anything under `app/`). Merge to `main`. Workers
-Builds deploys it; the Database workflow runs and finds
-nothing to apply.
+**Code only** (pages, API, anything under `cloud/web`). Merge. Deploy cloud
+finds no migration to apply and deploys the Worker.
 
-**A migration only** (a policy, a function, a new column nobody reads yet).
-`npx supabase migration new <name>`, write it by hand, add its pgTAP
-negatives, `npm run db:lint`, `npm run db:reset`, `npm run db:test`. Merge;
-the Database workflow applies it after CI passes, and the "Migrations
-pending" step in its log is the record of which files ran.
+**A migration** (a policy, a function, a new column). `pnpm --filter
+@yukibana/cloud-db exec supabase migration new <name>`, write it by hand, add
+its pgTAP negatives, then `pnpm --filter @yukibana/cloud-db lint`, `reset`
+and `test:db`. Merge; Deploy cloud applies it, and the "Migrations pending"
+step in its log is the record of which files ran. Code that needs the
+migration can ship with it: the Worker is deployed only after the
+migration has gone out.
 
-**Both: code that needs a new migration.** Two pushes. The migration first;
-wait for the Database run to go green; then the code that uses it. In one
-push, Workers Builds would usually win the race and serve code that reads a
-column that does not exist yet.
+**A Supabase setting** (auth providers, redirect URLs, mail, rate limits:
+`[remotes.production]` in `cloud/db/supabase/config.toml`). Merge; the
+"Supabase settings, before" step prints what the push will change, and the
+dashboard stays read-only. When code needs the setting, the two can ship
+together for the same reason. Turning on the IDE's login (step 7) is this
+case.
 
-**A Supabase setting** (`supabase/config.toml`'s production block). Merge;
-the Database workflow pushes it after CI passes, and prints the before and
-after. When code needs the setting, the setting goes first and the code reads
-it only once it is live, the same as a migration. Turning on the IDE's login
-(step 7) is this case.
+**Removing something.** Two deploys: first stop reading it and deploy,
+then drop it in a later migration. An old Worker still running against a
+dropped column is the failure this avoids.
 
-**Removing something.** The other way round, and also two pushes: first
-stop reading it and deploy, then drop it in a later migration. An old
-Worker still running against a dropped column is the failure this avoids.
+**Worker configuration.** A non-secret value is `vars` in
+`cloud/web/wrangler.jsonc` and ships with the next deploy. A secret is
+`pnpm --filter @yukibana/cloud-web exec wrangler secret put <NAME>` from a
+checkout, which takes effect at once and needs no deploy.
 
-**Supabase settings** (auth providers, redirect URLs, mail, rate limits).
-Edit `[remotes.production]` in `supabase/config.toml` and merge. The
-"Supabase settings, before" step prints what the push will change; the
-dashboard stays read-only.
-
-**Worker configuration.** A non-secret value is `vars` in `wrangler.jsonc`
-and ships with the next build. A secret is `npx wrangler secret put <NAME>`
-from a checkout, which takes effect at once and needs no deploy.
-
-**By hand.** The Database workflow has a "Run workflow" button
-(`workflow_dispatch`); it applies `main`'s migrations and settings without
-waiting for a push. A Worker build can be retried from the Cloudflare
-dashboard, or deployed from a checkout with `npm run build && npm run
-deploy` after `npx wrangler login`.
+**By hand.** Deploy cloud has a "Run workflow" button (`workflow_dispatch`),
+which deploys `main` whatever changed. A failed deploy is re-run that way;
+the next deploy includes everything anyway.
 
 ## Rolling back
 
 **The Worker.** Cloudflare keeps previous versions: the Worker's
-Deployments tab in the dashboard, or `npx wrangler rollback`, puts one back
+Deployments tab in the dashboard, or `pnpm --filter @yukibana/cloud-web exec
+wrangler rollback`, puts one back
 in seconds. Because migrations only add, the older Worker works against the
 newer schema. Then revert the commit on `main`, or the next push redeploys
 what was rolled back.
@@ -112,7 +101,7 @@ and pushed like any other. Never edit a migration that has run, and never
 fix production by hand: the next drift run would fail, and the ledger would
 no longer describe the database.
 
-**Settings.** Revert the change to `supabase/config.toml` and let the
+**Settings.** Revert the change to `cloud/db/supabase/config.toml` and let the
 workflow push it again.
 
 ## Setting up an environment
@@ -154,12 +143,12 @@ only to your organisation's own members, a couple of mails an hour, and on
 the free plan it refuses the code template, failing the whole auth push. At
 resend.com, add the domain `yukibana.dev` and put the DNS records it shows
 into Cloudflare, then create an API key with sending access. The rest is in
-`supabase/config.toml` under `[remotes.production.auth.email.smtp]`; the
+`cloud/db/supabase/config.toml` under `[remotes.production.auth.email.smtp]`; the
 key is the `SUPABASE_AUTH_SMTP_PASS` secret below. Another provider, or
 another sender address, is a change to that block.
 
 Nothing else is configured by hand. The deploy workflow pushes the auth
-settings from `supabase/config.toml`, and the schema comes from the
+settings from `cloud/db/supabase/config.toml`, and the schema comes from the
 migrations. The dashboard is read-only from here on; `drift.yml` fails
 nightly if something is changed there.
 
@@ -190,7 +179,7 @@ password: `yukibana_app`, with the value you will put in `APP_DB_PASSWORD`
 string is not.
 
 ```bash
-npx wrangler hyperdrive create yukibana-cloud \
+pnpm --filter @yukibana/cloud-web exec wrangler hyperdrive create yukibana-cloud \
   --connection-string="postgresql://yukibana_app:<APP_DB_PASSWORD>@db.<ref>.supabase.co:5432/postgres"
 ```
 
@@ -202,30 +191,29 @@ role owns the tables, and a table's owner is not subject to its own policies
 unless they are forced, which these migrations deliberately do not do — so
 the whole authorisation model would be off, silently. It is also not a member
 of `yukibana_publisher`, so publishing a release would fail while every page
-kept working. This happened; `app/src/lib/server/db.ts` now answers such a
+kept working. This happened; `cloud/web/src/lib/server/db.ts` now answers such a
 connection with a sentence naming it, which is how you would find out.
 
 The password reaches the database from `APP_DB_PASSWORD` through
-`ops/bootstrap.sql` on every deploy, so the two must be the same value. To
+`cloud/db/ops/bootstrap.sql` on every deploy, so the two must be the same value. To
 change it later, change the secret, deploy, then
-`npx wrangler hyperdrive update <id> --connection-string=...`.
+`pnpm --filter @yukibana/cloud-web exec wrangler hyperdrive update <id> --connection-string=...`.
 
-**Point Workers Builds at this repository**, if it is not already: the
-Worker → Settings → Builds.
-Cloudflare's defaults are what this repository is arranged for, so leave the
-root directory empty: `wrangler.jsonc` sits at the root, `npm run build`
-there builds the app, and `npx wrangler deploy` deploys it. An earlier
-layout kept the Worker's configuration under `app/`, and Cloudflare's build
-failed with "could not detect a directory containing static files", which is
-what wrangler says when it is run somewhere with no configuration to find.
+**Create an API token for the deploys** (My Profile → API Tokens → Create
+Token → "Edit Cloudflare Workers"), limited to this account. Deploy cloud
+deploys the Worker with it, and Preview uploads preview versions with it:
+Cloudflare cannot limit a token to uploads, which is why the `preview`
+environment needs a maintainer's approval (step 5). The Worker is not
+connected to Workers Builds: the deploy workflow is the only thing that
+deploys it, after the migrations.
 
 Note the account id from the dashboard sidebar: it is the first label of the
 R2 S3 endpoint, which `S3_ENDPOINT` and `S3_PUBLIC_ENDPOINT` in
-`wrangler.jsonc` hold.
+`cloud/web/wrangler.jsonc` hold.
 
 ## 3. Fill in the three placeholders
 
-`node scripts/check-production-config.mjs` names them and where each lives;
+`node cloud/dev/scripts/check-production-config.mjs` names them and where each lives;
 the deploy workflow runs it first and refuses to deploy while any remain.
 
 | Placeholder | Value |
@@ -234,32 +222,37 @@ the deploy workflow runs it first and refuses to deploy while any remain.
 | `REPLACE_ME_HYPERDRIVE_ID` | the id `hyperdrive create` printed |
 | `REPLACE_ME_WORKERS_SUBDOMAIN` | your workers.dev subdomain, so the app is at `https://yukibana-cloud.<subdomain>.workers.dev`, or the custom domain instead |
 
-They are in `wrangler.jsonc` at the repository root (production values,
-because that is what is deployed and what a diff should show) and `supabase/config.toml` (under
+They are in `cloud/web/wrangler.jsonc` (production values, because that is
+what is deployed and what a diff should show) and `cloud/db/supabase/config.toml` (under
 `[remotes.production]`, which is what `config push` applies to the project;
 everything above that block stays local). Commit the result.
 
 One more value is the environment's own without being a placeholder:
-`SITE_URL` in `wrangler.jsonc`, the address people use. It must be the
+`SITE_URL` in `cloud/web/wrangler.jsonc`, the address people use. It must be the
 origin of `site_url` under `[remotes.production.auth]`; step 7 says why.
 
 ## 4. Worker secrets
 
 Three, set once. The Worker already exists, so this works before the first
-deploy. From the repository root, after `npx wrangler login`:
+deploy. From the repository root, after
+`pnpm --filter @yukibana/cloud-web exec wrangler login`:
 
 ```bash
-npx wrangler secret put SUPABASE_PUBLISHABLE_KEY
-npx wrangler secret put S3_ACCESS_KEY_ID
-npx wrangler secret put S3_SECRET_ACCESS_KEY
+pnpm --filter @yukibana/cloud-web exec wrangler secret put SUPABASE_PUBLISHABLE_KEY
+pnpm --filter @yukibana/cloud-web exec wrangler secret put S3_ACCESS_KEY_ID
+pnpm --filter @yukibana/cloud-web exec wrangler secret put S3_SECRET_ACCESS_KEY
 ```
 
 They are not in the deploy workflow: a secret that is re-pushed on every
 deploy is a secret that is in CI's environment on every deploy.
 
-## 5. Repository secrets
+## 5. The environments' secrets
 
-GitHub → Settings → Secrets and variables → Actions.
+GitHub → Settings → Environments. Two environments, each with its own
+secrets, which a job reads only if it names the environment.
+
+**`production`**, named by Deploy cloud and Drift. Limit it to the `main`
+branch (Deployment branches and tags).
 
 | Secret | Value |
 | --- | --- |
@@ -271,44 +264,34 @@ GitHub → Settings → Secrets and variables → Actions.
 | `SUPABASE_AUTH_SMTP_PASS` | the Resend API key, for the login codes |
 | `APP_DB_PASSWORD` | a password you generate for the `yukibana_app` role |
 | `FIRST_ADMIN_EMAIL` | the address your GitHub account reports as primary |
+| `CLOUDFLARE_API_TOKEN` | the API token of step 2 |
+| `CLOUDFLARE_ACCOUNT_ID` | the account id |
 
-No Cloudflare credentials: Workers Builds deploys the Worker with its own
-connection to this repository, and the Database workflow never touches it.
+**`preview`**, named by Preview, with **required reviewers** (the
+maintainers) so that each preview waits for one of them:
+`CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, the same values.
 
-These go on the **Secrets** tab, as **repository** secrets. GitHub has four
-stores that look alike in the interface and are not the same thing, and the
-Database workflow can read exactly one of them:
-
-| Where | Readable here |
-| --- | --- |
-| Actions, Secrets tab, repository secrets | yes |
-| Actions, Secrets tab, on the environment named `default` | yes, the workflow declares it |
-| Actions, Variables tab | no, a different store, and not masked in logs |
-| Dependabot secrets | no, a different store |
-
-The workflow names an environment called `default`, so either place works.
-Put them on the Secrets tab in whichever you use: a variable is printed in
-plain text in run logs, and `SUPABASE_DB_URL` carries the database password.
-
-A secret that is set shows up as `***` in a run's environment listing; one
-that is blank there does not exist as far as the job is concerned. Until the
-production configuration in step 3 is filled in, the workflow stops with a
+Put them on the environment's **Secrets**, not as repository secrets, which
+every workflow could read, and not as variables, which are printed in plain
+text in run logs: `SUPABASE_DB_URL` carries the database password. A secret
+that is set shows up as `***` in a run's environment listing; one that is
+blank there does not exist as far as the job is concerned. Until the
+production configuration in step 3 is filled in, Deploy cloud stops with a
 notice rather than failing, because nobody has pointed the repository at an
 environment yet. Once it is filled in, a missing secret fails the run and
 names itself.
 
-`APP_DB_PASSWORD` is yours to invent: `ops/bootstrap.sql` sets it on the
+`APP_DB_PASSWORD` is yours to invent: `cloud/db/ops/bootstrap.sql` sets it on the
 connection role every deploy, so it never appears in a migration.
 
 ## 6. Deploy, log in, deploy again
 
-Push to `main` (the Database workflow then runs once CI has passed), or run
-the Database workflow by hand. It will check the
-placeholders are gone, list and apply pending migrations, run
-`ops/bootstrap.sql`, and push the Supabase settings; Cloudflare builds and
-deploys the Worker alongside it.
+Run Deploy cloud by hand (Actions → Deploy cloud → Run workflow). It will
+check the placeholders are gone, list and apply pending migrations, run
+`cloud/db/ops/bootstrap.sql`, push the Supabase settings, and then build and deploy
+the Worker.
 
-`ops/bootstrap.sql` sets the connection role's password and then tries to
+`cloud/db/ops/bootstrap.sql` sets the connection role's password and then tries to
 promote the first admin. On a brand-new project it finds nobody to promote
 and says so, because an account only exists once someone has logged in. So
 **open the app, log in (with GitHub, or a code mailed to `FIRST_ADMIN_EMAIL`),
@@ -323,15 +306,15 @@ once, and a teacher creates courses, editions and projects.
 The CLI and the IDE log in through the website: `/auth/connect` shows the
 person whom they are signed in as, and on their say-so Supabase Auth's OAuth
 2.1 server issues a code for the registry's own OAuth client, which the CLI
-trades for a session of its own (`app/src/lib/connect.ts` says how and why).
-The server is switched on by `[auth.oauth_server]` in `supabase/config.toml`,
-which the Database workflow pushes like any setting. The client is data,
+trades for a session of its own (`cloud/web/src/lib/connect.ts` says how and why).
+The server is switched on by `[auth.oauth_server]` in `cloud/db/supabase/config.toml`,
+which Deploy cloud pushes like any setting. The client is data,
 not a setting, so it is registered once per environment, with the project's
 secret key (Settings → API keys). Turning it on, in a new environment or in
 one that runs without it, is four steps, in this order:
 
 1. **The setting.** Merge with `[auth.oauth_server]` enabled, and wait for
-   that Database run to go green. Until it has pushed the setting, Auth has
+   that Deploy cloud run to go green. Until it has pushed the setting, Auth has
    no OAuth server and the script below fails with a 404 from
    `/auth/v1/admin/oauth/clients`.
 2. **The client.** From a checkout of `main`, with the key in a git-ignored
@@ -339,13 +322,13 @@ one that runs without it, is four steps, in this order:
    history (`.env` is ignored here):
 
    ```bash
-   node --env-file=.env scripts/oauth-client.mjs https://<ref>.supabase.co https://cloud.yukibana.dev
+   node --env-file=.env cloud/dev/scripts/oauth-client.mjs https://<ref>.supabase.co https://cloud.yukibana.dev
    ```
 
    where `.env` holds `SUPABASE_SECRET_KEY=<secret key>`. It prints the
    client's id, which is not a secret.
-3. **The id.** Put it in `wrangler.jsonc` as `SUPABASE_OAUTH_CLIENT_ID` and
-   merge. Workers Builds deploys it; nothing waits on the database.
+3. **The id.** Put it in `cloud/web/wrangler.jsonc` as `SUPABASE_OAUTH_CLIENT_ID` and
+   merge. Deploy cloud deploys it.
 4. **Check.** `curl https://cloud.yukibana.dev/api/auth/config` answers with
    the id as `oauthClientId` and the address as `siteUrl`. Then `yukibana
    login` prints a four-letter code and opens the website, which shows the
@@ -353,7 +336,7 @@ one that runs without it, is four steps, in this order:
 
 The site address given to the script must be the
 origin of Auth's `site_url` (`[remotes.production.auth]` in
-`supabase/config.toml`) and of `SITE_URL` in `wrangler.jsonc`: Auth sends
+`cloud/db/supabase/config.toml`) and of `SITE_URL` in `cloud/web/wrangler.jsonc`: Auth sends
 the consent step to `site_url`, the client's one redirect URI is on that
 origin, and the cookie that says the person clicked "Continue" is set
 there, so a login started on any other address (the workers.dev one, say)
@@ -387,23 +370,20 @@ connection string rather than the session pooler one. See step 1.
 **The deploy refuses with a list of placeholders.** Step 3, and commit.
 
 **Login redirects to localhost.** `[remotes.production]` in
-`supabase/config.toml` still has the placeholder subdomain, or the deploy has
+`cloud/db/supabase/config.toml` still has the placeholder subdomain, or the deploy has
 not pushed the settings yet. The pushed values are printed by the "Supabase
 settings, before" step of the last deploy.
 
-**A merge to `main` changed nothing on the site.** Workers Builds reports
-a "Workers Builds: yukibana-cloud" check on every commit it builds; a
-commit on `main` without one was never built, and the site still runs the
-one before. Workers Builds starts from a GitHub webhook, so first look at
-githubstatus.com: when Webhooks is degraded, the delivery is late rather
-than lost, and the build appears once GitHub works through its backlog (on
-2026-10-21 the merge of #49 waited this way). If GitHub is fine, or the
-check never comes, retry the build from the Worker's Deployments page in
-the Cloudflare dashboard, or push again. `/api/auth/config` answering without
-`siteUrl` is the sign that code from before the website login is live.
+**A merge to `main` changed nothing on the site.** Look at the Deploy cloud
+run of that commit. Its plan job prints which packages the change affected:
+when neither `@yukibana/cloud-web` nor `@yukibana/cloud-db` is among them,
+nothing was deployed, by design. A failed run is re-run by hand, and a run
+that waits on another is the `deploy-cloud` concurrency group at work.
+`/api/auth/config` answering without `siteUrl` is the sign that code from
+before the website login is live.
 
 **`yukibana login` or the IDE still goes straight to GitHub.** The deployed
-`wrangler.jsonc` has no `SUPABASE_OAUTH_CLIENT_ID`: `/api/auth/config`
+`cloud/web/wrangler.jsonc` has no `SUPABASE_OAUTH_CLIENT_ID`: `/api/auth/config`
 answers without `oauthClientId`. Step 7, 3. A CLI older than the website
 login also goes to GitHub whatever the registry says; the IDE needs an
 `@yukibana/cli` from after it.
@@ -421,7 +401,7 @@ again with the right address: it registers a client for it, and
 `SUPABASE_OAUTH_CLIENT_ID` must be that client's id.
 
 **The client script answers 404.** The OAuth server is not on yet: step 7,
-1. The "Supabase settings, before" step of the last Database run shows
+1. The "Supabase settings, before" step of the last Deploy cloud run shows
 whether `[auth.oauth_server]` has been pushed.
 
 **A submission is rejected but a small one works.** The Worker hashes each
@@ -430,7 +410,7 @@ Source archives are kilobytes and fine; a student who tars up `target/` can
 exceed it. The fix is to have the client send its own SHA-256 and let R2
 verify it, not a paid plan.
 
-**The Cloudflare build fails on the Hyperdrive id.** The placeholders in
+**The deploy fails on the Hyperdrive id.** The placeholders in
 step 3 are not filled in, or `hyperdrive create` has not been run. The build
 failing is the intended outcome: a Worker deployed with a placeholder id
 starts and then fails every request that touches the database.
@@ -439,7 +419,7 @@ starts and then fails every request that touches the database.
 connected as a role that is not a member of `yukibana_publisher` — almost
 always `postgres`, from pasting the dashboard's connection string into
 Hyperdrive. The response says so since the day it was found; the fix is
-`npx wrangler hyperdrive update <id> --connection-string=...` with
+`pnpm --filter @yukibana/cloud-web exec wrangler hyperdrive update <id> --connection-string=...` with
 `yukibana_app` and `APP_DB_PASSWORD`, and no redeploy, since Hyperdrive is
 read per request.
 

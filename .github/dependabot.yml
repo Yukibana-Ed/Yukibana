@@ -1,29 +1,74 @@
+# Dependabot proposes the updates; CI decides whether they are safe. The cooldowns are the point of this file rather than
+# a detail of it: the versions that carry a supply-chain compromise are the ones published minutes ago, and every day a
+# release sits in public is another day for someone to notice. So nothing is proposed until it is 14 days old, the
+# same age pnpm's minimumReleaseAge (pnpm-workspace.yaml) asks of anything installed. Security updates skip the
+# cooldown, but pnpm still refuses them until they are that old, unless minimumReleaseAgeExclude names them.
 version: 2
 updates:
+  # One entry for the whole workspace: the catalog in pnpm-workspace.yaml holds every version.
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
-    # The same age as pnpm's minimumReleaseAge in pnpm-workspace.yaml.
     cooldown:
       default-days: 14
+    commit-message:
+      prefix: build
+      include: scope
     groups:
-      # Theia's version check fails on any mix of @theia/* versions.
+      # Theia's version check fails on any mix of @theia/* versions, and a new Theia needs the exact Electron that
+      # @theia/electron names.
       theia:
-        patterns: ['@theia/*']
+        patterns: ['@theia/*', 'electron']
       vitest:
         patterns: ['vitest', '@vitest/*']
       react:
         patterns: ['react', 'react-dom', '@types/react', '@types/react-dom']
+      svelte:
+        patterns: ['svelte', 'svelte-check', '@sveltejs/*', 'vite']
+      oxc:
+        patterns: ['oxlint', 'oxlint-tsgolint', 'oxfmt']
+      supabase-js:
+        patterns: ['@supabase/supabase-js', '@supabase/ssr']
+      wrangler:
+        patterns: ['wrangler']
     ignore:
-      # Theia pins the Electron version as a peer dependency of @theia/electron.
-      - dependency-name: electron
       # The ts6 catalog stays on TypeScript 6 for svelte-check; the default catalog's major is bumped by hand.
       - dependency-name: typescript
         update-types: ['version-update:semver-major']
+      # @types/node describes the Node release that devEngines names, which moves by hand.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+
+  # Actions run with the repository's secrets, so a compromised one reads them.
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
     cooldown:
-      default-days: 7
+      default-days: 14
+    commit-message:
+      prefix: ci
+      include: scope
+
+  # The cloud's devcontainer: its image and features.
+  - package-ecosystem: devcontainers
+    directory: /cloud/dev
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14
+    commit-message:
+      prefix: build
+      include: scope
+
+  # The images of the cloud's compose file (the local bucket), once they are pinned to a version rather than latest.
+  - package-ecosystem: docker-compose
+    directory: /cloud/dev
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14
+    commit-message:
+      prefix: build
+      include: scope

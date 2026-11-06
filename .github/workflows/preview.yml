@@ -1,0 +1,105 @@
+# Uploads a pull request's Worker, which CI's preview job built without any secret, as a preview version of the cloud
+# Worker, and comments its URL on the pull request. It runs main's copy of this file (workflow_run), never the pull
+# request's, and only after a maintainer approves the `preview` environment: a Cloudflare token cannot be limited to
+# uploads, and the preview runs the pull request's code against production's database and bucket.
+name: Preview
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+# A newer push to the same branch replaces a preview still waiting for approval.
+concurrency:
+  group: preview-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  # Whether the run built a preview at all, before anything asks for approval: most runs do not.
+  find:
+    name: Find the build
+    if: github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: read
+    outputs:
+      found: ${{ steps.find.outputs.found }}
+    steps:
+      - name: Find the build
+        id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN: ${{ github.event.workflow_run.id }}
+        run: |
+          count=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN/artifacts" --jq '[.artifacts[] | select(.name == "cloud-web-preview" and (.expired | not))] | length')
+          echo "found=$([ "$count" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+  upload:
+    name: Upload the preview
+    needs: find
+    if: needs.find.outputs.found == 'true' && github.event.workflow_run.pull_requests[0].number
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment:
+      name: preview
+      url: ${{ steps.upload.outputs.url }}
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: write
+    env:
+      PR: ${{ github.event.workflow_run.pull_requests[0].number }}
+      HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      # Main: wrangler.jsonc and wrangler come from here, only the build from the pull request.
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install pnpm and Node.js
+        uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
+        with:
+          runtime: node@24.x
+          cache: true
+          install: false
+
+      - name: Install wrangler
+        run: pnpm --filter @yukibana/cloud-web install --frozen-lockfile --fetch-timeout 100000
+
+      - name: Download the build
+        uses: actions/download-artifact@v8
+        with:
+          name: cloud-web-preview
+          path: cloud/web/.svelte-kit
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      # A version that serves only at its preview URLs: the deployed Worker stays as it is.
+      - name: Upload the preview
+        id: upload
+        working-directory: cloud/web
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler.ndjson
+        run: |
+          pnpm exec wrangler versions upload --preview-alias "pr-$PR" --tag "pr-$PR" --message "Preview of #$PR at $HEAD_SHA"
+          url=$(jq -r 'select(.type == "version-upload") | .preview_alias_url // .preview_url // empty' "$WRANGLER_OUTPUT_FILE_PATH" | tail -n 1)
+          if [ -z "$url" ]; then
+            echo "::error::wrangler reported no preview URL: preview URLs must be enabled for the Worker (preview_urls in wrangler.jsonc)"
+            exit 1
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Comment the URL
+        env:
+          GH_TOKEN: ${{ github.token }}
+          URL: ${{ steps.upload.outputs.url }}
+        run: |
+          gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --edit-last --create-if-none --body "Preview of $HEAD_SHA: $URL
+
+          It runs this pull request's code against production's database and bucket: what it writes is real."

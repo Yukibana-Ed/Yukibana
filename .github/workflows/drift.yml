@@ -1,0 +1,86 @@
+# Nightly: is production exactly what the migrations say? `db diff` compares the database with the migrations applied to
+# a fresh one and prints the difference. Anything printed means something was changed through the dashboard or a shell,
+# and this job fails until it is either reverted or written down as a migration. The diff engine is a detector here,
+# never a generator: see docs/cloud/CLAUDE.md.
+name: Drift
+
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Secrets go to the steps that use them and no others. The job reads production with the database password, so nothing
+# else it runs (an install above all) may see it. The account access token is not given at all: both commands below
+# take the database URL and nothing more.
+jobs:
+  drift:
+    name: Drift
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    # The secrets are on the production environment, as for deploy-cloud.yml, and a job sees them only if it names it.
+    # Without this line SUPABASE_DB_URL was empty, every command below fell back to a local socket, and the job failed
+    # every night without ever reaching production.
+    environment: production
+    steps:
+      - name: The database secret is set
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::SUPABASE_DB_URL is empty: set it on the production environment (see deploy-cloud.yml)"
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install pnpm and Node.js
+        uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
+        with:
+          runtime: node@24.x
+          cache: true
+          install: false
+
+      # No install scripts: the Supabase CLI ships its binary as an optional dependency and needs none. A compromised
+      # dependency then gets no chance to run while installing; the only code that runs with the password is the
+      # Supabase CLI, in the steps that need it.
+      - name: Install the Supabase CLI
+        run: pnpm --filter @yukibana/cloud-db install --frozen-lockfile --ignore-scripts
+
+      - name: Unapplied migrations
+        working-directory: cloud/db
+        env:
+          # The session pooler string: a direct connection is IPv6 and the runner is not. See deploy-cloud.yml.
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: pnpm exec supabase migration list --db-url "$SUPABASE_DB_URL"
+
+      - name: Diff production against the migrations
+        working-directory: cloud/db
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          pnpm exec supabase db diff --db-url "$SUPABASE_DB_URL" --schema public,app | tee "$RUNNER_TEMP/drift.sql"
+          if [ -s "$RUNNER_TEMP/drift.sql" ]; then
+            echo "::error::production differs from the migrations (see the diff above); write the change down as a migration or revert it"
+            exit 1
+          fi
+
+      # The diff above leaves out the `realtime` schema, which is Supabase's and changes daily; the one rule of ours in
+      # it is checked exactly.
+      - name: Realtime policies are exactly ours
+        if: always()
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -q -f cloud/db/ops/realtime-policies.sql
+
+      # Event triggers are in no schema, so the diff above cannot see them.
+      - name: Event triggers are exactly ours
+        if: always()
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -q -f cloud/db/ops/event-triggers.sql

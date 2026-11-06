@@ -8,6 +8,15 @@ nodeLinker: hoisted # Needed for Theia's version check
 # Warns, instead of installing every package, when a script runs on node_modules that don't match the lockfile: in a
 # fresh clone, `pnpm setup:cli` would otherwise install the whole workspace before its own filtered install.
 verifyDepsBeforeRun: warn
+# What CI's plan (.github/scripts/plan.mts) leaves out of a package being changed, in `--filter "...[<base>]"`: a change to
+# Markdown changes nothing, and a change to tests only affects the package they test, not the packages depending on it.
+changedFilesIgnorePattern:
+  - '**/*.md'
+testPattern:
+  - '**/tests/**'
+  - '**/*.spec.ts'
+  - '**/*.spec.tsx'
+  - '**/*.test.ts'
 packages:
   - cloud/db
   - cloud/web

@@ -9,8 +9,9 @@ import { defineConfig } from 'vitest/config';
  */
 export default defineConfig({
     test: {
-        // Every package's config, wherever the package is, so that a package's new tests run here without an entry.
-        projects: ['{ide,packages,cloud}/**/vitest.config.{ts,mts}'],
+        // Every package's config, wherever the package is, so that a package's new tests run here without an entry; and the
+        // CI workflows' scripts, which belong to no package.
+        projects: ['{ide,packages,cloud}/**/vitest.config.{ts,mts}', '.github/scripts/vitest.config.mts'],
         coverage: {
             provider: 'v8',
             include: ['{ide,packages,cloud}/**/src/**/*.{ts,tsx}'],

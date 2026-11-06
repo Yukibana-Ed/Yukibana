@@ -61,8 +61,9 @@ so only the ones that changed are recompiled.
   Use `--preview` for an unpacked directory
 - `pnpm download:plugins`: download the plugins listed in `theiaPlugins` (in `ide/package.json`) into `ide/plugins`,
   again whenever that list changes (done automatically by `start` and `package`; delete `ide/plugins` to download them again)
-- `pnpm lint`, `pnpm typecheck`: run every package's `lint` (oxlint) or `typecheck` script; one package's with
-  e.g. `pnpm --filter @yukibana/cli lint`. `pnpm lint:fix` fixes what oxlint can across the whole project
+- `pnpm lint`, `pnpm typecheck`: run every package's `lint` (oxlint) or `typecheck` script, after `lint:root` or
+  `typecheck:root` for the files no package owns; one package's with e.g. `pnpm --filter @yukibana/cli lint`.
+  `pnpm lint:fix` fixes what oxlint can across the whole project
 - `pnpm format` / `pnpm format:check`: format the whole project with oxfmt, or only check it (oxfmt reads neither
   Markdown nor Svelte components)
 - `pnpm test`: run every package's unit tests with Vitest, straight from the sources, each with its package's
@@ -121,7 +122,30 @@ with `devcontainer up --workspace-folder . --config cloud/dev/.devcontainer/devc
 Every dependency's version is in the catalog of [pnpm-workspace.yaml](pnpm-workspace.yaml); a `package.json` names it as
 `catalog:` (`catalog:ts6` for `cloud/web`'s TypeScript 6), and a workspace package through the catalog's
 `workspace:*`. The exception is `electron`, whose exact version Theia's CLI checks. pnpm only installs versions that are
-at least 14 days old (`minimumReleaseAge`), and refuses a lockfile that holds a younger one.
+at least 14 days old (`minimumReleaseAge`), and refuses a lockfile that holds a younger one. Dependabot waits as long
+before proposing an update.
+
+`minimumReleaseAgeExclude` lets a younger release in. It is only for a fix to a vulnerability that affects us and is
+being exploited, after checking the release's diff, provenance and announcement, and each entry names one exact
+version (`pkg@1.2.3`), including each too-young dependency the release pulls in. `pnpm check:release-age` (run by CI)
+fails once an entry's version is older than the window, so that the entry is removed.
+
+Every npm package's license, and every plugin the IDE bundles, must be accepted by
+[.github/scripts/licenses.mts](.github/scripts/licenses.mts): CI runs `pnpm check:licenses` when the lockfile or
+`ide/package.json` changes. A new license or plugin is reviewed and added there.
+
+## CI
+
+[ci.yml](.github/workflows/ci.yml) runs for pull requests and the merge queue. Its plan job asks pnpm which packages a
+change affects (the packages changed since the base, Markdown aside, and every package depending on them) and runs
+their `lint`, `typecheck`, `test` and `build` scripts; the cloud stack, the IDE's end-to-end tests, the devcontainer
+and the license check run only when their packages or files are affected. A change to a file that belongs to no
+package (the lockfile, a root config, `.github/`, `cloud/dev/`) runs everything. `ci-ok` is the one required check.
+The files no package owns are checked by `pnpm lint:root`, `pnpm typecheck:root` and `pnpm test:root`.
+
+[deploy-cloud.yml](.github/workflows/deploy-cloud.yml) deploys the cloud from `main`, and
+[preview.yml](.github/workflows/preview.yml) uploads a pull request's Worker as a preview once a maintainer approves;
+[docs/cloud/deploy.md](docs/cloud/deploy.md) describes both.
 
 ## Troubleshooting
 

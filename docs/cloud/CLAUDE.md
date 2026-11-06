@@ -83,7 +83,7 @@ as negatives: the student who cannot read a classmate's submission, the
 assistant who cannot enrol, the owner who cannot move a project to another
 edition. Negative tests are the only ones that catch a policy accidentally
 widened. `pnpm --filter @yukibana/cloud-db test:db` runs them against the local stack; CI runs them on
-every push, after rebuilding the database from empty.
+every change that affects the cloud, after rebuilding the database from empty.
 
 ## A sibling subdomain is another person's page
 
@@ -190,7 +190,7 @@ spaces, single quotes, 180 columns); oxfmt does not read Svelte components,
 which keep their 2-space indent, nor Markdown. With the stack running: `pnpm --filter @yukibana/cloud-db reset`,
 `pnpm --filter @yukibana/cloud-db test:db`, and
 `pnpm --filter @yukibana/cloud-web test:integration`.
-On `main`, the database deploys only after CI is green (migrations,
-bootstrap, settings), but Cloudflare deploys the Worker on every push
-regardless, so nothing orders the two: a change that needs a migration ships
-in two pushes, migration first (`docs/cloud/deploy.md`).
+CI runs what a change affects of all of it, plus the devcontainer build.
+On `main`, `deploy-cloud.yml` deploys the database (migrations, bootstrap,
+settings) and then the Worker, so code can ship with the migration it needs;
+a removal still takes two deploys (`docs/cloud/deploy.md`).
