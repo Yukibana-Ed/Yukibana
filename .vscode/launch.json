@@ -14,7 +14,7 @@
         "NODE_ENV": "development"
       },
       "sourceMaps": true,
-      "outFiles": ["${workspaceRoot}/node_modules/@theia/*/lib/**/*.js", "${workspaceRoot}/ide/**/lib/**/*.js", "${workspaceRoot}/ide/browser/lib/**/*.js"],
+      "outFiles": ["${workspaceRoot}/node_modules/@theia/*/lib/**/*.js", "${workspaceRoot}/ide/**/lib/**/*.js", "${workspaceRoot}/packages/*/lib/**/*.js"],
       "smartStep": true,
       "internalConsoleOptions": "openOnSessionStart",
       "outputCapture": "std"
@@ -37,6 +37,7 @@
         "${workspaceRoot}/ide/electron/lib/backend/electron-main.js",
         "${workspaceRoot}/ide/electron/lib/backend/main.js",
         "${workspaceRoot}/ide/**/lib/**/*.js",
+        "${workspaceRoot}/packages/*/lib/**/*.js",
         "${workspaceRoot}/node_modules/@theia/*/lib/**/*.js"
       ],
       "smartStep": true,
