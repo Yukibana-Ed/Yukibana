@@ -13,7 +13,8 @@ export default {
     // The platform's line ending, which Git checks text files out with (see .gitattributes).
     endOfLine: EOL === '\r\n' ? 'crlf' : 'lf',
     sortPackageJson: false,
-    ignorePatterns: ['**/*.md'],
+    // The imported cloud and CLI keep their own formatting until they are reformatted with this config.
+    ignorePatterns: ['**/*.md', 'cloud/**', 'packages/cli/**', 'docs/cloud/**'],
     overrides: [
         {
             files: ['*.json', '*.code-snippets', '*.yml', '*.yaml'],

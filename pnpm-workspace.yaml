@@ -5,6 +5,8 @@ minimumReleaseAge: 10080
 nodeLinker: hoisted # Needed for Theia's version check
 packages:
   - packages/*
+  # Imported from yukibana-cloud; joins the workspace when the cloud and CLI are converted to it.
+  - '!packages/cli'
   - theia-extensions/*
   - theia-extensions/langs/*
   - browser-app

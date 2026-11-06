@@ -11,7 +11,8 @@ export default defineConfig({
         coverage: {
             provider: 'v8',
             include: ['{packages,theia-extensions}/*/src/**/*.{ts,tsx}'],
-            exclude: ['**/*.spec.ts', '**/typings/**'],
+            // packages/cli: imported from yukibana-cloud, tested with its own config until it joins the workspace.
+            exclude: ['**/*.spec.ts', '**/typings/**', 'packages/cli/**'],
             reporter: ['text', 'html', 'lcov'],
         },
     },
