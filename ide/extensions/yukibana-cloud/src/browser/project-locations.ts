@@ -6,7 +6,7 @@ import { EnvVariablesServer } from '@theia/core/lib/common/env-variables';
 import { inject, injectable } from '@theia/core/shared/inversify';
 import { FileService } from '@theia/filesystem/lib/browser/file-service';
 import { WorkspaceService } from '@theia/workspace/lib/browser';
-import { Project } from '@yukibana/client';
+import type { Project } from '@yukibana/client';
 import { CONFIG_FILENAME, projectIdOf } from './welcome/welcome-model';
 
 /**

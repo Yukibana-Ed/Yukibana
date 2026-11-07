@@ -1,7 +1,7 @@
 /**
  * SPDX-License-Identifier: MIT
  */
-import { Accepted, Me, Project } from '@yukibana/client';
+import type { Accepted, Me, Project } from '@yukibana/client';
 
 export const cloudAuthPath = '/services/yukibana/cloud-auth';
 export const authClientPath = '/services/yukibana/auth-client';
