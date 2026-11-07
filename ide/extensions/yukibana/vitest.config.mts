@@ -7,6 +7,6 @@ import { defineProject } from 'vitest/config';
 export default defineProject({
     test: {
         include: ['src/**/*.spec.ts'],
-        setupFiles: ['../../configs/vitest.setup.ts'],
+        setupFiles: ['@yukibana/ide/configs/vitest.setup.ts'],
     },
 });

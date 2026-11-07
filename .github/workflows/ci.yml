@@ -130,12 +130,12 @@ jobs:
           path: coverage/
           retention-days: 5
 
-      # The CLI and the Worker are the packages with a build.
+      # The CLI and the Worker are the packages with a build, but for the IDE's apps, which the e2e job builds.
       - name: Build
         if: needs.plan.outputs.packages != '[]'
         run: |
           read -ra filters <<<"$FILTERS"
-          pnpm "${filters[@]}" run --if-present build
+          pnpm "${filters[@]}" --filter='!@yukibana/ide' run --if-present build
 
       # The CLI as a course repository's CI runs it, over the fixture repository, which the CLI's tests depend on.
       - name: Check the fixture with the built CLI
@@ -267,7 +267,7 @@ jobs:
       - name: Cache Theia plugins
         uses: actions/cache@v6
         with:
-          # With the stamp that pnpm download:plugins compares the plugin list with.
+          # With the stamp that pnpm download:plugins compares the plugin list with (ide/scripts/cli.mts).
           path: |
             ide/plugins
             node_modules/.plugins-download-inputs
@@ -283,7 +283,7 @@ jobs:
       - name: E2E tests
         shell: bash
         # Electron needs a display, which Linux runners lack.
-        run: ${{ matrix.app == 'electron' && runner.os == 'Linux' && 'xvfb-run -a' || '' }} pnpm test:e2e --project=${{ matrix.app }}
+        run: ${{ matrix.app == 'electron' && runner.os == 'Linux' && 'xvfb-run -a' || '' }} pnpm -C ide test:e2e --project=${{ matrix.app }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -294,7 +294,7 @@ jobs:
       - name: Package the Electron app, unpacked
         if: matrix.app == 'electron' && runner.os == 'Linux' && contains(fromJSON(needs.plan.outputs.packages), '@yukibana/ide-electron')
         run: |
-          pnpm package --preview
+          pnpm -C ide package --preview
           test -x ide/electron/dist/linux-unpacked/yukibana.bin
 
       - name: Upload test report
@@ -367,7 +367,7 @@ jobs:
           key: plugins-v2-${{ runner.os }}-${{ hashFiles('ide/package.json') }}
 
       - name: Download the plugins
-        run: pnpm download:plugins
+        run: pnpm -C ide download:plugins
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

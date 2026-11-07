@@ -16,6 +16,7 @@
   },
   "devDependencies": {
     "@types/fs-extra": "catalog:",
+    "@yukibana/ide": "catalog:",
     "rimraf": "catalog:",
     "typescript": "catalog:"
   },

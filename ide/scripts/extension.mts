@@ -32,6 +32,7 @@ const EXTENSION_TEMPLATE: TemplateEntry[] = [
           ],
           "dependencies": {},
           "devDependencies": {
+            "@yukibana/ide": "catalog:",
             "rimraf": "catalog:",
             "typescript": "catalog:"
           },
@@ -49,7 +50,7 @@ const EXTENSION_TEMPLATE: TemplateEntry[] = [
         path: 'tsconfig.json',
         content: `
         {
-          "extends": "../../configs/base.tsconfig",
+          "extends": "@yukibana/ide/configs/base.tsconfig.json",
           "compilerOptions": {
             "rootDir": "src",
             "outDir": "lib"
@@ -82,6 +83,7 @@ const LANG_EXTENSION_TEMPLATE: TemplateEntry[] = [
           ],
           "dependencies": {},
           "devDependencies": {
+            "@yukibana/ide": "catalog:",
             "rimraf": "catalog:",
             "typescript": "catalog:"
           },
@@ -99,7 +101,7 @@ const LANG_EXTENSION_TEMPLATE: TemplateEntry[] = [
         path: 'tsconfig.json',
         content: `
         {
-          "extends": "../../../configs/base.tsconfig",
+          "extends": "@yukibana/ide/configs/base.tsconfig.json",
           "compilerOptions": {
             "rootDir": "src",
             "outDir": "lib"

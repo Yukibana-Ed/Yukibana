@@ -15,7 +15,7 @@ import { appendFileSync } from 'node:fs';
 import path from 'node:path';
 
 /** A workspace package, as `pnpm list` reports it. */
-export interface WorkspacePackage {
+interface WorkspacePackage {
     /** The package's name; `undefined` for the workspace root, which has none. */
     readonly name: string | undefined;
     /** The package's directory, relative to the repository root, with `/` separators; `''` for the root. */
@@ -93,21 +93,6 @@ const IDE_PACKAGES: readonly string[] = ['@yukibana/ide', '@yukibana/ide-browser
 
 /** The files whose change runs the license check: what it checks, and its rules. */
 const LICENSE_INPUTS: readonly string[] = ['pnpm-lock.yaml', 'ide/package.json', '.github/scripts/licenses.mts'];
-
-/**
- * Returns the pnpm selectors of the affected packages: `...[base]`, and `...{dir/**}` for each changed package whose
- * directory holds other packages. `ide/` is one: its configs and scripts are what the packages under it are built
- * with, yet none of them depends on it in the package graph.
- *
- * - Requires: `changed` holds no workspace root; a changed root means every package is affected instead.
- */
-export function affectedSelectors(base: string, changed: readonly WorkspacePackage[], all: readonly WorkspacePackage[]): string[] {
-    if (changed.some(p => p.dir === '')) {
-        throw new Error('affectedSelectors: the workspace root changed, so every package is affected');
-    }
-    const parents = changed.filter(p => all.some(q => q.dir.startsWith(`${p.dir}/`)));
-    return [`...[${base}]`, ...parents.map(p => `...{${p.dir}/**}`)];
-}
 
 /**
  * Returns the plan for a change, given the names of every package in the workspace.
@@ -192,7 +177,7 @@ function namesOf(packages: readonly WorkspacePackage[]): string[] {
 }
 
 /** Returns what changed since `base`, asking git and pnpm. */
-function changeSince(base: string, all: readonly WorkspacePackage[]): Change {
+function changeSince(base: string): Change {
     const reason = unusableBase(base);
     if (reason !== undefined) {
         return { kind: 'unknown', reason };
@@ -200,16 +185,16 @@ function changeSince(base: string, all: readonly WorkspacePackage[]): Change {
     const files = execFileSync('git', ['diff', '--name-only', base, 'HEAD'], { encoding: 'utf8' })
         .split('\n')
         .filter(f => f !== '');
-    const changed = pnpmList([`[${base}]`]);
-    const inPackages = changed.filter(p => p.dir !== '');
-    // `...[base]` selects the root too when a file outside every package changed; it is not a package to run.
-    const affected = namesOf(pnpmList(affectedSelectors(base, inPackages, all)).filter(p => p.dir !== ''));
-    return { kind: inPackages.length < changed.length ? 'shared' : 'packages', affected, files };
+    // `...[base]` selects the root too when a file outside every package changed (no package depends on the root); it is
+    // not a package to run.
+    const selected = pnpmList([`...[${base}]`]);
+    const affected = namesOf(selected.filter(p => p.dir !== ''));
+    return { kind: selected.some(p => p.dir === '') ? 'shared' : 'packages', affected, files };
 }
 
 if (import.meta.main) {
     const all = pnpmList([]);
-    const change = changeSince(process.env['BASE'] ?? '', all);
+    const change = changeSince(process.env['BASE'] ?? '');
     const plan = decide(change, namesOf(all.filter(p => p.dir !== '')));
     const why =
         change.kind === 'unknown'

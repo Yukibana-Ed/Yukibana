@@ -308,6 +308,9 @@ catalogs:
     '@yukibana/fixtures':
       specifier: workspace:*
       version: workspace:*
+    '@yukibana/ide':
+      specifier: workspace:*
+      version: workspace:*
     '@yukibana/ide-cloud-ext':
       specifier: workspace:*
       version: workspace:*
@@ -622,6 +625,9 @@ importers:
       '@theia/cli':
         specifier: 'catalog:'
         version: 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
+      '@yukibana/ide':
+        specifier: 'catalog:'
+        version: link:..
       esbuild:
         specifier: 'catalog:'
         version: 0.28.2
@@ -632,6 +638,9 @@ importers:
         specifier: 'catalog:'
         version: 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)
     devDependencies:
+      '@yukibana/ide':
+        specifier: 'catalog:'
+        version: link:..
       rimraf:
         specifier: 'catalog:'
         version: 6.1.3
@@ -647,6 +656,10 @@ importers:
       '@theia/playwright':
         specifier: 'catalog:'
         version: 1.76.0
+    devDependencies:
+      '@yukibana/ide':
+        specifier: 'catalog:'
+        version: link:..
 
   ide/electron:
     dependencies:
@@ -765,6 +778,9 @@ importers:
       '@theia/cli':
         specifier: 'catalog:'
         version: 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
+      '@yukibana/ide':
+        specifier: 'catalog:'
+        version: link:..
       electron:
         specifier: 42.8.1
         version: 42.8.1(supports-color@8.1.1)
@@ -784,6 +800,9 @@ importers:
         specifier: 'catalog:'
         version: link:../../yukibana
     devDependencies:
+      '@yukibana/ide':
+        specifier: 'catalog:'
+        version: link:../../..
       rimraf:
         specifier: 'catalog:'
         version: 6.1.3
@@ -854,6 +873,9 @@ importers:
       '@types/micromatch':
         specifier: 'catalog:'
         version: 4.0.10
+      '@yukibana/ide':
+        specifier: 'catalog:'
+        version: link:../..
       chai:
         specifier: 'catalog:'
         version: 6.3.0
@@ -909,6 +931,9 @@ importers:
       '@types/react-dom':
         specifier: 'catalog:'
         version: 19.3.0(@types/react@19.3.0)
+      '@yukibana/ide':
+        specifier: 'catalog:'
+        version: link:../..
       chai:
         specifier: 'catalog:'
         version: 6.3.0
@@ -946,6 +971,9 @@ importers:
       '@types/fs-extra':
         specifier: 'catalog:'
         version: 11.0.4
+      '@yukibana/ide':
+        specifier: 'catalog:'
+        version: link:../..
       rimraf:
         specifier: 'catalog:'
         version: 6.1.3
@@ -959,6 +987,9 @@ importers:
         specifier: 'catalog:'
         version: 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)
     devDependencies:
+      '@yukibana/ide':
+        specifier: 'catalog:'
+        version: link:../..
       rimraf:
         specifier: 'catalog:'
         version: 6.1.3
@@ -996,6 +1027,9 @@ importers:
       '@types/react-dom':
         specifier: 'catalog:'
         version: 19.3.0(@types/react@19.3.0)
+      '@yukibana/ide':
+        specifier: 'catalog:'
+        version: link:../..
       react:
         specifier: 'catalog:'
         version: 19.3.1
@@ -1024,6 +1058,9 @@ importers:
       '@types/archiver':
         specifier: 'catalog:'
         version: 8.0.0
+      '@yukibana/ide':
+        specifier: 'catalog:'
+        version: link:../..
       rimraf:
         specifier: 'catalog:'
         version: 6.1.3

@@ -32,6 +32,7 @@
   },
   "devDependencies": {
     "@types/micromatch": "catalog:",
+    "@yukibana/ide": "catalog:",
     "chai": "catalog:",
     "jsdom": "catalog:",
     "rimraf": "catalog:",

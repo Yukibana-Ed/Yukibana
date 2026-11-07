@@ -2,39 +2,9 @@
  * SPDX-License-Identifier: MIT
  */
 import { describe, expect, test } from 'vitest';
-import { affectedSelectors, decide, outputLines, type WorkspacePackage } from './plan.mts';
+import { decide, outputLines } from './plan.mts';
 
-const workspace: WorkspacePackage[] = [
-    { name: undefined, dir: '' },
-    { name: '@yukibana/cloud-db', dir: 'cloud/db' },
-    { name: '@yukibana/cloud-web', dir: 'cloud/web' },
-    { name: '@yukibana/ide', dir: 'ide' },
-    { name: '@yukibana/ide-browser', dir: 'ide/browser' },
-    { name: '@yukibana/ide-ext', dir: 'ide/extensions/yukibana' },
-    { name: '@yukibana/client', dir: 'packages/client' },
-    { name: '@yukibana/cli', dir: 'packages/cli' },
-];
-const names = workspace.flatMap(p => (p.name === undefined ? [] : [p.name]));
-const packageAt = (dir: string): WorkspacePackage => workspace.find(p => p.dir === dir) ?? { name: 'missing', dir };
-
-describe('which packages are affected', () => {
-    test('a change to a package selects it and what depends on it', () => {
-        expect(affectedSelectors('abc', [packageAt('packages/client')], workspace)).toEqual(['...[abc]']);
-    });
-
-    test("a change to the IDE's own package selects every package under ide/, which are built with its configs", () => {
-        expect(affectedSelectors('abc', [packageAt('ide'), packageAt('packages/cli')], workspace)).toEqual(['...[abc]', '...{ide/**}']);
-    });
-
-    test('a package whose name only starts like a directory is not under it', () => {
-        const lookalike = [...workspace, { name: '@yukibana/cloud-web-tools', dir: 'cloud/web-tools' }];
-        expect(affectedSelectors('abc', [packageAt('cloud/web')], lookalike)).toEqual(['...[abc]']);
-    });
-
-    test('the workspace root is never a package to select from: a change there is everything', () => {
-        expect(() => affectedSelectors('abc', [packageAt('')], workspace)).toThrow(/every package/);
-    });
-});
+const names = ['@yukibana/cloud-db', '@yukibana/cloud-web', '@yukibana/ide', '@yukibana/ide-browser', '@yukibana/ide-ext', '@yukibana/client', '@yukibana/cli'];
 
 describe('what runs', () => {
     test('a run without a base runs everything but a preview', () => {

@@ -15,6 +15,7 @@
     "@yukibana/ide-ext": "catalog:"
   },
   "devDependencies": {
+    "@yukibana/ide": "catalog:",
     "rimraf": "catalog:",
     "typescript": "catalog:"
   },

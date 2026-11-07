@@ -17,6 +17,13 @@
     "vscode.microsoft-authentication"
   ],
   "scripts": {
+    "build": "node scripts/cli.mts build",
+    "start": "node scripts/cli.mts start",
+    "package": "node scripts/cli.mts package",
+    "download:plugins": "node scripts/cli.mts download:plugins",
+    "watch": "node scripts/cli.mts watch",
+    "new:ext": "node scripts/cli.mts new:ext",
+    "test:e2e": "pnpm --filter @yukibana/ide-e2e exec playwright test",
     "lint": "oxlint scripts configs",
     "typecheck": "tsc --noEmit -p scripts"
   },

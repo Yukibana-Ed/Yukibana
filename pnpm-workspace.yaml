@@ -96,6 +96,7 @@ catalog:
   '@vscode/sudo-prompt': 9.3.2
   '@yukibana/client': workspace:*
   '@yukibana/fixtures': workspace:*
+  '@yukibana/ide': workspace:*
   '@yukibana/ide-cloud-ext': workspace:*
   '@yukibana/ide-common': workspace:*
   '@yukibana/ide-ext': workspace:*

@@ -1,5 +1,5 @@
 {
-  "extends": "../configs/base.tsconfig.json",
+  "extends": "@yukibana/ide/configs/base.tsconfig.json",
   "compilerOptions": {
     // Playwright compiles the tests itself.
     "noEmit": true,
