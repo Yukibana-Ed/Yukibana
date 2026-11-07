@@ -12,7 +12,11 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
-/** Licenses accepted for any package, as SPDX identifiers: the permissive ones. */
+/**
+ * Licenses accepted for any package, exactly as pnpm reports them: the permissive ones, and the expressions that offer
+ * or combine only those (or let a package be used under one of them). A new expression fails until it is added here,
+ * which is a review of it.
+ */
 export const ALLOWED: ReadonlySet<string> = new Set([
     '0BSD',
     'Apache-2.0',
@@ -25,9 +29,19 @@ export const ALLOWED: ReadonlySet<string> = new Set([
     'MIT-0',
     'Python-2.0',
     'Unlicense',
+    '(Apache-2.0 AND MIT)',
+    '(Apache-2.0 OR MIT)',
+    '(BSD-2-Clause OR MIT OR Apache-2.0)',
+    '(MIT OR CC0-1.0)',
+    '(MIT OR WTFPL)',
+    '(MPL-2.0 OR Apache-2.0)',
+    '(WTFPL OR MIT)',
+    'MIT OR Apache-2.0',
+    'MIT OR BSD OR bsd OR GPLv3 OR ISC OR zlib',
+    'WTFPL OR ISC',
 ]);
 
-/** An npm package, or a family of them, accepted under one license that {@link ALLOWED} does not cover. */
+/** An npm package, or a family of them, accepted under one license that {@link ALLOWED} does not have. */
 export interface Exception {
     /** The package's name, or a prefix of names followed by `*` (`@theia/*`). */
     readonly pattern: string;
@@ -37,7 +51,7 @@ export interface Exception {
     readonly reason: string;
 }
 
-/** The packages accepted under a license {@link ALLOWED} does not cover. */
+/** The packages accepted under a license {@link ALLOWED} does not have. */
 export const EXCEPTIONS: readonly Exception[] = [
     { pattern: '@theia/*', license: 'EPL-2.0 OR GPL-2.0-only WITH Classpath-exception-2.0', reason: 'Theia, used under the EPL-2.0' },
     { pattern: '@theia/*', license: 'EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0', reason: 'Theia, used under the EPL-2.0' },
@@ -58,11 +72,11 @@ export const EXCEPTIONS: readonly Exception[] = [
 export interface ReviewedPlugin {
     /** The plugin's directory under `ide/plugins` (`publisher.name`, lowercase), or a prefix of them followed by `*`. */
     readonly pattern: string;
-    /** The license it is used under, as an SPDX expression. */
+    /** The license it is used under, as an SPDX expression; accepted without a reason iff {@link ALLOWED} has it. */
     readonly license: string;
     /** Its manifest's `license` field, exactly; `undefined` when the manifest has none. A different one fails. */
     readonly manifest: string | undefined;
-    /** Why `license` is accepted although {@link ALLOWED} does not satisfy it; absent when it does. */
+    /** Why `license` is accepted although {@link ALLOWED} does not have it; absent when it does. */
     readonly reason?: string;
 }
 
@@ -96,67 +110,6 @@ export function matches(pattern: string, name: string): boolean {
     return pattern.endsWith('*') ? name.startsWith(pattern.slice(0, -1)) : name === pattern;
 }
 
-/**
- * `true` iff a license expression is satisfied by licenses in `accepted`: an `OR` needs one side allowed, an `AND` both
- * (`AND` binding tighter, parentheses grouping). `X WITH Y` is one license, and a single word that is not a known
- * identifier (`Unknown`, `MIT/X11`) is a license of that name.
- *
- * - Requires: `expression` is well formed (throws otherwise): no unbalanced parenthesis, no dangling operator, and no
- *   words side by side that are not joined by `AND`, `OR` or `WITH` (`Public Domain`).
- */
-export function satisfies(expression: string, accepted: ReadonlySet<string>): boolean {
-    const tokens = expression.match(/\(|\)|[^\s()]+/g) ?? [];
-    let at = 0;
-    const peek = (): string | undefined => tokens[at];
-    const fail = (): never => {
-        throw new Error(`not a license expression: ${JSON.stringify(expression)}`);
-    };
-    const license = (): boolean => {
-        const token = tokens[at++];
-        if (token === '(') {
-            const inner = or();
-            if (tokens[at++] !== ')') {
-                fail();
-            }
-            return inner;
-        }
-        if (token === undefined || token === ')' || token === 'AND' || token === 'OR' || token === 'WITH') {
-            return fail();
-        }
-        let name = token;
-        if (peek() === 'WITH') {
-            at++;
-            const exception = tokens[at++];
-            if (exception === undefined || exception === '(' || exception === ')') {
-                fail();
-            }
-            name = `${name} WITH ${exception}`;
-        }
-        return accepted.has(name);
-    };
-    const and = (): boolean => {
-        let all = license();
-        while (peek() === 'AND') {
-            at++;
-            all = license() && all;
-        }
-        return all;
-    };
-    const or = (): boolean => {
-        let any = and();
-        while (peek() === 'OR') {
-            at++;
-            any = and() || any;
-        }
-        return any;
-    };
-    const result = or();
-    if (at !== tokens.length) {
-        fail();
-    }
-    return result;
-}
-
 /** One npm package with the license pnpm reports for it. */
 export interface PackageLicense {
     /** The package's name. */
@@ -172,18 +125,9 @@ export function packageProblems(packages: readonly PackageLicense[]): string[] {
     return packages.filter(p => !usable(p.name, p.license)).map(p => `${p.name}@${p.versions.join(', ')}: ${p.license}`);
 }
 
-/** `true` iff the package `name` may be used under `license`: {@link ALLOWED} satisfies it, or an exception names it. */
+/** `true` iff the package `name` may be used under `license`: {@link ALLOWED} has it, or an exception names it. */
 function usable(name: string, license: string): boolean {
-    return allowed(license) || EXCEPTIONS.some(e => matches(e.pattern, name) && e.license === license);
-}
-
-/** `true` iff `license` is a license expression that {@link ALLOWED} satisfies. */
-function allowed(license: string): boolean {
-    try {
-        return satisfies(license, ALLOWED);
-    } catch {
-        return false;
-    }
+    return ALLOWED.has(license) || EXCEPTIONS.some(e => matches(e.pattern, name) && e.license === license);
 }
 
 /** A plugin as `pnpm download:plugins` unpacked it. */
@@ -196,7 +140,7 @@ export interface DownloadedPlugin {
 
 /**
  * Returns the problems with the downloaded plugins, one line each: a plugin that `reviews` (in the check,
- * {@link PLUGINS}) does not name, one reviewed under a license that {@link ALLOWED} does not satisfy and without a
+ * {@link PLUGINS}) does not name, one reviewed under a license that {@link ALLOWED} does not have and without a
  * reason, a manifest whose license changed since the review, or a plugin of ide/package.json's `theiaPlugins`
  * (`declared`) that was not downloaded.
  */
@@ -207,7 +151,7 @@ export function pluginProblems(downloaded: readonly DownloadedPlugin[], declared
             return [`${plugin.id}: not reviewed (its manifest says ${JSON.stringify(plugin.manifest)}); add it to PLUGINS once its license is checked`];
         }
         return [
-            ...(allowed(review.license) || review.reason !== undefined ? [] : [`${plugin.id}: reviewed as ${review.license}, which is not allowed and has no reason`]),
+            ...(ALLOWED.has(review.license) || review.reason !== undefined ? [] : [`${plugin.id}: reviewed as ${review.license}, which is not allowed and has no reason`]),
             ...(review.manifest === plugin.manifest ? [] : [`${plugin.id}: its manifest says ${JSON.stringify(plugin.manifest)}, reviewed as ${JSON.stringify(review.manifest)}`]),
         ];
     });

@@ -2,33 +2,22 @@
  * SPDX-License-Identifier: MIT
  */
 import { describe, expect, test } from 'vitest';
-import { ALLOWED, matches, packageProblems, PLUGINS, pluginProblems, satisfies } from './licenses.mts';
+import { matches, packageProblems, PLUGINS, pluginProblems } from './licenses.mts';
 
-describe('which license expressions are accepted', () => {
+describe('which licenses are accepted', () => {
     test.each([
         ['MIT', true],
-        ['GPL-3.0-only', false],
         ['(MIT OR WTFPL)', true],
-        ['WTFPL OR ISC', true],
+        ['GPL-3.0-only', false],
         ['MIT AND GPL-3.0-only', false],
-        ['(Apache-2.0 AND MIT)', true],
-        ['GPL-3.0-only OR MIT AND ISC', true],
-        ['GPL-3.0-only OR MIT AND LGPL-3.0-only', false],
-        ['(GPL-3.0-only OR MIT) AND ISC', true],
         ['EPL-2.0 OR GPL-2.0-only WITH Classpath-exception-2.0', false],
-        ['MIT OR BSD OR bsd OR GPLv3 OR ISC OR zlib', true],
         ['Unknown', false],
-    ])('%s: %s', (expression, expected) => {
-        expect(satisfies(expression, ALLOWED)).toBe(expected);
+    ])('%s: %s', (license, expected) => {
+        expect(packageProblems([{ name: 'some-package', versions: ['1.0.0'], license }])).toHaveLength(expected ? 0 : 1);
     });
 
-    test('a license with an exception is one license, accepted only as a whole', () => {
-        expect(satisfies('GPL-2.0-only WITH Classpath-exception-2.0', new Set(['GPL-2.0-only WITH Classpath-exception-2.0']))).toBe(true);
-        expect(satisfies('GPL-2.0-only WITH Classpath-exception-2.0', new Set(['GPL-2.0-only']))).toBe(false);
-    });
-
-    test.each(['Public Domain', 'MIT OR', '(MIT', 'MIT)', 'AND MIT', 'MIT WITH'])('%s is not an expression', expression => {
-        expect(() => satisfies(expression, ALLOWED)).toThrow(/not a license expression/);
+    test('an expression is accepted as pnpm reports it, and not when it is written another way', () => {
+        expect(packageProblems([{ name: 'some-package', versions: ['1.0.0'], license: 'MIT OR WTFPL' }])).toHaveLength(1);
     });
 });
 
