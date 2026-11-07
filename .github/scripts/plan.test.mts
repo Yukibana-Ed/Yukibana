@@ -49,7 +49,7 @@ describe('what runs', () => {
         expect(decide({ kind: 'packages', affected: ['@yukibana/ci-scripts'], files: ['.github/scripts/licenses.mts'] }, names).licenses).toBe(true);
     });
 
-    test('a change to the fixture repository has the built CLI and the cloud stack check it, as packages depending on it', () => {
+    test('the packages depending on the fixture repository are checked, and the cloud stack runs when the Worker is among them', () => {
         const affected = ['@yukibana/fixtures', '@yukibana/client', '@yukibana/cli', '@yukibana/cloud-web'];
         const plan = decide({ kind: 'packages', affected, files: ['packages/fixtures/repo.tar.gz'] }, [...names, '@yukibana/fixtures']);
         expect(plan).toMatchObject({ packages: ['@yukibana/cli', '@yukibana/client', '@yukibana/cloud-web', '@yukibana/fixtures'], cloud: true });
