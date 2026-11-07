@@ -51,6 +51,9 @@ mac:
     provider: generic
     url: 'https://yukibana.isc-vs.ch/download/latest/macos'
 linux:
+  # Otherwise the package's name, which as a scoped name (`@yukibana/ide-electron`) the AppImage and deb refuse. Also
+  # the name after-pack.js wraps, and the same as package.json's desktopName.
+  executableName: yukibana
   icon: resources/icons/LinuxLauncherIcons
   category: Development
   mimeTypes:

@@ -288,6 +288,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # What the Package workflow builds for a tag, unpacked (`--dir`): no installer, but electron-builder.yml and
+      # after-pack.js run, which no test does otherwise. Once, on Linux, when the Electron app is affected. An unpacked
+      # app takes any executable name, and the AppImage and deb refuse a scoped package's (`@yukibanaide-electron`), so
+      # the step checks for the one electron-builder.yml names, as after-pack.js leaves it.
+      - name: Package the Electron app, unpacked
+        if: matrix.app == 'electron' && runner.os == 'Linux' && contains(fromJSON(needs.plan.outputs.packages), '@yukibana/ide-electron')
+        run: |
+          pnpm package --preview
+          test -x ide/electron/dist/linux-unpacked/yukibana.bin
+
       - name: Upload test report
         if: always()
         uses: actions/upload-artifact@v7
