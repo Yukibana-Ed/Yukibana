@@ -137,13 +137,12 @@ jobs:
           read -ra filters <<<"$FILTERS"
           pnpm "${filters[@]}" run --if-present build
 
-      # The CLI as a course repository's CI runs it, over the fixture repository. The plan adds the CLI whenever the client
-      # is affected, so a change to the fixture alone (the client's tests) runs it too.
+      # The CLI as a course repository's CI runs it, over the fixture repository, which the CLI's tests depend on.
       - name: Check the fixture with the built CLI
         if: contains(fromJSON(needs.plan.outputs.packages), '@yukibana/cli')
         run: |
           mkdir -p "$RUNNER_TEMP/fixture"
-          tar -xzf packages/client/tests/fixtures/repo.tar.gz -C "$RUNNER_TEMP/fixture" --strip-components=1
+          tar -xzf packages/fixtures/repo.tar.gz -C "$RUNNER_TEMP/fixture" --strip-components=1
           node packages/cli/dist/index.js check "$RUNNER_TEMP/fixture" --folder calc
 
   # The database and the Worker together: the real Supabase image and a real S3 server on the runner, every migration

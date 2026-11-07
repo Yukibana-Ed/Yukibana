@@ -407,8 +407,8 @@ settings, before" step of the last deploy.
 run titled `Deploy <commit>` for it; there is none while CI on `main` is still
 running, and a run titled `Not deployed` means CI failed for it. Its plan job prints which packages the change affected:
 when neither `@yukibana/cloud-web` nor `@yukibana/cloud-db` is among them,
-nothing was deployed, by design, and so is a change to CI, a root config or
-the fixture repository alone. A failed run is re-run by hand, and a run that waits on another is the
+nothing was deployed, by design, and so is a change to CI or a root config
+alone. A failed run is re-run by hand, and a run that waits on another is the
 `deploy-cloud` concurrency group at work.
 `/api/auth/config` answering without `siteUrl` is the sign that code from
 before the website login is live.

@@ -7,8 +7,8 @@
 # reaches production without having run from empty under pgTAP first, whatever merged it (an admin bypassing the merge
 # queue too). It deploys when the pnpm package graph says @yukibana/cloud-web or @yukibana/cloud-db is affected (so a
 # change to packages they use counts, @yukibana/client's yukibana.schema.json among them), or the lockfile, the
-# workspace's configuration, this file or the placeholder check it runs changed; a change to CI, a root config or the
-# fixture repository alone deploys nothing (`deploy` in .github/scripts/plan.mts). And by hand, which deploys the
+# workspace's configuration, this file or the placeholder check it runs changed; a change to CI or a root config alone
+# deploys nothing (`deploy` in .github/scripts/plan.mts). And by hand, which deploys the
 # branch's head without waiting for CI. A first environment needs it twice: deploy, log in once with GitHub, deploy
 # again so cloud/db/ops/bootstrap.sql can promote the first admin.
 #

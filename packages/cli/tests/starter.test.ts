@@ -14,7 +14,7 @@ const dir = (path: string): Entry => ({ path, type: 'dir', mode: 0o755, mtime: 1
  *  without its wrapper directory (`org-repo-sha/`), so its paths are those of
  *  a checkout on disk. */
 async function fixture(): Promise<Entry[]> {
-    const bytes = readFileSync(createRequire(import.meta.url).resolve('@yukibana/client/fixtures/repo.tar.gz'));
+    const bytes = readFileSync(createRequire(import.meta.url).resolve('@yukibana/fixtures/repo.tar.gz'));
     const entries = await readArchive(new Uint8Array(bytes));
     return entries.flatMap(e => {
         const slash = e.path.indexOf('/');

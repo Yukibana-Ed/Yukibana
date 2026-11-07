@@ -1,0 +1,11 @@
+{
+  "private": true,
+  "name": "@yukibana/fixtures",
+  "description": "Test data more than one package reads: repo.tar.gz, a course repository as `git archive` and GitHub produce it (a pax tarball with a wrapper directory, a global header, a long path and a hidden test).",
+  "version": "0.0.0-dev",
+  "license": "MIT",
+  "exports": {
+    "./repo.tar.gz": "./repo.tar.gz",
+    "./package.json": "./package.json"
+  }
+}

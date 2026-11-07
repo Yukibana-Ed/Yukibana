@@ -41,7 +41,7 @@ export type Change =
 export interface Plan {
     /**
      * The names of the packages whose `lint`, `typecheck` and `build` scripts run, and whose Vitest project (named after
-     * the package) runs in the root's one coverage run, sorted. `@yukibana/cli` is one whenever `@yukibana/client` is.
+     * the package) runs in the root's one coverage run, sorted.
      */
     readonly packages: readonly string[];
     /** `true` iff the cloud stack runs: the migrations from empty, pgTAP and the Worker's integration tests. */
@@ -57,19 +57,13 @@ export interface Plan {
     readonly preview: boolean;
     /**
      * `true` iff Deploy cloud deploys: what it deploys may have changed, because a package in `CLOUD_PACKAGES` is affected
-     * or one of `DEPLOY_INPUTS` changed. A change to CI, a root config or the fixture repository alone does not deploy.
+     * or one of `DEPLOY_INPUTS` changed. A change to CI or a root config alone does not deploy.
      */
     readonly deploy: boolean;
 }
 
 /** The packages whose being affected starts the cloud stack, and deploys. */
 const CLOUD_PACKAGES: readonly string[] = ['@yukibana/cloud-web', '@yukibana/cloud-db'];
-
-/**
- * The directory of files that the cloud's integration tests read and pnpm's graph cannot see: the fixture repository
- * belongs to `@yukibana/client`, and `@yukibana/cloud-web` publishes it as a release.
- */
-const CLOUD_FIXTURES = 'packages/client/tests/fixtures/';
 
 /** The files no package owns that every install reads: a change to one can change what any package is built with. */
 const INSTALL_INPUTS: readonly string[] = ['package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml'];
@@ -87,6 +81,7 @@ const DEVCONTAINER_INPUTS: readonly string[] = [
     'cloud/web/package.json',
     'packages/cli/package.json',
     'packages/client/package.json',
+    'packages/fixtures/package.json',
     'cloud/db/supabase/config.toml',
 ];
 
@@ -128,15 +123,10 @@ export function decide(change: Change, all: readonly string[]): Plan {
     if (unknown.length > 0) {
         throw new Error(`decide: not workspace packages: ${unknown.join(', ')}`);
     }
-    // The built CLI checks the fixture repository in packages/client/tests, which pnpm counts as the client's tests alone;
-    // the cloud's integration tests read it too (CLOUD_FIXTURES).
-    if (packages.includes('@yukibana/client') && !packages.includes('@yukibana/cli') && all.includes('@yukibana/cli')) {
-        packages.push('@yukibana/cli');
-    }
     const { files } = change;
     return {
         packages: packages.sort(),
-        cloud: packages.some(p => CLOUD_PACKAGES.includes(p)) || files.some(f => f.startsWith(CLOUD_FIXTURES)),
+        cloud: packages.some(p => CLOUD_PACKAGES.includes(p)),
         ide: packages.some(p => IDE_PACKAGES.includes(p)),
         // What the container is built from, the scripts and compose file its start runs, and what it installs from.
         devcontainer: files.some(f => f.startsWith('cloud/dev/') || DEVCONTAINER_INPUTS.includes(f)),
