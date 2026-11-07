@@ -1,4 +1,4 @@
-# Uploads a pull request's Worker, which CI's preview job built without any secret, as a preview version of the cloud
+# Uploads a pull request's Worker, which CI's check job built and bundled without any secret, as a preview version of the cloud
 # Worker, and comments its URL on the pull request. It runs main's copy of this file (workflow_run), never the pull
 # request's, and only after a maintainer approves the `preview` environment: a Cloudflare token cannot be limited to
 # uploads, and the preview runs the pull request's code against production's database and bucket.
@@ -65,7 +65,7 @@ jobs:
       PR: ${{ github.event.workflow_run.pull_requests[0].number }}
       HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
     steps:
-      # Main: wrangler.jsonc and wrangler come from here, only the build from the pull request.
+      # Main: wrangler.jsonc and wrangler come from here; the bundle, and every dependency in it, from the pull request.
       - name: Checkout
         uses: actions/checkout@v7
         with:
@@ -94,7 +94,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler.ndjson
         run: |
-          pnpm exec wrangler versions upload --preview-alias "pr-$PR" --tag "pr-$PR" --message "Preview of #$PR at $HEAD_SHA"
+          pnpm exec wrangler versions upload .svelte-kit/preview-worker/_worker.js --no-bundle --preview-alias "pr-$PR" --tag "pr-$PR" --message "Preview of #$PR at $HEAD_SHA"
           url=$(jq -r 'select(.type == "version-upload") | .preview_alias_url // .preview_url // empty' "$WRANGLER_OUTPUT_FILE_PATH" | tail -n 1)
           if [ -z "$url" ]; then
             echo "::error::wrangler reported no preview URL: preview URLs must be enabled for the Worker (preview_urls in wrangler.jsonc)"
