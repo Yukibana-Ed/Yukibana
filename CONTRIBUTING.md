@@ -109,10 +109,13 @@ More information can be found in [docs/architecture.md](docs/architecture.md).
 with the Supabase CLI and squawk) and [packages/cli](packages/cli) (`@yukibana/cli`) are packages of the same
 workspace. `pnpm setup:cloud` or `pnpm setup:cli` installs them, and each has its own scripts, e.g.
 `pnpm --filter @yukibana/cloud-web dev`, `pnpm --filter @yukibana/cli build`. The database's are `lint` (squawk over the
-migrations, oxlint over the Edge Functions), `start`, `stop`, `reset` and `test:db` (pgTAP), and any other Supabase
+migrations, oxlint over the Edge Functions), `start`, `stop`, `reset`, `test:db` (pgTAP), `storage:start` and
+`storage:stop` (the local bucket), `smoke` (is the local stack reachable?) and `admin <email>` (the local database's
+first admin); the Worker's `dev:vars` writes its local `.dev.vars` from the running stack, and any other Supabase
 command runs in `cloud/db` with `pnpm --filter @yukibana/cloud-db exec supabase <command>`. The library the CLI and the IDE share,
 [@yukibana/client](packages/client), compiles into its `lib` on install; rebuild it after changing it with
-`pnpm --filter @yukibana/client prepare`. Their guide is [cloud/CLAUDE.md](cloud/CLAUDE.md).
+`pnpm --filter @yukibana/client prepare`. How to run the cloud locally, publish a project and collect submissions
+is in [docs/cloud/README.md](docs/cloud/README.md), and how their code is written in [cloud/CLAUDE.md](cloud/CLAUDE.md).
 
 The cloud's devcontainer is not where editors look for one (`.devcontainer/` at the root), so start it from the root
 with `devcontainer up --workspace-folder . --config cloud/dev/.devcontainer/devcontainer.json`.

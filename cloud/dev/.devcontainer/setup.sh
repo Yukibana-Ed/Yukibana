@@ -17,10 +17,10 @@ pnpm --filter @yukibana/cloud-db exec supabase stop || true
 pnpm --filter @yukibana/cloud-db exec supabase start
 
 # The bucket, as sibling containers of the Supabase ones.
-docker compose -f cloud/dev/compose.yml up -d
+pnpm --filter @yukibana/cloud-db storage:start
 
 # The Worker's local secrets, written once from what the stack reports.
-node cloud/dev/scripts/dev-vars.mjs
+pnpm --filter @yukibana/cloud-web dev:vars
 
 echo
 echo "Inside this devcontainer:  http://${SUPABASE_SERVICES_HOSTNAME:-127.0.0.1}:54321"
