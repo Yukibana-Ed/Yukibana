@@ -1,5 +1,5 @@
 # Deploys the cloud from main: the database first (migrations, the per-environment bootstrap, Supabase's settings), then
-# the Worker. Migrations only ever add (docs/cloud/CLAUDE.md), so the Worker still running between the two steps works
+# the Worker. Migrations only ever add (cloud/CLAUDE.md), so the Worker still running between the two steps works
 # against the new schema. A failed deploy is re-run by hand; the next one includes everything anyway. A run whose commit
 # is older than the last successful deploy's refuses, so a re-run of an old run cannot put an old Worker back.
 #

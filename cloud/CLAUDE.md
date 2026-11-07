@@ -4,11 +4,14 @@ Courses hold editions, editions hold projects, students submit to projects.
 The cloud is a registry: it holds identities, enrolment, released archives
 and submissions, and transforms nothing. The database decides who may do
 what; the Worker asks it, as the person asking; the pages show what came
-back. The CLI (`packages/cli/`) is where a course repository becomes the two archives
-a release is made of, on a teacher's machine or in their CI. `README.md`
-says how to run it, `docs/cloud/architecture.md` what the parts are and how they
-connect, and `docs/cloud/design.md` why the model is what it is.
-This file is how the code is written.
+back. The CLI (`packages/cli/`), over the library it shares with the IDE
+(`packages/client/`), is where a course repository becomes the two archives
+a release is made of, on a teacher's machine or in their CI.
+`docs/cloud/README.md` says how to run it, `docs/cloud/architecture.md` what
+the parts are and how they connect, and `docs/cloud/design.md` why the model
+is what it is. This file is how the code is written, in `cloud/` and in
+`packages/client/` and `packages/cli/` (whose `packages/CLAUDE.md` points
+here). Paths in it are from the repository's root.
 
 ## The one rule about the database
 
@@ -140,12 +143,14 @@ Cloudflare Worker with `adapter-cloudflare`.
 * **Untyped input is trusted in one place, named so it can be grepped.**
   `configOf` reads the Worker's env (from `cloudflare:workers`, in
   `server/worker.ts`); `text(form, name)` reads a form; the
-  CLI's `parseConfig` reads `yukibana.json`. Each checks and names what is
+  client's `parseConfig` (`packages/client/src/lib/yukibana.ts`) reads
+  `yukibana.json`. Each checks and names what is
   wrong. `any` does not appear; `unknown` at a boundary, narrowed at
   once, does.
-* **What decides something is pure and in a `lib`.** In the CLI, the tar
-  reader, the glob matcher and the release plans are functions of bytes and
-  strings, tested as tables; the commands do the I/O. In the app,
+* **What decides something is pure and in a `lib`.** In the client
+  (`packages/client/src/lib`), the tar reader, the glob matcher and the
+  release plans are functions of bytes and strings, tested as tables; the
+  rest of the client and the CLI's commands do the I/O. In the app,
   `src/lib/server` does I/O around the database and the bucket, and
   `src/routes` shows what came back and holds no rules.
 * **The bucket is an interface.** `Bucket` in `storage.ts` has one

@@ -1,6 +1,6 @@
 /** Which requests may write on the strength of this site's cookies.
  *
- *  The rule, as CLAUDE.md states it: no cookie-authenticated GET has side
+ *  The rule, as cloud/CLAUDE.md states it: no cookie-authenticated GET has side
  *  effects; a cookie-authenticated write is a form this site's own pages
  *  submit, from this site's origin; every other write is bearer-only. This
  *  module is the second clause, decided once for every route by the hook in

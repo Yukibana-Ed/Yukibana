@@ -4,7 +4,7 @@
 of the system are, how they relate to each other, and the principles that
 decided the first two. This page gives them in that order. `design.md` is
 the longer record of individual decisions and what was left out;
-`deploy.md` is how the elements below are set up and shipped; `CLAUDE.md`
+`deploy.md` is how the elements below are set up and shipped; `cloud/CLAUDE.md`
 is how the code inside them is written.
 
 ## 1. The elements
@@ -119,7 +119,7 @@ Object keys are `starters/<project>/<uuid>.tar.gz`,
   checks before anything else. That holds against a page on a sibling
   subdomain too (Light, at light.yukibana.dev, is the same site), and the
   session cookies' `__Host-` names keep such a page from setting a session
-  of its choosing (CLAUDE.md, "A sibling subdomain is another person's
+  of its choosing (`cloud/CLAUDE.md`, "A sibling subdomain is another person's
   page").
 * **The Worker reaches Postgres through Hyperdrive, as `yukibana_app`, and
   immediately becomes someone else.** Each query runs in a transaction that
