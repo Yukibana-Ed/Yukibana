@@ -15,12 +15,22 @@ import { connect, Misconfigured, statusOf, type Sql } from './db';
 import { report } from '#lib/report.ts';
 import { s3Bucket, type Bucket } from './storage';
 
+/** What a route's server code works with, for the length of one request. */
 export interface Context {
+    /** The Worker's configuration, read from its env. */
     readonly config: Config;
+    /** This request's client of `config.databaseUrl`, which connects as `yukibana_app`, so a query outside `asUser`
+     *  or `asPublisher` is refused. Closed after the response: nothing may keep it past `withContext`'s `run`. */
     readonly sql: Sql;
+    /** The bucket the archives are in. */
     readonly bucket: Bucket;
 }
 
+/** Runs `run` with a context made for this request, returns what it returns, and closes the database client after the
+ *  response is sent, whether `run` succeeded or threw.
+ *
+ *  - Requires: the Worker's env is a complete configuration; throws the error `configOf` gives, naming the first
+ *    missing value, before anything connects. Runs only in the Worker, whose env (`cloudflare:workers`) it reads. */
 export async function withContext<T>(run: (ctx: Context) => Promise<T>): Promise<T> {
     const config = workerConfig();
     const sql = connect(config.databaseUrl);
