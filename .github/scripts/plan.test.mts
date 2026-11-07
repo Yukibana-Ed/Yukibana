@@ -113,6 +113,16 @@ describe('what runs', () => {
         expect(decide({ kind: 'shared', affected: [], files: ['cloud/dev/scripts/smoke.mjs'] }, names).devcontainer).toBe(true);
     });
 
+    test('a change to the Supabase stack the devcontainer starts, or to a manifest its install reads, builds it', () => {
+        expect(decide({ kind: 'packages', affected: ['@yukibana/cloud-db'], files: ['cloud/db/supabase/config.toml'] }, names).devcontainer).toBe(true);
+        expect(decide({ kind: 'packages', affected: ['@yukibana/cloud-web'], files: ['cloud/web/package.json'] }, names).devcontainer).toBe(true);
+        expect(decide({ kind: 'packages', affected: ['@yukibana/cloud-db'], files: ['cloud/db/supabase/migrations/1_a.sql'] }, names).devcontainer).toBe(false);
+    });
+
+    test('a change to the placeholder check the deploy runs deploys', () => {
+        expect(decide({ kind: 'shared', affected: [], files: ['.github/scripts/production-config.mts'] }, names).deploy).toBe(true);
+    });
+
     test("a change to the IDE's plugin list checks the plugins' licenses", () => {
         expect(decide({ kind: 'packages', affected: ['@yukibana/ide'], files: ['ide/package.json'] }, names).licenses).toBe(true);
     });

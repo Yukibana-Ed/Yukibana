@@ -193,6 +193,6 @@ With the stack running: `pnpm --filter @yukibana/cloud-db reset`,
 `pnpm --filter @yukibana/cloud-db test:db`, and
 `pnpm --filter @yukibana/cloud-web test:integration`.
 CI runs what a change affects of all of it, plus the devcontainer build.
-On `main`, `deploy-cloud.yml` deploys the database (migrations, bootstrap,
+On `main`, once CI has passed, `deploy-cloud.yml` deploys the database (migrations, bootstrap,
 settings) and then the Worker, so code can ship with the migration it needs;
 a removal still takes two deploys (`docs/cloud/deploy.md`).

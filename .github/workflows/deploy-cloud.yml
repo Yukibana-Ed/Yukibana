@@ -3,11 +3,19 @@
 # against the new schema. A failed deploy is re-run by hand; the next one includes everything anyway. A run whose commit
 # is older than the last successful deploy's refuses, so a re-run of an old run cannot put an old Worker back.
 #
-# On a push to main of ISC-HEI/Yukibana (a fork has no production environment) when the pnpm package graph says
-# @yukibana/cloud-web or @yukibana/cloud-db is affected (so a change to packages they use counts), or the lockfile, the
-# workspace's configuration or this file changed; a change to CI, a root config or the fixture repository alone deploys
-# nothing (`deploy` in .github/scripts/plan.mts). And by hand. A first environment needs it twice: deploy, log in once
-# with GitHub, deploy again so cloud/db/ops/bootstrap.sql can promote the first admin.
+# Once CI has passed for a push to main of ISC-HEI/Yukibana (a fork has no production environment), so that no migration
+# reaches production without having run from empty under pgTAP first, whatever merged it (an admin bypassing the merge
+# queue too). It deploys when the pnpm package graph says @yukibana/cloud-web or @yukibana/cloud-db is affected (so a
+# change to packages they use counts, @yukibana/client's yukibana.schema.json among them), or the lockfile, the
+# workspace's configuration, this file or the placeholder check it runs changed; a change to CI, a root config or the
+# fixture repository alone deploys nothing (`deploy` in .github/scripts/plan.mts). And by hand, which deploys the
+# branch's head without waiting for CI. A first environment needs it twice: deploy, log in once with GitHub, deploy
+# again so cloud/db/ops/bootstrap.sql can promote the first admin.
+#
+# A run started by CI has the newest commit of main as its own (GITHUB_SHA), which is not necessarily the one CI passed
+# for. So every step uses COMMIT, the commit CI passed for, and the run's title names it: "Deploy <sha>" for a run that
+# may deploy, which is how the guards find the last commit deployed. CI's other runs on a branch named main (a failed
+# one, or a pull request from a fork's main) start a run titled "Not deployed", which does nothing.
 #
 # The secrets are on the `production` environment (Settings, Environments), and each step gets only the ones it uses:
 #   SUPABASE_ACCESS_TOKEN   a Supabase personal access token (sbp_...)
@@ -24,18 +32,33 @@
 # The Worker's own secrets (SUPABASE_PUBLISHABLE_KEY, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY) are set once with
 # `wrangler secret put` and are not touched here. docs/cloud/deploy.md is the whole runbook.
 name: Deploy cloud
+# The three places that ask whether this run may deploy (the title, the concurrency group and the plan's `if`) ask the
+# same question: by hand, or CI passed for a push.
+run-name: >-
+  ${{ (github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'))
+  && format('Deploy {0}', github.event.workflow_run.head_sha || github.sha)
+  || format('Not deployed: CI {0} for a {1} of {2}', github.event.workflow_run.conclusion, github.event.workflow_run.event, github.event.workflow_run.head_sha) }}
 
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
 # One deploy at a time, and none cancelled halfway: a newer one waits, and a newer one still replaces it while it waits.
-# So a push can be replaced before it ran, and the plan compares with the last deploy that succeeded, not with the commit
-# just before: the run that replaced it then includes its changes.
+# So a commit can be replaced before it ran, and the plan compares with the last deploy that succeeded, not with the
+# commit just before: the run that replaced it then includes its changes. A run that may not deploy has a group of its
+# own, so that it cannot replace one that waits.
 concurrency:
-  group: deploy-cloud
+  group: >-
+    ${{ (github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'))
+    && 'deploy-cloud' || format('deploy-cloud-not-{0}', github.run_id) }}
   cancel-in-progress: false
+
+env:
+  # The commit this run deploys: the one CI passed for, or the branch's head by hand.
+  COMMIT: ${{ github.event.workflow_run.head_sha || github.sha }}
 
 permissions:
   contents: read
@@ -43,7 +66,9 @@ permissions:
 jobs:
   plan:
     name: Plan
-    if: github.repository == 'ISC-HEI/Yukibana'
+    if: >-
+      github.repository == 'ISC-HEI/Yukibana'
+      && (github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'))
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -55,6 +80,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ env.COMMIT }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -64,15 +90,17 @@ jobs:
           runtime: node@24.x
           install: false
 
-      # The commit of the last run on main that succeeded. One that skipped the deploy is a base too: nothing since the
-      # one before it affected the cloud. None (the first run), or a run by hand, means everything is affected.
+      # The commit of the last run on main that succeeded, from its title. One whose plan skipped the deploy is a base
+      # too: nothing since the one before it affected the cloud. None (the first run), or a run by hand, means everything
+      # is affected.
       - name: Last deployed
         id: base
-        if: github.event_name == 'push'
+        if: github.event_name == 'workflow_run'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          sha=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy-cloud.yml/runs?branch=main&status=success&per_page=1" --jq '.workflow_runs[0].head_sha // empty')
+          sha=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy-cloud.yml/runs?branch=main&status=success&per_page=100" \
+            --jq '[.workflow_runs[].display_title | select(startswith("Deploy "))][0] // empty | ltrimstr("Deploy ")')
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
 
       - name: Plan
@@ -100,12 +128,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          last=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy-cloud.yml/runs?branch=main&status=success&per_page=1" --jq '.workflow_runs[0].head_sha // empty')
+          last=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy-cloud.yml/runs?branch=main&status=success&per_page=100" \
+            --jq '[.workflow_runs[].display_title | select(startswith("Deploy "))][0] // empty | ltrimstr("Deploy ")')
           if [ -n "$last" ]; then
-            status=$(gh api "repos/$GITHUB_REPOSITORY/compare/$last...$GITHUB_SHA" --jq .status)
+            status=$(gh api "repos/$GITHUB_REPOSITORY/compare/$last...$COMMIT" --jq .status)
             case "$status" in
               ahead|identical) ;;
-              *) echo "::error::$GITHUB_SHA is $status of $last, the commit of the last successful Deploy cloud run; nothing was deployed. To deploy main again, use Run workflow on main."
+              *) echo "::error::$COMMIT is $status of $last, the commit of the last successful Deploy cloud run; nothing was deployed. To deploy main again, use Run workflow on main."
                  exit 1 ;;
             esac
           fi
@@ -113,6 +142,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ env.COMMIT }}
           persist-credentials: false
 
       - name: Install pnpm and Node.js
@@ -131,7 +161,7 @@ jobs:
       - name: Is an environment configured
         id: env
         run: |
-          if node cloud/dev/scripts/check-production-config.mjs; then
+          if node .github/scripts/production-config.mts; then
             echo "configured=yes" >> "$GITHUB_OUTPUT"
           else
             echo "::notice::the production configuration still has placeholders, so this repository is not pointed at an environment yet; see docs/cloud/deploy.md. Nothing to deploy."

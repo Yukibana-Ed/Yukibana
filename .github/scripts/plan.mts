@@ -48,7 +48,7 @@ export interface Plan {
     readonly cloud: boolean;
     /** `true` iff the IDE's end-to-end tests run, on every OS. */
     readonly ide: boolean;
-    /** `true` iff the cloud's devcontainer is built and its smoke test run. */
+    /** `true` iff the cloud's devcontainer is built and its smoke test run: `cloud/dev/` or one of `DEVCONTAINER_INPUTS` changed. */
     readonly devcontainer: boolean;
     /** `true` iff the licenses of the npm dependencies and of the IDE's bundled plugins are checked. */
     readonly licenses: boolean;
@@ -74,7 +74,20 @@ const CLOUD_FIXTURES = 'packages/client/tests/fixtures/';
 const INSTALL_INPUTS: readonly string[] = ['package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml'];
 
 /** The files no package owns whose change deploys the cloud: what it is installed with, and the deploy itself. */
-const DEPLOY_INPUTS: readonly string[] = [...INSTALL_INPUTS, '.github/workflows/deploy-cloud.yml'];
+const DEPLOY_INPUTS: readonly string[] = [...INSTALL_INPUTS, '.github/workflows/deploy-cloud.yml', '.github/scripts/production-config.mts'];
+
+/**
+ * The files outside `cloud/dev/` that the devcontainer is built from: what every install reads, the manifests of the
+ * packages its install selects (`{cloud/**}...` and `@yukibana/cli...`), and the Supabase stack its start runs.
+ */
+const DEVCONTAINER_INPUTS: readonly string[] = [
+    ...INSTALL_INPUTS,
+    'cloud/db/package.json',
+    'cloud/web/package.json',
+    'packages/cli/package.json',
+    'packages/client/package.json',
+    'cloud/db/supabase/config.toml',
+];
 
 /**
  * The packages whose being affected starts the IDE's end-to-end tests: the two apps, the tests themselves, and
@@ -125,7 +138,7 @@ export function decide(change: Change, all: readonly string[]): Plan {
         cloud: packages.some(p => CLOUD_PACKAGES.includes(p)) || files.some(f => f.startsWith(CLOUD_FIXTURES)),
         ide: packages.some(p => IDE_PACKAGES.includes(p)),
         // What the container is built from, the scripts and compose file its start runs, and what it installs from.
-        devcontainer: files.some(f => f.startsWith('cloud/dev/') || INSTALL_INPUTS.includes(f)),
+        devcontainer: files.some(f => f.startsWith('cloud/dev/') || DEVCONTAINER_INPUTS.includes(f)),
         // The npm dependencies are in the lockfile, the plugins are listed in ide/package.json, and the rules are checked
         // against the real tree when they change.
         licenses: files.some(f => LICENSE_INPUTS.includes(f)),
