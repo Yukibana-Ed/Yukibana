@@ -134,6 +134,10 @@ may not be bound, approved or cancelled.
 type-aware, Vitest, svelte-check, TypeScript 6 `strict` with
 `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`), deployed as one
 Cloudflare Worker with `adapter-cloudflare`.
+The cloud's packages, the CLI, the client and CI's scripts share one strict
+TypeScript base (`tsconfig.strict.json` at the root) and one oxlint base
+(`oxlint.strict.json`): a package's own config extends them and says only
+what is its own, each exception with why.
 
 * **Ids carry their table.** `ProjectId`, `EditionId`, `SubmissionId` and the
   rest in `ids.ts` are branded strings. A string becomes one in two places:

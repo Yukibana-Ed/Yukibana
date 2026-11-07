@@ -64,22 +64,22 @@ export interface Plan {
 }
 
 /** The packages whose being affected deploys. */
-const CLOUD_PACKAGES: readonly string[] = ['@yukibana/cloud-web', '@yukibana/cloud-db'];
+const CLOUD_PACKAGES: ReadonlySet<string> = new Set(['@yukibana/cloud-web', '@yukibana/cloud-db']);
 
 /** The packages whose being affected starts the cloud stack: what it deploys, and the scripts that check the stack. */
-const CLOUD_STACK_PACKAGES: readonly string[] = [...CLOUD_PACKAGES, '@yukibana/cloud-dev'];
+const CLOUD_STACK_PACKAGES: ReadonlySet<string> = new Set([...CLOUD_PACKAGES, '@yukibana/cloud-dev']);
 
 /** The files no package owns that every install reads: a change to one can change what any package is built with. */
 const INSTALL_INPUTS: readonly string[] = ['package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml'];
 
 /** The files no package owns whose change deploys the cloud: what it is installed with, and the deploy itself. */
-const DEPLOY_INPUTS: readonly string[] = [...INSTALL_INPUTS, '.github/workflows/deploy-cloud.yml', '.github/scripts/production-config.mts'];
+const DEPLOY_INPUTS: ReadonlySet<string> = new Set([...INSTALL_INPUTS, '.github/workflows/deploy-cloud.yml', '.github/scripts/production-config.mts']);
 
 /**
  * The files outside `cloud/dev/` that the devcontainer is built from: what every install reads, the manifests of the
  * packages its install selects (`{cloud/**}...` and `@yukibana/cli...`), and the Supabase stack its start runs.
  */
-const DEVCONTAINER_INPUTS: readonly string[] = [
+const DEVCONTAINER_INPUTS: ReadonlySet<string> = new Set([
     ...INSTALL_INPUTS,
     'cloud/db/package.json',
     'cloud/web/package.json',
@@ -87,16 +87,16 @@ const DEVCONTAINER_INPUTS: readonly string[] = [
     'packages/client/package.json',
     'packages/fixtures/package.json',
     'cloud/db/supabase/config.toml',
-];
+]);
 
 /**
  * The packages whose being affected starts the IDE's end-to-end tests: the two apps, the tests themselves, and
  * `@yukibana/ide`, which holds the scripts and the Theia CLI that build the apps.
  */
-const IDE_PACKAGES: readonly string[] = ['@yukibana/ide', '@yukibana/ide-browser', '@yukibana/ide-electron', '@yukibana/ide-e2e'];
+const IDE_PACKAGES: ReadonlySet<string> = new Set(['@yukibana/ide', '@yukibana/ide-browser', '@yukibana/ide-electron', '@yukibana/ide-e2e']);
 
 /** The files whose change runs the license check: what it checks, and its rules. */
-const LICENSE_INPUTS: readonly string[] = ['pnpm-lock.yaml', 'ide/package.json', '.github/scripts/licenses.mts'];
+const LICENSE_INPUTS: ReadonlySet<string> = new Set(['pnpm-lock.yaml', 'ide/package.json', '.github/scripts/licenses.mts']);
 
 /**
  * Returns the plan for a change, given the names of every package in the workspace.
@@ -105,25 +105,25 @@ const LICENSE_INPUTS: readonly string[] = ['pnpm-lock.yaml', 'ide/package.json',
  */
 export function decide(change: Change, all: readonly string[]): Plan {
     if (change.kind === 'unknown') {
-        return { packages: [...all].sort(), cloud: true, ide: true, devcontainer: true, licenses: true, preview: false, deploy: true };
+        return { packages: all.toSorted(), cloud: true, ide: true, devcontainer: true, licenses: true, preview: false, deploy: true };
     }
-    const packages = change.kind === 'shared' ? [...all] : [...change.affected];
+    const packages = change.kind === 'shared' ? all : change.affected;
     const unknown = change.affected.filter(p => !all.includes(p));
     if (unknown.length > 0) {
         throw new Error(`decide: not workspace packages: ${unknown.join(', ')}`);
     }
     const { files } = change;
     return {
-        packages: packages.sort(),
-        cloud: packages.some(p => CLOUD_STACK_PACKAGES.includes(p)),
-        ide: packages.some(p => IDE_PACKAGES.includes(p)),
+        packages: packages.toSorted(),
+        cloud: packages.some(p => CLOUD_STACK_PACKAGES.has(p)),
+        ide: packages.some(p => IDE_PACKAGES.has(p)),
         // What the container is built from, the scripts and compose file its start runs, and what it installs from.
-        devcontainer: files.some(f => f.startsWith('cloud/dev/') || DEVCONTAINER_INPUTS.includes(f)),
+        devcontainer: files.some(f => f.startsWith('cloud/dev/') || DEVCONTAINER_INPUTS.has(f)),
         // The npm dependencies are in the lockfile, the plugins are listed in ide/package.json, and the rules are checked
         // against the real tree when they change.
-        licenses: files.some(f => LICENSE_INPUTS.includes(f)),
+        licenses: files.some(f => LICENSE_INPUTS.has(f)),
         preview: packages.includes('@yukibana/cloud-web'),
-        deploy: change.affected.some(p => CLOUD_PACKAGES.includes(p)) || files.some(f => DEPLOY_INPUTS.includes(f)),
+        deploy: change.affected.some(p => CLOUD_PACKAGES.has(p)) || files.some(f => DEPLOY_INPUTS.has(f)),
     };
 }
 
