@@ -14,6 +14,7 @@
       "types": "./lib/lib/yukibana.d.ts",
       "default": "./lib/lib/yukibana.js"
     },
+    "./yukibana.schema.json": "./yukibana.schema.json",
     "./package.json": "./package.json"
   },
   "scripts": {

@@ -16,7 +16,7 @@ export default {
     ignorePatterns: [
         '**/*.md',
         // Generated, and checked byte for byte by packages/client/tests/schema.test.ts.
-        'docs/cloud/yukibana.schema.json',
+        'packages/client/yukibana.schema.json',
     ],
     overrides: [
         {

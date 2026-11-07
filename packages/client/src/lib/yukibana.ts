@@ -6,7 +6,7 @@
  *  reads for which widgets it shows, which files open and which are
  *  read-only, and the file the builder reads for the build system, what a
  *  student must never receive and what a submission holds.
- *  `docs/cloud/yukibana.schema.json` is its schema and `docs/cloud/yukibana-json.md`
+ *  `packages/client/yukibana.schema.json` is its schema and `docs/cloud/yukibana-json.md`
  *  the prose.
  *
  *  ```json
@@ -353,7 +353,8 @@ export const configSchema = z.object({
 export const SCHEMA_URL = 'https://cloud.yukibana.dev/schema/yukibana.json';
 
 /** Returns the JSON Schema of the file, generated from `configSchema`, as
- *  `docs/cloud/yukibana.schema.json` holds it and the registry serves it at
+ *  `yukibana.schema.json` at the package root holds it (exported as
+ *  `@yukibana/client/yukibana.schema.json`) and the registry serves it at
  *  `SCHEMA_URL`. A test fails when the committed file is not this. */
 export function configJSONSchema(): Record<string, unknown> {
     const generated = z.toJSONSchema(configSchema, { io: 'input', target: 'draft-2020-12' }) as Record<string, unknown>;

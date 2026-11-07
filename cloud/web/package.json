@@ -34,6 +34,7 @@
     "@date-fns/tz": "catalog:",
     "@supabase/ssr": "catalog:",
     "@supabase/supabase-js": "catalog:",
+    "@yukibana/client": "catalog:",
     "aws4fetch": "catalog:",
     "jose": "catalog:",
     "postgres": "catalog:"
