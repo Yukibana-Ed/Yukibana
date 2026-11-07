@@ -17,7 +17,9 @@
     "@theia/playwright": "catalog:"
   },
   "devDependencies": {
-    "@yukibana/ide": "catalog:"
+    "@types/node": "catalog:",
+    "@yukibana/ide": "catalog:",
+    "typescript": "catalog:"
   },
   "scripts": {
     "lint": "oxlint",

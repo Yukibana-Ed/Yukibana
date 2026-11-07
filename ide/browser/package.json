@@ -36,7 +36,8 @@
   "devDependencies": {
     "@theia/cli": "catalog:",
     "@yukibana/ide": "catalog:",
-    "esbuild": "catalog:"
+    "esbuild": "catalog:",
+    "typescript": "catalog:"
   },
   "scripts": {
     "clean": "theia clean",
