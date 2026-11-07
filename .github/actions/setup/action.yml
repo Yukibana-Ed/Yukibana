@@ -1,0 +1,19 @@
+# pnpm, and the Node.js that runs it, for every job of every workflow, after its checkout (a local action exists only
+# once the repository is checked out). `node@24.x` runs pnpm and the scripts a workflow runs with `node`; every script
+# pnpm runs uses the exact release of the root's devEngines, which pnpm downloads. Nothing is installed: each job
+# installs what it needs.
+name: Set up pnpm
+description: Installs pnpm and Node.js 24, and restores and saves the pnpm store unless `cache` is false.
+inputs:
+  cache:
+    description: '`true` iff the pnpm store is cached: `false` for a job that installs nothing.'
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Install pnpm and Node.js
+      uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
+      with:
+        runtime: node@24.x
+        cache: ${{ inputs.cache }}
+        install: false

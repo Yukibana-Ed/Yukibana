@@ -72,11 +72,7 @@ jobs:
           persist-credentials: false
 
       - name: Install pnpm and Node.js
-        uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
-        with:
-          runtime: node@24.x
-          cache: true
-          install: false
+        uses: ./.github/actions/setup
 
       - name: Install wrangler
         run: pnpm --filter @yukibana/cloud-web install --frozen-lockfile --fetch-timeout 100000
