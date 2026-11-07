@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { loginWithLoopback, type CallbackOutcome } from '../src/loopback.js';

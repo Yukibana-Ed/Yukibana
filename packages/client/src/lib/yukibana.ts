@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** The contract between a course repository and this service: `yukibana.json`
  *  at the project root. It is the file the student's IDE (our Theia fork)
  *  reads for which widgets it shows, which files open and which are

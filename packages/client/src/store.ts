@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** The terminal's session store: one file, readable by its owner only.
  *
  *  `$YUKIBANA_CONFIG_DIR/session.json`, or under `$XDG_CONFIG_HOME`, or

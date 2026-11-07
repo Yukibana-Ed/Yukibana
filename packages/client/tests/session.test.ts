@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { codeOf, logout, memoryStore, refreshSession, startLogin, tokenProvider, NotLoggedIn, type Session } from '../src/session.js';

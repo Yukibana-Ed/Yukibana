@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { onlyTheStamp, planUpdate, wantedPaths, type Change, type Folder, type FolderEntry } from '../src/lib/update.js';

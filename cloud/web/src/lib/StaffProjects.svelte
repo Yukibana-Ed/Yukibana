@@ -1,4 +1,3 @@
-<!-- SPDX-License-Identifier: MIT -->
 <script module lang="ts">
   import type { EditionId, ProjectId } from './ids';
 

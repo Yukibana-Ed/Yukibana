@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** A teacher's commands for a course repository: check it, build the two
  *  archives, publish them as a release. */
 

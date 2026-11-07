@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 import { describe, expect, test } from 'vitest';
 import { framesOf, incidentOf, incidentText, serverMessage, type Occurrence } from '../src/lib/incident';
 

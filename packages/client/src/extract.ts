@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** Archives onto the disk: what `starter` and `download` unpack.
  *
  *  A submission is whatever a student sent, so unpacking one is treating

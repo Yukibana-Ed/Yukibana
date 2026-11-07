@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** Live pages: reload what is on screen when the database says it changed.
  *
  *  The database broadcasts "something changed" on private Realtime topics

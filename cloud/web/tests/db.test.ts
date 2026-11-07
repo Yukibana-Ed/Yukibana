@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 import { describe, expect, test } from 'vitest';
 import { asPublisher, asUser, clashOf, Misconfigured, statusOf } from '../src/lib/server/db';
 import type { Sql, Tx } from '../src/lib/server/db';

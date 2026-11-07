@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 // Proves the local stack is reachable from wherever this runs: Supabase's
 // API and edge runtime (and so the cloud/db/supabase/functions bind mount), and the
 // bucket. Deliberately no app schema dependency.

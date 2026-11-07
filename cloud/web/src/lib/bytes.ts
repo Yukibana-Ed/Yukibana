@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** Small things about bytes that more than one module needs. */
 
 export function hex(bytes: Uint8Array): string {

@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** Moments as a person reads and types them: a wall-clock time in a named
  *  zone. The database holds instants (`timestamptz`); a `datetime-local`
  *  input holds a wall time with no zone at all. Every crossing between the

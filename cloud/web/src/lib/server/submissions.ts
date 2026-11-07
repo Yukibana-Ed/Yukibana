@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** Accepting a submission and handing out downloads. Shared by the API
  *  routes (what an IDE extension calls) and the page's upload form, so both
  *  make exactly the same decisions.

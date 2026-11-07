@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** Connecting a terminal or a desktop IDE to the registry, through the
  *  website: what `/auth/connect` accepts and where it sends the browser,
  *  decided without asking anyone.

@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** What a submission holds: the student's project folder, as its
  *  `yukibana.json` says.
  *

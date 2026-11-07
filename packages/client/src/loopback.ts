@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** A login through a browser, coming back to this machine.
  *
  *  For a host whose backend runs where the browser does: the terminal, a

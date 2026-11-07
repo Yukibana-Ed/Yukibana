@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 import { test, expect } from 'vitest';
 import { NOT_ACCEPTING, refusalMessage, type RefusalRow } from '../src/lib/refusal';
 import { utc } from '../src/lib/format';

@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** Errors in the page, reported as incidents (#lib/incident) the person can
  *  copy into a report.
  *

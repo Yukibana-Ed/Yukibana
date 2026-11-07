@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 import type { RequestHandler } from './$types';
 // @yukibana/client generates this file from the schema its parser checks with (its
 // yukibana.ts and schema test); the registry only publishes it, so the two share a

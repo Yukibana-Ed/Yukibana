@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 import { test, expect } from 'vitest';
 import { actionIn, tabOf } from '../src/lib/tabs';
 

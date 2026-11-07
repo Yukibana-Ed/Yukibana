@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** Links that open a project in the Yukibana IDE.
  *
  *  The IDE registers the `yukibana:` scheme with the operating system; a

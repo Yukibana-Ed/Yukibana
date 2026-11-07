@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** Ids with their table in the type.
  *
  *  Every id is a uuid, so every id looks like every other id, and a project

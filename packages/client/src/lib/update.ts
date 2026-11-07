@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** What bringing a student's folder up to a newer release does to each file.
  *
  *  A student's folder started from one release's starter (its `yukibana.json`

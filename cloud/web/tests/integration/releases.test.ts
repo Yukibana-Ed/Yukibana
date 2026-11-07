@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 import { test, expect, afterAll } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { asPublisher, asUser, connect } from '../../src/lib/server/db.js';

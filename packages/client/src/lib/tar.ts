@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** Tar, read and written in memory, by `modern-tar`.
  *
  *  A course repository is small — sources, a manifest, a few tests — so the
