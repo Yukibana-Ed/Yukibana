@@ -1,11 +1,10 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { newReleaseId } from '../src/build.js';
-import { isUuid } from '@yukibana/client/config';
 
 test('a release id chosen by the CLI is a v7 uuid the database takes as its own', () => {
     const id = newReleaseId();
-    assert.ok(isUuid(id));
+    assert.match(id, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/, 'a uuid, in lower case');
     assert.equal(id[14], '7', 'version 7');
     assert.match(id[19] ?? '', /[89ab]/, 'the RFC variant');
 });

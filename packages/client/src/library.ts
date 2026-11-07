@@ -52,7 +52,7 @@ export { loginCode } from './lib/pkce.js';
 export { readArchive, unpackStarter, writeEntries, isEmptyDir } from './extract.js';
 export { readTree } from './tree.js';
 export { assemble, submissionRoot, tampered, type Tampering } from './lib/assemble.js';
-export { escapes, unwrap } from './lib/paths.js';
+export { escapes } from './lib/paths.js';
 export { sha256Hex } from './lib/bytes.js';
 export { gzip } from './lib/gzip.js';
 export { planUpdate, wantedPaths, onlyTheStamp, isText, type Change, type ChooseReason, type Folder, type FolderEntry, type UpdatePlan, type Version } from './lib/update.js';

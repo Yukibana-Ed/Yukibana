@@ -15,7 +15,6 @@ export {
     excludes,
     IDE_STATE,
     isProjectId,
-    isUuid,
     KINDS,
     NEVER_SUBMITTED,
     parseConfig,
