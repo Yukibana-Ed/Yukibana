@@ -34,7 +34,8 @@
     "@yukibana/ide-telemetry-ext": "catalog:"
   },
   "devDependencies": {
-    "@theia/cli": "catalog:"
+    "@theia/cli": "catalog:",
+    "esbuild": "catalog:"
   },
   "scripts": {
     "clean": "theia clean",

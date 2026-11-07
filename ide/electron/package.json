@@ -57,7 +57,8 @@
     "@theia/bundle-plugin": "catalog:",
     "@theia/cli": "catalog:",
     "electron": "42.8.1",
-    "electron-builder": "catalog:"
+    "electron-builder": "catalog:",
+    "esbuild": "catalog:"
   },
   "scripts": {
     "clean": "theia clean",
