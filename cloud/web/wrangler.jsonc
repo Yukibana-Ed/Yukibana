@@ -20,8 +20,10 @@
     // (.github/workflows/preview.yml) are served at
     // pr-<n>-yukibana-cloud.<subdomain>.workers.dev; without this they are
     // uploaded and served nowhere. `wrangler deploy` applies it, so previews
-    // get a URL from the first deploy that has it. Only a maintainer-approved
-    // upload is ever at such an address.
+    // get a URL from the first deploy that has it. Every uploaded version,
+    // production's included, is also served at a URL of its own, and an old
+    // preview stays there after its alias moves on. The only versions uploaded
+    // are production deploys and maintainer-approved previews.
     "preview_urls": true,
 
     // No CPU limit override: the Worker is a registry. Archives are built by
