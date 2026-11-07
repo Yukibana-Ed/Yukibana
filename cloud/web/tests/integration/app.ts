@@ -6,7 +6,7 @@
  *  The configuration comes from `config` (tests/integration/env.ts), handed
  *  to the Worker's emulation as process environment. A `.dev.vars` in
  *  cloud/web wins over it, as it does for `pnpm --filter @yukibana/cloud-web dev`: wrangler then
- *  reads that file and not the environment. `pnpm --filter @yukibana/cloud-web dev:vars` writes one
+ *  reads that file and not the environment. `pnpm --filter @yukibana/cloud-dev dev:vars` writes one
  *  for the same local stack, so either way the app talks to it.
  *
  *  `vite dev` turns SvelteKit's own origin check off, which is why a suite

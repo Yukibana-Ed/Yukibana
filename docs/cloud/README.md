@@ -33,7 +33,7 @@ where editors look for one, so start it with the
 
 ```bash
 devcontainer up --workspace-folder . --config cloud/dev/.devcontainer/devcontainer.json
-devcontainer exec --workspace-folder . --config cloud/dev/.devcontainer/devcontainer.json pnpm --filter @yukibana/cloud-db smoke
+devcontainer exec --workspace-folder . --config cloud/dev/.devcontainer/devcontainer.json pnpm --filter @yukibana/cloud-dev smoke
 ```
 
 It installs the cloud and the CLI, and on every start (re)starts the
@@ -49,8 +49,8 @@ pnpm setup:cloud                                  # the cloud's packages; `pnpm 
 cp cloud/dev/.env.example cloud/dev/.env          # a GitHub OAuth App for local login (optional to start)
 set -a; . cloud/dev/.env; set +a                  # Auth reads them when the stack starts
 pnpm --filter @yukibana/cloud-db start            # Supabase
-pnpm --filter @yukibana/cloud-db storage:start    # the bucket
-pnpm --filter @yukibana/cloud-web dev:vars        # cloud/web/.dev.vars, from what the stack reports
+pnpm --filter @yukibana/cloud-dev storage:start    # the bucket
+pnpm --filter @yukibana/cloud-dev dev:vars        # cloud/web/.dev.vars, from what the stack reports
 pnpm --filter @yukibana/cloud-web dev             # http://127.0.0.1:5173
 ```
 
@@ -64,7 +64,7 @@ seeded alice@, bob@, ta@ and teacher@yukibana.local. Then make yourself the
 admin of the local database:
 
 ```bash
-pnpm --filter @yukibana/cloud-db admin you@example.com
+pnpm --filter @yukibana/cloud-dev admin you@example.com
 ```
 
 ## Daily use
@@ -73,14 +73,14 @@ pnpm --filter @yukibana/cloud-db admin you@example.com
 | --- | --- |
 | `pnpm --filter @yukibana/cloud-web dev` | the app, against the local stack |
 | `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test` | formatting, lint, typecheck, unit tests: the fast half of CI, for every package. One package's with `pnpm --filter <package> <script>` |
-| `pnpm --filter @yukibana/cloud-db smoke` | is the stack reachable from here? |
+| `pnpm --filter @yukibana/cloud-dev smoke` | is the stack reachable from here? |
 | `pnpm --filter @yukibana/cloud-db reset` | rebuild the local database from every migration, then the seeds |
 | `pnpm --filter @yukibana/cloud-db test:db` | the pgTAP suite |
 | `pnpm --filter @yukibana/cloud-db lint` | squawk over the migrations, oxlint over the Edge Functions |
 | `pnpm --filter @yukibana/cloud-web test:integration` | the server modules against the real stack |
 | `pnpm --filter @yukibana/cloud-db exec supabase migration new <name>` | a new, empty migration to write by hand |
 | `pnpm --filter @yukibana/cloud-db stop` | stop the stack (keeps your data; `exec supabase stop --no-backup` does not) |
-| `pnpm --filter @yukibana/cloud-db storage:stop` | stop the bucket (keeps its volume) |
+| `pnpm --filter @yukibana/cloud-dev storage:stop` | stop the bucket (keeps its volume) |
 
 A `reset` empties Auth's tables, and with them the OAuth client the CLI and
 the IDE log in through: delete `cloud/web/.dev.vars` and run `dev:vars` again

@@ -1,0 +1,23 @@
+{
+  "private": true,
+  "name": "@yukibana/cloud-dev",
+  "description": "The cloud's local environment: the devcontainer, the Nix shell, the local bucket (compose.yml), and the scripts that check the local stack, write the Worker's .dev.vars and make the local database's first admin.",
+  "version": "0.0.0-dev",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "lint": "oxlint",
+    "typecheck": "tsc --noEmit",
+    "storage:start": "docker compose up -d",
+    "storage:stop": "docker compose down",
+    "smoke": "node scripts/smoke.mjs",
+    "admin": "node scripts/local-admin.mjs",
+    "dev:vars": "node scripts/dev-vars.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@yukibana/cloud-db": "catalog:",
+    "@yukibana/cloud-web": "catalog:",
+    "typescript": "catalog:"
+  }
+}

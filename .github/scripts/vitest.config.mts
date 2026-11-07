@@ -4,5 +4,5 @@
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-    test: { name: 'ci-scripts', environment: 'node', include: ['*.test.mts'] },
+    test: { name: '@yukibana/ci-scripts', environment: 'node', include: ['*.test.mts'] },
 });

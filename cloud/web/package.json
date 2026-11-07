@@ -16,8 +16,7 @@
     "test:watch": "vitest",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "lint": "svelte-kit sync && oxlint --type-aware --deny-warnings",
-    "dev:vars": "node ../dev/scripts/dev-vars.mjs"
+    "lint": "svelte-kit sync && oxlint --type-aware --deny-warnings"
   },
   "devDependencies": {
     "@sveltejs/adapter-cloudflare": "catalog:",

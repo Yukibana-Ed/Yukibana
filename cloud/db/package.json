@@ -9,11 +9,7 @@
     "start": "supabase start",
     "stop": "supabase stop",
     "reset": "supabase db reset",
-    "test:db": "supabase test db",
-    "storage:start": "docker compose -f ../dev/compose.yml up -d",
-    "storage:stop": "docker compose -f ../dev/compose.yml down",
-    "smoke": "node ../dev/scripts/smoke.mjs",
-    "admin": "node ../dev/scripts/local-admin.mjs"
+    "test:db": "supabase test db"
   },
   "devDependencies": {
     "oxlint": "catalog:",

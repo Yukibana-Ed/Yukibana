@@ -1,6 +1,6 @@
 # Local development overrides for wrangler.jsonc, which holds production
 # values. A key here wins over the same key there; keys only there still
-# apply. `pnpm --filter @yukibana/cloud-web dev:vars` writes the real file from the running stack.
+# apply. `pnpm --filter @yukibana/cloud-dev dev:vars` writes the real file from the running stack.
 #
 # Copy to .dev.vars (gitignored) if you would rather fill it in by hand.
 

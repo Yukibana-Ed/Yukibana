@@ -12,7 +12,6 @@
 // authorization code and refresh token grants, and has exactly one
 // redirect URI, the site's /auth/connect/return. Auth matches it exactly.
 import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 
 const NAME = 'Yukibana IDE and CLI';
 
@@ -20,8 +19,7 @@ let [authUrl, site] = process.argv.slice(2);
 let key = process.env.SUPABASE_SECRET_KEY;
 if (authUrl === undefined) {
     const status = JSON.parse(
-        execFileSync('pnpm', ['exec', 'supabase', 'status', '-o', 'json'], {
-            cwd: fileURLToPath(new URL('../../db', import.meta.url)),
+        execFileSync('pnpm', ['--filter', '@yukibana/cloud-db', 'exec', 'supabase', 'status', '-o', 'json'], {
             encoding: 'utf8',
             shell: process.platform === 'win32',
         }),
@@ -40,8 +38,14 @@ const redirect = `${new URL(site).origin}/auth/connect/return`;
 const headers = { apikey: key, authorization: `Bearer ${key}`, 'content-type': 'application/json' };
 const endpoint = new URL('/auth/v1/admin/oauth/clients', authUrl);
 
+/**
+ * Returns Auth's answer to `method` on the clients' endpoint, with `body` as JSON when there is one; exits on an error.
+ *
+ * @param {'GET' | 'POST'} method
+ * @param {unknown} [body]
+ */
 async function call(method, body) {
-    const res = await fetch(endpoint, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+    const res = await fetch(endpoint, { method, headers, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
     const text = await res.text();
     if (!res.ok) {
         console.error(`${method} ${endpoint} answered ${res.status}: ${text}`);
@@ -76,7 +80,7 @@ for (let page = 1; page < 100; page++) {
 const existing = clients.find(c => c.client_name === NAME && (c.redirect_uris ?? []).includes(redirect));
 if (existing !== undefined) {
     // Reused only as it was meant: public, no secret, the two grants, the one URI.
-    const grants = [...(existing.grant_types ?? [])].sort().join(',');
+    const grants = [...(existing.grant_types ?? [])].sort((a, b) => a.localeCompare(b)).join(',');
     const problems = [
         existing.client_type !== 'public' && `it is ${existing.client_type}, not public`,
         grants !== 'authorization_code,refresh_token' && `its grants are ${grants}`,

@@ -55,8 +55,8 @@ jobs:
           # The pull request's base, the merge queue's, or what the push replaced; none by hand.
           BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
 
-  # Always, for the files no package owns (formatting, root configs, these workflows' scripts); and every affected
-  # package's lint, typecheck, unit tests and build.
+  # Always, the formatting and the release-age exclusions; and every affected package's lint, typecheck, unit tests and
+  # build.
   check:
     name: Lint, typecheck and unit tests
     needs: plan
@@ -90,11 +90,6 @@ jobs:
       - name: Check formatting
         run: pnpm run format:check
 
-      - name: Lint and typecheck the files no package owns
-        run: |
-          pnpm run lint:root
-          pnpm run typecheck:root
-
       - name: Check for expired minimumReleaseAgeExclude entries
         run: pnpm run check:release-age
 
@@ -116,19 +111,11 @@ jobs:
           read -ra filters <<<"$FILTERS"
           pnpm "${filters[@]}" run --if-present typecheck
 
-      # In one run of the root's Vitest, for one coverage report: each affected package's project (named after the package;
-      # one without unit tests has none and is skipped), and ci-scripts, the files no package owns.
       - name: Unit tests
+        if: needs.plan.outputs.packages != '[]'
         run: |
-          read -ra projects < <(jq -r 'map("--project=" + .) | join(" ")' <<<"$PACKAGES")
-          pnpm exec vitest run --coverage --project=ci-scripts "${projects[@]}"
-
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v7
-        with:
-          name: coverage
-          path: coverage/
-          retention-days: 5
+          read -ra filters <<<"$FILTERS"
+          pnpm "${filters[@]}" run --if-present test
 
       # The CLI and the Worker are the packages with a build, but for the IDE's apps, which the e2e job builds.
       - name: Build
@@ -194,10 +181,10 @@ jobs:
         run: echo "SUPABASE_PUBLISHABLE_KEY=$(pnpm exec supabase status -o json | jq -r .PUBLISHABLE_KEY)" >> "$GITHUB_ENV"
 
       - name: Start the bucket
-        run: pnpm --filter @yukibana/cloud-db run storage:start
+        run: pnpm --filter @yukibana/cloud-dev run storage:start
 
       - name: Smoke test
-        run: pnpm --filter @yukibana/cloud-db run smoke
+        run: pnpm --filter @yukibana/cloud-dev run smoke
 
       # Every migration from empty, then the seeds: what a fresh environment is.
       - name: Rebuild the database from migrations
@@ -230,7 +217,7 @@ jobs:
         if: always()
         run: |
           pnpm --filter @yukibana/cloud-db run stop || true
-          pnpm --filter @yukibana/cloud-db run storage:stop || true
+          pnpm --filter @yukibana/cloud-dev run storage:stop || true
 
   e2e:
     name: E2E tests (${{ matrix.app }}, ${{ matrix.os }})
@@ -332,7 +319,7 @@ jobs:
           configFile: cloud/dev/.devcontainer/devcontainer.json
           runCmd: |
             cloud/dev/scripts/preflight.sh
-            pnpm --filter @yukibana/cloud-db run smoke
+            pnpm --filter @yukibana/cloud-dev run smoke
 
   # Every npm package's license, and every plugin the IDE bundles, against the rules in .github/scripts/licenses.mts.
   licenses:

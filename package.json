@@ -14,27 +14,22 @@
     "setup:cli": "pnpm --filter @yukibana/cli... install",
     "check:theia": "node node_modules/@theia/cli/bin/theia.js check:theia-version",
     "clean": "pnpm -r --if-present run clean",
-    "lint": "pnpm run lint:root && pnpm -r run lint",
-    "lint:root": "oxlint .github/scripts cloud/dev oxfmt.config.mts vitest.config.mts",
-    "lint:fix": "pnpm run lint:root --fix && pnpm -r run lint --fix",
-    "typecheck": "pnpm run typecheck:root && pnpm -r run typecheck",
-    "typecheck:root": "tsc -p .github/scripts",
+    "lint": "pnpm -r run lint",
+    "lint:fix": "pnpm -r run lint --fix",
+    "typecheck": "pnpm -r run typecheck",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
     "test": "vitest run",
-    "test:root": "vitest run --project ci-scripts",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "check:licenses": "node .github/scripts/licenses.mts",
     "check:release-age": "node .github/scripts/release-age-excludes.mts"
   },
   "devDependencies": {
-    "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
-    "typescript": "catalog:",
     "vitest": "catalog:"
   }
 }
