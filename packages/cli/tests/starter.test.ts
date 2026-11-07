@@ -1,18 +1,26 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { planStarter, planTeacher, unwrap } from '../src/lib/starter.js';
-import { readTar, type Entry } from '../src/lib/tar.js';
-import { gunzip } from '../src/lib/gzip.js';
+import { createRequire } from 'node:module';
+import { readArchive, unwrap, type Entry } from '@yukibana/client';
+import { parseConfig } from '@yukibana/client/config';
+import { manifestProblems, planStarter, planTeacher } from '../src/lib/starter.js';
 
 const text = (s: string) => new TextEncoder().encode(s);
 const file = (path: string, body: string): Entry => ({ path, type: 'file', mode: 0o644, mtime: 1, data: text(body) });
 const dir = (path: string): Entry => ({ path, type: 'dir', mode: 0o755, mtime: 1, data: new Uint8Array(0) });
 
+/** The client's fixture repository, a real pax tarball as GitHub makes one, unwrapped. */
 async function fixture(): Promise<Entry[]> {
-    const bytes = readFileSync(new URL('./fixtures/repo.tar.gz', import.meta.url));
-    return unwrap(await readTar(await gunzip(new Uint8Array(bytes))));
+    const bytes = readFileSync(createRequire(import.meta.url).resolve('@yukibana/client/fixtures/repo.tar.gz'));
+    return unwrap(await readArchive(new Uint8Array(bytes)));
 }
+
+const ok = (json: string) => {
+    const p = parseConfig(json);
+    assert.ok(p.ok, p.ok ? '' : p.error);
+    return p.config;
+};
 
 test('the starter keeps the sources and drops the hidden tests, the CI, the build output and the history', async () => {
     const plan = planStarter(await fixture(), 'calc', '01a0b563-aeff-7c42-ae73-5aab2f2b5a01', null);
@@ -33,9 +41,9 @@ test('the starter carries its own yukibana.json with the project id and without 
     const plan = planStarter(await fixture(), 'calc', '01a0b563-aeff-7c42-ae73-5aab2f2b5a01', null);
     const cfg = plan.entries.find(e => e.path === 'calc/yukibana.json');
     assert.ok(cfg);
-    const parsed = JSON.parse(new TextDecoder().decode(cfg.data)) as Record<string, unknown>;
-    assert.equal(parsed['projectId'], '01a0b563-aeff-7c42-ae73-5aab2f2b5a01');
-    assert.equal(parsed['hidden'], undefined);
+    const parsed = ok(new TextDecoder().decode(cfg.data));
+    assert.equal(parsed.projectId, '01a0b563-aeff-7c42-ae73-5aab2f2b5a01');
+    assert.equal('hidden' in parsed.raw, false);
     assert.equal(plan.entries.filter(e => e.path.endsWith('yukibana.json')).length, 1, 'the original is not also there');
 });
 
@@ -99,6 +107,31 @@ test("the starter's yukibana.json names the release it will be published as", as
     const plan = planStarter(await fixture(), 'calc', '01a0b563-aeff-7c42-ae73-5aab2f2b5a01', '01a0b563-aeff-7c42-ae73-5aab2f2b5a5c');
     const cfg = plan.entries.find(e => e.path === 'calc/yukibana.json');
     assert.ok(cfg);
-    const parsed = JSON.parse(new TextDecoder().decode(cfg.data)) as Record<string, unknown>;
-    assert.equal(parsed['releaseId'], '01a0b563-aeff-7c42-ae73-5aab2f2b5a5c');
+    assert.equal(ok(new TextDecoder().decode(cfg.data)).releaseId, '01a0b563-aeff-7c42-ae73-5aab2f2b5a5c');
+});
+
+test('a Cargo.toml that names a hidden path is a problem, not a surprise later', () => {
+    const c = ok('{"version":1,"kind":"rust-cargo","hidden":["tests/hidden"]}');
+    const files: Record<string, string> = {
+        'Cargo.toml': '[package]\nname = "x"\n[[test]]\nname = "secret"\npath = "tests/hidden/secret.rs"\n',
+    };
+    const problems = manifestProblems(c, p => files[p]);
+    assert.equal(problems.length, 1);
+    assert.match(problems[0] ?? '', /tests\/hidden\/secret.rs/);
+    assert.deepEqual(
+        manifestProblems(c, () => undefined),
+        ['Cargo.toml is missing at the repository root'],
+    );
+    assert.deepEqual(
+        manifestProblems(c, p => (p === 'Cargo.toml' ? '[package]\nname = "x"\n' : undefined)),
+        [],
+    );
+});
+
+test('a workspace member that is hidden is a problem too', () => {
+    const c = ok('{"version":1,"kind":"rust-cargo","hidden":["grader"]}');
+    const cargo = '[workspace]\nmembers = ["app", "grader"]\n';
+    const problems = manifestProblems(c, p => (p === 'Cargo.toml' ? cargo : undefined));
+    assert.equal(problems.length, 1);
+    assert.match(problems[0] ?? '', /workspace member "grader"/);
 });

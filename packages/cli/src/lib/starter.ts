@@ -1,13 +1,12 @@
 /** From a repository snapshot to the archive a student downloads.
  *
  *  Pure: entries in, entries out, plus what was removed and what was wrong.
- *  The builder (packages/cli/src/build.ts) reads the tree and writes the archives; this is
+ *  The builder (`build.ts`) reads the tree and writes the archives; this is
  *  the part worth testing in a table.
  */
 
-import { matcher } from './glob.js';
-import type { Entry } from './tar.js';
-import { CONFIG_FILE, IDE_STATE, buildOutput, excludes, manifestProblems, parseConfig, starterConfig, type Config } from './yukibana.js';
+import { escapes, matcher, type Entry } from '@yukibana/client';
+import { CONFIG_FILE, IDE_STATE, buildOutput, excludes, parseConfig, starterConfig, type Config } from '@yukibana/client/config';
 
 /** What `planStarter` makes of a snapshot: the starter's entries, what was hidden, and what was wrong.
  *  The build may proceed iff `problems` is empty; `config` is null only when `problems` says why. */
@@ -23,17 +22,6 @@ export interface Plan {
     readonly problems: readonly string[];
     /** Things worth saying that do not stop the build, in sentences. */
     readonly warnings: readonly string[];
-}
-
-/** Drops the top-level directory GitHub wraps a tarball in (`org-repo-sha/`). */
-export function unwrap(entries: readonly Entry[]): Entry[] {
-    const out: Entry[] = [];
-    for (const e of entries) {
-        const slash = e.path.indexOf('/');
-        if (slash < 0) continue; // the wrapper directory itself
-        out.push({ ...e, path: e.path.slice(slash + 1) });
-    }
-    return out;
 }
 
 /** Returns the starter for `snapshot`, whose paths are relative to the
@@ -90,24 +78,6 @@ export function planStarter(snapshot: readonly Entry[], folder: string, projectI
     return { entries, hidden, config, problems, warnings: parsed.warnings };
 }
 
-/** Whether a symlink at `path` points outside the tree. A link to a hidden
- *  file would otherwise carry it out of the starter by another name, and a
- *  link in a student's submission would otherwise point a teacher's editor
- *  anywhere on their disk. */
-export function escapes(path: string, target: string): boolean {
-    if (target.startsWith('/')) return true;
-    const parts = path.split('/').slice(0, -1);
-    for (const seg of target.split('/')) {
-        if (seg === '..') {
-            if (parts.length === 0) return true;
-            parts.pop();
-        } else if (seg !== '.' && seg !== '') {
-            parts.push(seg);
-        }
-    }
-    return false;
-}
-
 /** The teacher archive: the whole project as it is, hidden tests and the
  *  original `yukibana.json` included, minus the history, the IDE's state
  *  and the build output. Staff download it to see exactly what a release was built from,
@@ -122,4 +92,36 @@ export function planTeacher(snapshot: readonly Entry[], folder: string, config: 
         entries.push({ ...e, path: `${folder}/${e.path}` });
     }
     return entries;
+}
+
+/** Returns the ways a repository defeats the starter: a build manifest that names a
+ *  hidden path. Deleting the file would then leave a manifest pointing at
+ *  nothing, and the starter would not build. For now the rule is that hidden
+ *  tests must be auto-discovered; rewriting manifests is the per-kind
+ *  extension point this function will grow into. `read` returns a file's
+ *  text by path, or undefined. */
+export function manifestProblems(config: Config, read: (path: string) => string | undefined): string[] {
+    const hidden = matcher(config.hidden);
+    const problems: string[] = [];
+    if (config.kind === 'rust-cargo') {
+        const cargo = read('Cargo.toml');
+        if (cargo === undefined) {
+            problems.push('Cargo.toml is missing at the repository root');
+            return problems;
+        }
+        for (const m of cargo.matchAll(/\bpath\s*=\s*"([^"]+)"/g)) {
+            const p = m[1] ?? '';
+            if (hidden(p)) problems.push(`Cargo.toml names the hidden path "${p}"; hidden tests must be auto-discovered`);
+        }
+        const members = /\bmembers\s*=\s*\[([^\]]*)\]/.exec(cargo);
+        if (members) {
+            for (const m of (members[1] ?? '').matchAll(/"([^"]+)"/g)) {
+                const p = m[1] ?? '';
+                if (hidden(p)) problems.push(`Cargo.toml lists the hidden workspace member "${p}"`);
+            }
+        }
+    } else {
+        if (read('build.sbt') === undefined) problems.push('build.sbt is missing at the repository root');
+    }
+    return problems;
 }

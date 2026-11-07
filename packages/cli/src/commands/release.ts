@@ -4,7 +4,8 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { basename, join, resolve } from 'node:path';
 import { build, commitOf, newReleaseId } from '../build.js';
-import { isProjectId, publish, sha256Hex } from '@yukibana/client';
+import { sha256Hex, YukibanaClient } from '@yukibana/client';
+import { isProjectId } from '@yukibana/client/config';
 import { accessTokenFor, fail, projectOf, registryUrl, type Invocation } from './common.js';
 
 /** `check`, `build` and `publish`: the same build, then nothing, a write,
@@ -53,6 +54,7 @@ export async function release(command: 'check' | 'build' | 'publish', inv: Invoc
     const token = inv.options.token ?? inv.env['YUKIBANA_TOKEN'] ?? (await accessTokenFor(inv)().catch(() => ''));
     if (token === '') fail('--token (or YUKIBANA_TOKEN) is required to publish, unless you are logged in as staff of the project');
     const commit = await commitOf(dir);
-    const published = await publish({ url, token, projectId, releaseId, starter: built.starter, teacher: built.teacher, label: inv.options.label ?? '', commit });
+    const client = new YukibanaClient({ url, accessToken: () => token });
+    const published = await client.publishRelease(projectId, built.starter, built.teacher, inv.options.label ?? '', commit, releaseId);
     console.log(`published release ${published.releaseId}${commit === null ? '' : ` at ${commit.slice(0, 12)}`}`);
 }

@@ -10,7 +10,6 @@
  */
 
 import type { SubmissionBundle } from './bundle.js';
-import { publish } from './publish.js';
 import {
     Unexpected,
     decodeAccepted,
@@ -18,6 +17,7 @@ import {
     decodeList,
     decodeMe,
     decodeMember,
+    decodePublished,
     decodeProject,
     decodeRelease,
     decodeSubmission,
@@ -149,11 +149,20 @@ export class YukibanaClient {
         return this.#json('POST', `/api/projects/${seg(project)}/submissions${q}`, decodeAccepted, { bytes: archive, contentType: 'application/gzip' });
     }
 
-    /** Publishes a release as the person (owners and assistants). CI uses a project
-     *  token instead; see `publish`. `release` is the id the starter carries
-     *  (see `build`), or null for archives that carry none. */
-    async publishRelease(project: string, starter: Uint8Array, teacher: Uint8Array, label = '', commit: string | null = null, release: string | null = null): Promise<Published> {
-        return publish({ url: this.origin, token: await this.#token(), projectId: project, releaseId: release, starter, teacher, label, commit }, this.#fetch);
+    /** Uploads `starter` and `teacher`, the two gzipped tars a release is made of, as one release of `project`, and
+     *  returns what the registry recorded. The credentials may be a person's (an owner or assistant of the project) or a
+     *  project token (`yk_…`, from CI), which publishes only to the project it names. `label` is for people (a tag, a
+     *  branch; may be ''); `commit` is the commit the archives were built from, or null outside git; `release` is the id
+     *  the starter carries (see the CLI's `build`), which the release row is given, or null for archives that carry
+     *  none and let the registry choose. A taken id is refused with 409 and nothing is stored. */
+    publishRelease(project: string, starter: Uint8Array, teacher: Uint8Array, label: string, commit: string | null, release: string | null): Promise<Published> {
+        const form = new FormData();
+        form.set('starter', new Blob([starter.slice().buffer], { type: 'application/gzip' }), 'starter.tar.gz');
+        form.set('teacher', new Blob([teacher.slice().buffer], { type: 'application/gzip' }), 'teacher.tar.gz');
+        form.set('label', label);
+        if (commit !== null) form.set('commit', commit);
+        if (release !== null) form.set('release', release);
+        return this.#json('POST', `/api/projects/${seg(project)}/releases`, decodePublished, { form });
     }
 
     /** A submission's archive, as sent (a `.tar.gz`). */
@@ -173,23 +182,33 @@ export class YukibanaClient {
         return this.#download(`/api/releases/${seg(release)}/${archive}`);
     }
 
-    async #request(method: string, path: string, body?: { json?: unknown; bytes?: Uint8Array; contentType?: string }): Promise<Response> {
+    async #request(method: string, path: string, body?: Body): Promise<Response> {
         const headers: Record<string, string> = { authorization: `Bearer ${await this.#token()}`, accept: 'application/json' };
         let payload: BodyInit | undefined;
-        if (body?.json !== undefined) {
+        if (body === undefined) {
+            payload = undefined;
+        } else if ('json' in body) {
             headers['content-type'] = 'application/json';
             payload = JSON.stringify(body.json);
-        } else if (body?.bytes !== undefined) {
-            headers['content-type'] = body.contentType ?? 'application/octet-stream';
+        } else if ('bytes' in body) {
+            headers['content-type'] = body.contentType;
             payload = new Blob([body.bytes.slice().buffer]);
+        } else {
+            payload = body.form; // fetch writes the multipart content type, boundary included
         }
-        // SvelteKit compares a write's Origin with its own; a tool says where it
-        // is posting, as publish.ts explains.
+        // The registry is a SvelteKit app, and SvelteKit refuses a cross-origin
+        // write whose content type a browser form can produce (multipart among
+        // them) as "cross-site POST form submissions are forbidden", before any
+        // handler runs; a request without an Origin is refused too. A tool is
+        // not a browser and says where it is posting. The endpoints take a
+        // bearer and no cookie, so there is no ambient credential for a forged
+        // form to ride on anyway. (The CLI's publish once sent no Origin, and
+        // CI got that 403 after building both archives correctly.)
         if (method !== 'GET') headers['origin'] = this.origin;
         return this.#fetch(`${this.origin}${path}`, { method, headers, redirect: 'manual', ...(payload === undefined ? {} : { body: payload }) });
     }
 
-    async #json<T>(method: string, path: string, decode: (v: unknown) => T, body?: { json?: unknown; bytes?: Uint8Array; contentType?: string }): Promise<T> {
+    async #json<T>(method: string, path: string, decode: (v: unknown) => T, body?: Body): Promise<T> {
         const res = await this.#request(method, path, body);
         const text = await res.text();
         if (!res.ok) throw new RegistryError(res.status, `the registry answered ${res.status}: ${messageOf(text)}`);
@@ -221,10 +240,13 @@ export class YukibanaClient {
     }
 }
 
+/** What a request carries: a JSON value, bytes of a content type, or a multipart form. */
+type Body = { readonly json: unknown } | { readonly bytes: Uint8Array; readonly contentType: string } | { readonly form: FormData };
+
 const seg = (id: string): string => encodeURIComponent(id);
 
 /** Returns the sentence an error body gives as its `message`, or the whole text when it is not such a JSON body. */
-export function messageOf(text: string): string {
+function messageOf(text: string): string {
     try {
         const body = JSON.parse(text) as { message?: unknown };
         return typeof body.message === 'string' ? body.message : text;

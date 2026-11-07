@@ -28,7 +28,7 @@ const MAX_BYTES = 80;
  *  without an extension. */
 const RESERVED = /^(con|prn|aux|nul|com[0-9¹²³]|lpt[0-9¹²³])(\..*)?$/i;
 
-/** `text` as one path segment that is safe everywhere: no separators, no
+/** Returns `text` as one path segment that is safe everywhere: no separators, no
  *  control characters, none of `<>:"|?*`, no leading dot (which would hide
  *  it), no trailing dot or space (which Windows drops), not a reserved
  *  device name, not empty, and at most 80 bytes of UTF-8. Letters of every
@@ -62,7 +62,7 @@ function truncate(s: string, maxBytes: number): string {
     return out.replace(/[. ]+$/, '') || '_';
 }
 
-/** What a person is called, before it is made safe: their name, else their
+/** Returns what `p` is called, before it is made safe: their name, else their
  *  GitHub login, else the part of their address before the @, else their
  *  id. */
 export function displayName(p: Person): string {
@@ -74,7 +74,7 @@ export function displayName(p: Person): string {
     return p.userId;
 }
 
-/** A folder name for each person, by user id. Names that would collide,
+/** Returns a folder name for each of `people`, by user id. Names that would collide,
  *  ignoring case, all get their GitHub login (or the start of their id)
  *  added in brackets, so neither student of a pair is the one with the
  *  plain name by accident of ordering. */
@@ -102,7 +102,7 @@ export function folderNames(people: readonly Person[]): Map<string, string> {
     return out;
 }
 
-/** A submission's time as a folder name: sortable, and without the colons
+/** Returns the time `iso` as a folder name: sortable, and without the colons
  *  Windows refuses. `2026-10-07T14-03-05Z`. */
 export function stampOf(iso: string): string {
     const d = new Date(iso);

@@ -5,27 +5,21 @@ import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import {
     assemble,
-    behind,
-    chooseReleases,
-    CONFIG_FILE,
     type Entry,
-    folderNames,
     isEmptyDir,
-    nameOf,
-    parseConfig,
     readArchive,
     readTree,
     type Release,
     sha256Hex,
-    stampOf,
     type Submission,
     submissionRoot,
     tampered,
     type Tampering,
-    type Wanted,
-    wantedRelease,
     writeEntries,
 } from '@yukibana/client';
+import { CONFIG_FILE, parseConfig } from '@yukibana/client/config';
+import { behind, chooseReleases, nameOf, type Wanted, wantedRelease } from '../lib/grading.js';
+import { folderNames, stampOf } from '../lib/names.js';
 import { select } from './browse.js';
 import { clientFor, fail, projectOf, studentsOf, type Invocation } from './common.js';
 import { save } from './work.js';
@@ -33,12 +27,17 @@ import { save } from './work.js';
 /** What `download` writes beside the folders, so a grading script knows
  *  which folder is whose and what it found. */
 interface Downloaded {
+    /** The folder the submission went into, relative to `--out`; with `--archive`, the file is this plus `.tar.gz`. */
     readonly folder: string;
+    /** The submission's id. */
     readonly submissionId: string;
+    /** When the registry received it, ISO 8601. */
     readonly submittedAt: string;
     /** After the deadline, as the deadline was when this was downloaded. */
     readonly late: boolean;
+    /** The archive's sha256, in hex. */
     readonly sha256: string;
+    /** Who sent it. */
     readonly author: Submission['author'];
     /** The release the student started from, when known; what `tampering`
      *  was measured against. */
@@ -46,6 +45,7 @@ interface Downloaded {
     /** The release whose read-only and hidden files the folder holds; null
      *  without `--assemble`. */
     readonly assembledWith: string | null;
+    /** What the student changed of what `baseReleaseId` protects, as `assemble` measures it; null without `--assemble`. */
     readonly tampering: Tampering | null;
     /** Of `tampering`, what the release assembled with does not protect, so
      *  the student's version stayed; and the student's files that release

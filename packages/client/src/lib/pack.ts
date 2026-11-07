@@ -15,7 +15,7 @@
 import { posix } from 'node:path';
 import ignore, { type Ignore } from 'ignore';
 import { matcher } from './glob.js';
-import { escapes } from './starter.js';
+import { escapes } from './paths.js';
 import type { Entry } from './tar.js';
 import { CONFIG_FILE, NEVER_SUBMITTED, buildOutput, type Config } from './yukibana.js';
 
