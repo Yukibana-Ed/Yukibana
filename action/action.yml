@@ -48,10 +48,10 @@ runs:
       shell: bash
       run: |
         # The CLI and what it depends on in the workspace, nothing else, with
-        # the pnpm the root's packageManager names.
+        # the pnpm the root's packageManager names. Installing compiles them
+        # (their `prepare`).
         pnpm="$(node -p "require('${{ github.action_path }}/../package.json').packageManager")"
         npx --yes "$pnpm" --dir "${{ github.action_path }}/.." --filter @yukibana/cli... install --frozen-lockfile
-        npx --yes "$pnpm" --dir "${{ github.action_path }}/.." --filter @yukibana/cli run build
 
     - name: Publish
       shell: bash
@@ -64,4 +64,4 @@ runs:
         if [ -z "$folder" ]; then folder="${GITHUB_REPOSITORY##*/}"; folder="$(echo "$folder" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9-\n' '-')"; fi
         label="${{ inputs.label }}"
         if [ -z "$label" ]; then label="${GITHUB_SHA::12}"; fi
-        node "${{ github.action_path }}/../packages/cli/dist/index.js" publish "${{ inputs.directory }}" --folder "$folder" --label "$label"
+        node "${{ github.action_path }}/../packages/cli/lib/index.js" publish "${{ inputs.directory }}" --folder "$folder" --label "$label"

@@ -9,13 +9,14 @@
     "./package.json": "./package.json"
   },
   "bin": {
-    "yukibana": "dist/index.js"
+    "yukibana": "lib/index.js"
   },
   "engines": {
     "node": ">=24"
   },
   "scripts": {
-    "build": "tsc --build tsconfig.build.json",
+    "prepare": "tsc --build tsconfig.build.json",
+    "clean": "tsc --build --clean tsconfig.build.json",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint --type-aware --deny-warnings"
