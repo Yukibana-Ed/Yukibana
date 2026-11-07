@@ -52,7 +52,8 @@ export interface Plan {
     readonly devcontainer: boolean;
     /** `true` iff the licenses of the npm dependencies and of the IDE's bundled plugins are checked. */
     readonly licenses: boolean;
-    /** `true` iff a pull request's Worker may be uploaded as a preview: the Worker is affected and `cloud/db` is not touched. */
+    /** `true` iff a pull request's Worker may be uploaded as a preview: the Worker is affected. A change to `cloud/db` does
+     *  not rule one out; its preview runs without the change's migrations, and its comment says so. */
     readonly preview: boolean;
     /**
      * `true` iff Deploy cloud deploys: what it deploys may have changed, because a package in `CLOUD_PACKAGES` is affected
@@ -142,8 +143,7 @@ export function decide(change: Change, all: readonly string[]): Plan {
         // The npm dependencies are in the lockfile, the plugins are listed in ide/package.json, and the rules are checked
         // against the real tree when they change.
         licenses: files.some(f => LICENSE_INPUTS.includes(f)),
-        // A preview runs against production's database, so not with a migration it would not have.
-        preview: packages.includes('@yukibana/cloud-web') && !files.some(f => f.startsWith('cloud/db/')),
+        preview: packages.includes('@yukibana/cloud-web'),
         deploy: change.affected.some(p => CLOUD_PACKAGES.includes(p)) || files.some(f => DEPLOY_INPUTS.includes(f)),
     };
 }

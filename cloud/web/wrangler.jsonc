@@ -16,6 +16,13 @@
     "compatibility_flags": ["nodejs_compat"],
     "assets": { "binding": "ASSETS", "directory": ".svelte-kit/cloudflare" },
     "observability": { "enabled": true },
+    // Versions uploaded with `wrangler versions upload --preview-alias pr-<n>`
+    // (.github/workflows/preview.yml) are served at
+    // pr-<n>-yukibana-cloud.<subdomain>.workers.dev; without this they are
+    // uploaded and served nowhere. `wrangler deploy` applies it, so previews
+    // get a URL from the first deploy that has it. Only a maintainer-approved
+    // upload is ever at such an address.
+    "preview_urls": true,
 
     // No CPU limit override: the Worker is a registry. Archives are built by
     // the CLI before they arrive, so a request here hashes and stores bytes

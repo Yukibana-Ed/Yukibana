@@ -394,7 +394,8 @@ jobs:
           fi
 
   # A pull request's Worker, built without any secret, for the Preview workflow to upload once a maintainer approves.
-  # Only for branches of this repository, and only without a migration: a preview runs against production's database.
+  # Only for branches of this repository. A pull request with a migration gets one too: it runs against production's
+  # database without that migration, which is enough to look at a page.
   preview:
     name: Build a preview
     needs: plan
