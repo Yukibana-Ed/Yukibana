@@ -63,7 +63,7 @@ so only the ones that changed are recompiled.
   again whenever that list changes (done automatically by `start` and `package`; delete `ide/plugins` to download them again)
 - `pnpm lint`, `pnpm typecheck`: run every package's `lint` (oxlint) or `typecheck` script, after `lint:root` or
   `typecheck:root` for the files no package owns; one package's with e.g. `pnpm --filter @yukibana/cli lint`.
-  `pnpm lint:fix` fixes what oxlint can across the whole project
+  `pnpm lint:fix` runs the same with `--fix`, so oxlint fixes what it can of what `pnpm lint` reports
 - `pnpm format` / `pnpm format:check`: format the whole project with oxfmt, or only check it (Markdown is excluded in
   `oxfmt.config.mts`; oxfmt does not read Svelte components)
 - `pnpm test`: run every package's unit tests with Vitest, straight from the sources, each with its package's

@@ -1,5 +1,5 @@
 {
-    "$schema": "node_modules/wrangler/config-schema.json",
+    "$schema": "../../node_modules/wrangler/config-schema.json",
 
     // This file holds PRODUCTION values, because that is what gets deployed and
     // what must be reviewable in a diff. Local development overrides every one
