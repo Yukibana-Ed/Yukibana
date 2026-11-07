@@ -1,5 +1,6 @@
 {
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "$schema": "../node_modules/oxlint/configuration_schema.json",
+  // The IDE's rules, for every package under ide/. The other packages extend ../oxlint.strict.json instead.
   "plugins": ["typescript", "unicorn", "oxc", "react"],
   "options": {
     "typeAware": true
@@ -30,19 +31,10 @@
     "react/no-danger": "warn",
     "react/no-danger-with-children": "warn"
   },
-  "ignorePatterns": [
-    "ide/**/lib/**",
-    "packages/*/lib/**",
-    "**/src-gen/**",
-    "**/gen-webpack*",
-    "ide/plugins/**",
-    "**/dist/**",
-    "ide/e2e/playwright-report/**",
-    "ide/e2e/test-results/**"
-  ],
+  "ignorePatterns": ["**/lib/**", "**/src-gen/**", "**/gen-webpack*", "plugins/**", "**/dist/**", "e2e/playwright-report/**", "e2e/test-results/**"],
   "overrides": [
     {
-      "files": ["ide/**/src/browser/**", "ide/**/src/common/**"],
+      "files": ["**/src/browser/**", "**/src/common/**"],
       "rules": {
         "no-restricted-imports": [
           "error",

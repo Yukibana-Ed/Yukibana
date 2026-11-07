@@ -18,6 +18,7 @@
     "@types/node": "catalog:",
     "@yukibana/cloud-db": "catalog:",
     "@yukibana/cloud-web": "catalog:",
+    "oxlint": "catalog:",
     "typescript": "catalog:"
   }
 }

@@ -80,7 +80,7 @@ for (let page = 1; page < 100; page++) {
 const existing = clients.find(c => c.client_name === NAME && (c.redirect_uris ?? []).includes(redirect));
 if (existing !== undefined) {
     // Reused only as it was meant: public, no secret, the two grants, the one URI.
-    const grants = [...(existing.grant_types ?? [])].sort((a, b) => a.localeCompare(b)).join(',');
+    const grants = (existing.grant_types ?? []).toSorted((a, b) => a.localeCompare(b)).join(',');
     const problems = [
         existing.client_type !== 'public' && `it is ${existing.client_type}, not public`,
         grants !== 'authorization_code,refresh_token' && `its grants are ${grants}`,
