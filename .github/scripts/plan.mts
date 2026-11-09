@@ -30,16 +30,33 @@ interface WorkspacePackage {
  * What changed since the base, as far as the plan needs to know.
  *
  * - `unknown`: there is no base to compare with, so everything is affected.
- * - `shared`: a file that belongs to no package but the workspace root changed (the lockfile, a root config, a
- *   workflow, ...), which any package may read, so every package is checked.
- * - `packages`: only files inside packages changed.
+ * - `shared`: a file other than Markdown that belongs to no package but the workspace root changed (the lockfile, a
+ *   root config, a workflow, ...), which any package may read, so every package is checked.
+ * - `packages`: otherwise. Markdown is left out of the decision (changedFilesIgnorePattern in pnpm-workspace.yaml), so
+ *   a change only to Markdown outside the packages (the root README.md, docs/...) is `packages` with `affected` empty.
  *
- * `affected` are the packages that changed files inside them, and every package depending on those; `files` are the
- * changed files, relative to the repository root.
+ * `affected` are the packages with changed files other than Markdown, and every package depending on one whose non-test
+ * files changed: a change only to a package's tests affects that package alone (testPattern in pnpm-workspace.yaml).
+ * `files` are all the changed files, Markdown included, relative to the repository root.
  */
 export type Change =
-    | { readonly kind: 'unknown'; readonly reason: string }
-    | { readonly kind: 'shared' | 'packages'; readonly affected: readonly string[]; readonly files: readonly string[] };
+    | {
+          /** There is no base to compare with. */
+          readonly kind: 'unknown';
+          /** Why not, as a clause for a person: "there is no base commit (a run by hand)". */
+          readonly reason: string;
+      }
+    | {
+          /** `shared` iff a file other than Markdown outside every package changed; `packages` otherwise, also when
+           *  the only files outside the packages that changed are Markdown. */
+          readonly kind: 'shared' | 'packages';
+          /** The names of the packages with changed files other than Markdown, and of every package depending on one
+           *  whose non-test files changed; not the root. A change only to a package's tests affects that package alone
+           *  (testPattern and changedFilesIgnorePattern in pnpm-workspace.yaml). May be empty. */
+          readonly affected: readonly string[];
+          /** The changed files, Markdown included, relative to the repository root, with `/` separators. */
+          readonly files: readonly string[];
+      };
 
 /** What one CI run does. */
 export interface Plan {
@@ -50,10 +67,10 @@ export interface Plan {
     readonly packages: readonly string[];
     /**
      * `true` iff the cloud stack runs: the migrations from empty, pgTAP and the Worker's integration tests; a package in
-     * `CLOUD_STACK_PACKAGES` is affected.
+     * `CLOUD_STACK_PACKAGES` is among `packages`.
      */
     readonly cloud: boolean;
-    /** `true` iff the IDE's end-to-end tests run, on every OS. */
+    /** `true` iff the IDE's end-to-end tests run, on every OS: a package in `IDE_PACKAGES` is among `packages`. */
     readonly ide: boolean;
     /** `true` iff the cloud's devcontainer is built and its smoke test run: `cloud/dev/` or one of `DEVCONTAINER_INPUTS` changed. */
     readonly devcontainer: boolean;
@@ -63,7 +80,7 @@ export interface Plan {
      * `true` iff a pull request's Worker may be uploaded as a preview: a file in `cloud/web` or in a package it depends on
      * changed. A change to `cloud/db` does not rule one out; its preview runs without the change's migrations, and its
      * comment says so. A change outside every package alone (CI, a root config, the lockfile) has none, so that it leaves
-     * no approval waiting.
+     * no approval waiting. Without a base there is no preview either.
      */
     readonly preview: boolean;
     /**
@@ -111,7 +128,8 @@ const LICENSE_INPUTS: ReadonlySet<string> = new Set(['pnpm-lock.yaml', 'ide/pack
 /**
  * Returns the plan for a change, given the names of every package in the workspace.
  *
- * - Requires: every name in a `packages` change's `affected` is one of `all`.
+ * - Requires: every name in a `shared` or `packages` change's `affected` is one of `all`. Enforced: throws an `Error`
+ *   naming the others.
  */
 export function decide(change: Change, all: readonly string[]): Plan {
     if (change.kind === 'unknown') {
