@@ -3,7 +3,7 @@
 
     // This file holds PRODUCTION values, because that is what gets deployed and
     // what must be reviewable in a diff. Local development overrides every one
-    // of them through .dev.vars beside it (written by `pnpm --filter @yukibana/cloud-web dev:vars`, and
+    // of them through .dev.vars beside it (written by `pnpm --filter @yukibana/cloud-dev dev:vars`, and
     // gitignored):
     // a key there wins over the same key here, and keys only here still apply.
     // The database's local override is `localConnectionString` below.

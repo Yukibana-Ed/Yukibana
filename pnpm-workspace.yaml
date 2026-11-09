@@ -17,7 +17,9 @@ testPattern:
   - '**/*.spec.ts'
   - '**/*.test.ts'
 packages:
+  - .github/scripts
   - cloud/db
+  - cloud/dev
   - cloud/web
   - ide
   - ide/browser
@@ -95,6 +97,8 @@ catalog:
   '@vitest/coverage-v8': 5.0.5
   '@vscode/sudo-prompt': 9.3.2
   '@yukibana/client': workspace:*
+  '@yukibana/cloud-db': workspace:*
+  '@yukibana/cloud-web': workspace:*
   '@yukibana/fixtures': workspace:*
   '@yukibana/ide': workspace:*
   '@yukibana/ide-cloud-ext': workspace:*

@@ -5,7 +5,7 @@
 # exactly as it talks to R2 in production: over S3, through the one adapter in
 # cloud/web/src/lib/server/storage.ts.
 #
-#   pnpm --filter @yukibana/cloud-db storage:start     (storage:stop to stop it)
+#   pnpm --filter @yukibana/cloud-dev storage:start     (storage:stop to stop it)
 services:
   rustfs:
     image: rustfs/rustfs:latest

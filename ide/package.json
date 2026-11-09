@@ -31,6 +31,7 @@
     "@theia/cli": "catalog:",
     "@theia/core": "catalog:",
     "@types/node": "catalog:",
-    "ignore-styles": "catalog:"
+    "ignore-styles": "catalog:",
+    "typescript": "catalog:"
   }
 }

@@ -62,8 +62,8 @@ that changed are recompiled.
   Use `--preview` for an unpacked directory
 - `pnpm -C ide download:plugins`: download the plugins listed in `theiaPlugins` (in `ide/package.json`) into `ide/plugins`,
   again whenever that list changes (done automatically by `start` and `package`; delete `ide/plugins` to download them again)
-- `pnpm lint`, `pnpm typecheck`: run every package's `lint` (oxlint) or `typecheck` script, after `lint:root` or
-  `typecheck:root` for the files no package owns; one package's with e.g. `pnpm --filter @yukibana/cli lint`.
+- `pnpm lint`, `pnpm typecheck`: run every package's `lint` (oxlint) or `typecheck` script; one package's with e.g.
+  `pnpm --filter @yukibana/cli lint`.
   `pnpm lint:fix` runs the same with `--fix`, so oxlint fixes what it can of what `pnpm lint` reports
 - `pnpm format` / `pnpm format:check`: format the whole project with oxfmt, or only check it (Markdown is excluded in
   `oxfmt.config.mts`; oxfmt does not read Svelte components)
@@ -110,13 +110,13 @@ More information can be found in [docs/architecture.md](docs/architecture.md).
 ### The cloud and the CLI
 
 [cloud/web](cloud/web) (`@yukibana/cloud-web`, the Worker), [cloud/db](cloud/db) (`@yukibana/cloud-db`, the database
-with the Supabase CLI and squawk) and [packages/cli](packages/cli) (`@yukibana/cli`) are packages of the same
-workspace. `pnpm setup:cloud` or `pnpm setup:cli` installs them, and each has its own scripts, e.g.
+with the Supabase CLI and squawk), [cloud/dev](cloud/dev) (`@yukibana/cloud-dev`, the local environment) and
+[packages/cli](packages/cli) (`@yukibana/cli`) are packages of the same workspace. `pnpm setup:cloud` or `pnpm setup:cli` installs them, and each has its own scripts, e.g.
 `pnpm --filter @yukibana/cloud-web dev`, `pnpm --filter @yukibana/cli build`. The database's are `lint` (squawk over the
-migrations, oxlint over the Edge Functions), `start`, `stop`, `reset`, `test:db` (pgTAP), `storage:start` and
-`storage:stop` (the local bucket), `smoke` (is the local stack reachable?) and `admin <email>` (the local database's
-first admin); the Worker's `dev:vars` writes its local `.dev.vars` from the running stack, and any other Supabase
-command runs in `cloud/db` with `pnpm --filter @yukibana/cloud-db exec supabase <command>`. The library the CLI and the IDE share,
+migrations, oxlint over the Edge Functions), `start`, `stop`, `reset` and `test:db` (pgTAP); the local environment's
+are `storage:start` and `storage:stop` (the local bucket), `smoke` (is the local stack reachable?), `admin <email>`
+(the local database's first admin) and `dev:vars` (the Worker's local `.dev.vars`, from the running stack); any other
+Supabase command runs in `cloud/db` with `pnpm --filter @yukibana/cloud-db exec supabase <command>`. The library the CLI and the IDE share,
 [@yukibana/client](packages/client), compiles into its `lib` on install; rebuild it after changing it with
 `pnpm --filter @yukibana/client prepare`. The fixture repository their tests and the cloud's read is
 [@yukibana/fixtures](packages/fixtures), which each of them declares. How to run the cloud locally, publish a project and collect submissions
@@ -153,13 +153,13 @@ Every npm package's license, and every plugin the IDE bundles, must be accepted 
 
 [ci.yml](.github/workflows/ci.yml) runs for pull requests, the merge queue and pushes to `main`. Its plan job
 ([.github/scripts/plan.mts](.github/scripts/plan.mts)) asks pnpm which packages a change affects (the packages changed
-since the base, Markdown aside, and every package depending on them) and runs their `lint`, `typecheck` and `build`
-scripts, and their Vitest projects (each named after its package) in the root's one coverage run; the cloud stack and the IDE's end-to-end tests run only when their packages are affected. A change to a
-file that belongs to no package (the lockfile, a root config, `.github/`, `cloud/dev/`) runs every package's scripts,
-the cloud stack and the end-to-end tests. The devcontainer is built when `cloud/dev/`, what its install reads
+since the base, Markdown aside, and every package depending on them) and runs their `lint`, `typecheck`, `test` and
+`build` scripts; the cloud stack and the IDE's end-to-end tests run only when their packages are affected. The CI
+workflows' scripts are a package too ([.github/scripts](.github/scripts), `@yukibana/ci-scripts`). A change to a file
+that belongs to no package (the lockfile, a root config, a workflow) runs every package's scripts, the cloud stack and
+the end-to-end tests. The devcontainer is built when `cloud/dev/`, what its install reads
 (`package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, the cloud's, the CLI's and the client's `package.json`) or
 `cloud/db/supabase/config.toml` changed, and the license check runs when what it checks or its rules changed. `ci-ok` is the one required check.
-The files no package owns are checked by `pnpm lint:root`, `pnpm typecheck:root` and `pnpm test:root`.
 
 [deploy-cloud.yml](.github/workflows/deploy-cloud.yml) deploys the cloud from `main` once CI has passed there, and
 [preview.yml](.github/workflows/preview.yml) uploads a pull request's Worker as a preview once a maintainer approves;

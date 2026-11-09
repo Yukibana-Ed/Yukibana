@@ -26,8 +26,8 @@ interface WorkspacePackage {
  * What changed since the base, as far as the plan needs to know.
  *
  * - `unknown`: there is no base to compare with, so everything is affected.
- * - `shared`: a file that belongs to no package but the workspace root changed (the lockfile, a root config,
- *   `.github/`, `cloud/dev/`, ...), which any package may read, so every package is checked.
+ * - `shared`: a file that belongs to no package but the workspace root changed (the lockfile, a root config, a
+ *   workflow, ...), which any package may read, so every package is checked.
  * - `packages`: only files inside packages changed.
  *
  * `affected` are the packages that changed files inside them, and every package depending on those; `files` are the
@@ -44,7 +44,8 @@ export interface Plan {
      * the package) runs in the root's one coverage run, sorted.
      */
     readonly packages: readonly string[];
-    /** `true` iff the cloud stack runs: the migrations from empty, pgTAP and the Worker's integration tests. */
+    /** `true` iff the cloud stack runs: the migrations from empty, pgTAP and the Worker's integration tests; a package in
+     *  `CLOUD_STACK_PACKAGES` is affected. */
     readonly cloud: boolean;
     /** `true` iff the IDE's end-to-end tests run, on every OS. */
     readonly ide: boolean;
@@ -62,8 +63,11 @@ export interface Plan {
     readonly deploy: boolean;
 }
 
-/** The packages whose being affected starts the cloud stack, and deploys. */
+/** The packages whose being affected deploys. */
 const CLOUD_PACKAGES: readonly string[] = ['@yukibana/cloud-web', '@yukibana/cloud-db'];
+
+/** The packages whose being affected starts the cloud stack: what it deploys, and the scripts that check the stack. */
+const CLOUD_STACK_PACKAGES: readonly string[] = [...CLOUD_PACKAGES, '@yukibana/cloud-dev'];
 
 /** The files no package owns that every install reads: a change to one can change what any package is built with. */
 const INSTALL_INPUTS: readonly string[] = ['package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml'];
@@ -111,7 +115,7 @@ export function decide(change: Change, all: readonly string[]): Plan {
     const { files } = change;
     return {
         packages: packages.sort(),
-        cloud: packages.some(p => CLOUD_PACKAGES.includes(p)),
+        cloud: packages.some(p => CLOUD_STACK_PACKAGES.includes(p)),
         ide: packages.some(p => IDE_PACKAGES.includes(p)),
         // What the container is built from, the scripts and compose file its start runs, and what it installs from.
         devcontainer: files.some(f => f.startsWith('cloud/dev/') || DEVCONTAINER_INPUTS.includes(f)),

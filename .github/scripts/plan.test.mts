@@ -4,7 +4,17 @@
 import { describe, expect, test } from 'vitest';
 import { decide, outputLines } from './plan.mts';
 
-const names = ['@yukibana/cloud-db', '@yukibana/cloud-web', '@yukibana/ide', '@yukibana/ide-browser', '@yukibana/ide-ext', '@yukibana/client', '@yukibana/cli'];
+const names = [
+    '@yukibana/ci-scripts',
+    '@yukibana/cloud-db',
+    '@yukibana/cloud-dev',
+    '@yukibana/cloud-web',
+    '@yukibana/ide',
+    '@yukibana/ide-browser',
+    '@yukibana/ide-ext',
+    '@yukibana/client',
+    '@yukibana/cli',
+];
 
 describe('what runs', () => {
     test('a run without a base runs everything but a preview', () => {
@@ -36,7 +46,7 @@ describe('what runs', () => {
     });
 
     test('a change to the license rules checks the licenses', () => {
-        expect(decide({ kind: 'shared', affected: [], files: ['.github/scripts/licenses.mts'] }, names).licenses).toBe(true);
+        expect(decide({ kind: 'packages', affected: ['@yukibana/ci-scripts'], files: ['.github/scripts/licenses.mts'] }, names).licenses).toBe(true);
     });
 
     test('a change to the fixture repository has the built CLI and the cloud stack check it, as packages depending on it', () => {
@@ -80,8 +90,18 @@ describe('what runs', () => {
     });
 
     test('a change to the devcontainer or the scripts its start runs builds it', () => {
-        expect(decide({ kind: 'shared', affected: [], files: ['cloud/dev/.devcontainer/setup.sh'] }, names).devcontainer).toBe(true);
-        expect(decide({ kind: 'shared', affected: [], files: ['cloud/dev/scripts/smoke.mjs'] }, names).devcontainer).toBe(true);
+        expect(decide({ kind: 'packages', affected: ['@yukibana/cloud-dev'], files: ['cloud/dev/.devcontainer/setup.sh'] }, names).devcontainer).toBe(true);
+        expect(decide({ kind: 'packages', affected: ['@yukibana/cloud-dev'], files: ['cloud/dev/scripts/smoke.mjs'] }, names).devcontainer).toBe(true);
+    });
+
+    test("a change to the cloud's local scripts runs the cloud stack, which runs them, and neither the IDE's tests nor a deploy", () => {
+        const plan = decide({ kind: 'packages', affected: ['@yukibana/cloud-dev'], files: ['cloud/dev/scripts/smoke.mjs'] }, names);
+        expect(plan).toEqual({ packages: ['@yukibana/cloud-dev'], cloud: true, ide: false, devcontainer: true, licenses: false, preview: false, deploy: false });
+    });
+
+    test("a change to CI's scripts checks them alone", () => {
+        const plan = decide({ kind: 'packages', affected: ['@yukibana/ci-scripts'], files: ['.github/scripts/plan.mts'] }, names);
+        expect(plan).toEqual({ packages: ['@yukibana/ci-scripts'], cloud: false, ide: false, devcontainer: false, licenses: false, preview: false, deploy: false });
     });
 
     test('a change to the Supabase stack the devcontainer starts, or to a manifest its install reads, builds it', () => {
@@ -91,7 +111,7 @@ describe('what runs', () => {
     });
 
     test('a change to the placeholder check the deploy runs deploys', () => {
-        expect(decide({ kind: 'shared', affected: [], files: ['.github/scripts/production-config.mts'] }, names).deploy).toBe(true);
+        expect(decide({ kind: 'packages', affected: ['@yukibana/ci-scripts'], files: ['.github/scripts/production-config.mts'] }, names).deploy).toBe(true);
     });
 
     test("a change to the IDE's plugin list checks the plugins' licenses", () => {

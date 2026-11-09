@@ -10,9 +10,9 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
     test: {
         // Every package's config, in the directories pnpm-workspace.yaml takes packages from, so that a package's new tests
-        // run here without an entry; and the CI workflows' scripts, which belong to no package. Not `**`: ide/plugins holds
-        // downloaded extensions, which may ship a Vitest config of their own.
-        projects: ['{cloud/*,ide,ide/*,ide/extensions/*,ide/extensions/langs/*,packages/*}/vitest.config.{ts,mts}', '.github/scripts/vitest.config.mts'],
+        // run here without an entry. Not `**`: ide/plugins holds downloaded extensions, which may ship a Vitest config of
+        // their own.
+        projects: ['{.github/scripts,cloud/*,ide,ide/*,ide/extensions/*,ide/extensions/langs/*,packages/*}/vitest.config.{ts,mts}'],
         coverage: {
             provider: 'v8',
             // Not the package directories: paths are matched from the directory the projects that run share, which is a
