@@ -2,7 +2,7 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { readArchive, unwrap, type Entry } from '@yukibana/client';
+import { readArchive, type Entry } from '@yukibana/client';
 import { parseConfig } from '@yukibana/client/config';
 import { manifestProblems, planStarter, planTeacher } from '../src/lib/starter.js';
 
@@ -10,10 +10,16 @@ const text = (s: string) => new TextEncoder().encode(s);
 const file = (path: string, body: string): Entry => ({ path, type: 'file', mode: 0o644, mtime: 1, data: text(body) });
 const dir = (path: string): Entry => ({ path, type: 'dir', mode: 0o755, mtime: 1, data: new Uint8Array(0) });
 
-/** The client's fixture repository, a real pax tarball as GitHub makes one, unwrapped. */
+/** The client's fixture repository, a real pax tarball as GitHub makes one,
+ *  without its wrapper directory (`org-repo-sha/`), so its paths are those of
+ *  a checkout on disk. */
 async function fixture(): Promise<Entry[]> {
     const bytes = readFileSync(createRequire(import.meta.url).resolve('@yukibana/client/fixtures/repo.tar.gz'));
-    return unwrap(await readArchive(new Uint8Array(bytes)));
+    const entries = await readArchive(new Uint8Array(bytes));
+    return entries.flatMap(e => {
+        const slash = e.path.indexOf('/');
+        return slash < 0 ? [] : [{ ...e, path: e.path.slice(slash + 1) }];
+    });
 }
 
 const ok = (json: string) => {

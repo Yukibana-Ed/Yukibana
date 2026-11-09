@@ -2,7 +2,8 @@
 
 import type { Entry } from './tar.js';
 
-/** Drops the top-level directory GitHub wraps a tarball in (`org-repo-sha/`). */
+/** Returns `entries` without the top-level directory GitHub wraps a tarball in
+ *  (`org-repo-sha/`), the wrapper's own entry included, in the same order. */
 export function unwrap(entries: readonly Entry[]): Entry[] {
     const out: Entry[] = [];
     for (const e of entries) {
@@ -13,7 +14,8 @@ export function unwrap(entries: readonly Entry[]): Entry[] {
     return out;
 }
 
-/** Whether a symlink at `path` points outside the tree. A link to a hidden
+/** Returns `true` iff a symlink at `path` pointing at `target` leaves the
+ *  tree: `target` is absolute, or climbs above the root with `..`. A link to a hidden
  *  file would otherwise carry it out of the starter by another name, and a
  *  link in a student's submission would otherwise point a teacher's editor
  *  anywhere on their disk. */
