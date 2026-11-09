@@ -1,7 +1,7 @@
 /**
  * SPDX-License-Identifier: MIT
  */
-import { ILogger } from '@theia/core';
+import { Emitter, ILogger } from '@theia/core';
 import { FrontendApplicationContribution } from '@theia/core/lib/browser';
 import { inject, injectable, named } from '@theia/core/shared/inversify';
 import { EditorManager, EditorWidget } from '@theia/editor/lib/browser';
@@ -38,6 +38,9 @@ export class YukibanaTypingTracker implements FrontendApplicationContribution {
     @inject(ConfigProvider) protected readonly config!: ConfigProvider;
     /** The tracker's logger; nothing logs to it yet. */
     @inject(ILogger) @named('yukibana:TypingTracker') protected readonly logger!: ILogger;
+
+    protected readonly onDidEditEmitter = new Emitter<TypingTelemetry.Edit>();
+    readonly onDidEdit = this.onDidEditEmitter.event;
 
     /** Waits for the first config and, if it asks for typing stats, follows every editor open now and opened later. */
     async onStart(): Promise<void> {
@@ -93,6 +96,7 @@ export class YukibanaTypingTracker implements FrontendApplicationContribution {
                 file: monaco.getModel()?.uri?.toString(),
             };
             this.report(edit);
+            this.onDidEditEmitter.fire(edit);
         });
     }
 

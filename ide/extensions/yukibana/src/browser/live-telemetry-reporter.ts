@@ -1,6 +1,6 @@
 import { FrontendApplication, FrontendApplicationContribution } from '@theia/core/lib/browser';
 import { inject, injectable } from '@theia/core/shared/inversify';
-import { LiveTelemetry, LiveTelemetryService } from '../common/yukibana-telemetry';
+import { LiveTelemetryService } from '../common/yukibana-telemetry';
 import { ConfigProvider } from './config/config-provider';
 
 @injectable()
@@ -16,6 +16,5 @@ export class LiveTelemetryReporter implements FrontendApplicationContribution {
         this.telemetry.start({
             projectId: config.projectId ?? '',
         });
-        this.telemetry.report({ type: 'ping' } satisfies LiveTelemetry.Ping);
     }
 }

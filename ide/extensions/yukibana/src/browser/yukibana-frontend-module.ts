@@ -24,6 +24,7 @@ import { bindConfig } from './config/config-contribution';
 import { bindLanguageProviderContributions } from './languages/provider-contributions';
 import { LiveTelemetryClientImpl } from './live-telemetry-client';
 import { LiveTelemetryReporter } from './live-telemetry-reporter';
+import { bindTelemetryContribution } from './telemetry/telemetry-contribution';
 import { YukibanaAIIdeActivationService } from './yukibana-ai-ide-activation-service';
 import { CleanupFrontendContribution } from './yukibana-cleanup-contribution';
 import { YukibanaCommandContribution, YukibanaMenuContribution } from './yukibana-contribution';
@@ -122,4 +123,6 @@ export default new ContainerModule((bind, unbind, isBound, rebind) => {
         .inSingletonScope();
     bind(LiveTelemetryReporter).toSelf().inSingletonScope();
     bind(FrontendApplicationContribution).to(LiveTelemetryReporter);
+
+    bindTelemetryContribution(bind);
 });
