@@ -1,0 +1,108 @@
+{
+  "private": true,
+  "name": "@yukibana/ide-electron",
+  "productName": "Yukibana",
+  "description": "Yukibana IDE",
+  "version": "0.0.0-dev",
+  "license": "MIT",
+  "main": "scripts/theia-electron-main.js",
+  "author": "Yukibana Team <info.yukibana@isc-vs.ch>",
+  "homepage": "https://github.com/Yukibana-Ed/Yukibana#readme",
+  "bugs": {
+    "url": "https://github.com/Yukibana-Ed/Yukibana/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Yukibana-Ed/Yukibana.git"
+  },
+  "dependencies": {
+    "@theia/ai-anthropic": "catalog:",
+    "@theia/ai-chat": "catalog:",
+    "@theia/ai-chat-ui": "catalog:",
+    "@theia/ai-core": "catalog:",
+    "@theia/ai-ide": "catalog:",
+    "@theia/core": "catalog:",
+    "@theia/debug": "catalog:",
+    "@theia/editor": "catalog:",
+    "@theia/electron": "catalog:",
+    "@theia/file-search": "catalog:",
+    "@theia/filesystem": "catalog:",
+    "@theia/markers": "catalog:",
+    "@theia/messages": "catalog:",
+    "@theia/monaco": "catalog:",
+    "@theia/navigator": "catalog:",
+    "@theia/outline-view": "catalog:",
+    "@theia/plugin-ext": "catalog:",
+    "@theia/plugin-ext-vscode": "catalog:",
+    "@theia/preferences": "catalog:",
+    "@theia/process": "catalog:",
+    "@theia/scm": "catalog:",
+    "@theia/search-in-workspace": "catalog:",
+    "@theia/telemetry": "catalog:",
+    "@theia/terminal": "catalog:",
+    "@theia/test": "catalog:",
+    "@theia/toolbar": "catalog:",
+    "@theia/workspace": "catalog:",
+    "@yukibana/ide-cloud-ext": "catalog:",
+    "@yukibana/ide-ext": "catalog:",
+    "@yukibana/ide-launcher-ext": "catalog:",
+    "@yukibana/ide-product-ext": "catalog:",
+    "@yukibana/ide-scala-lang-ext": "catalog:",
+    "@yukibana/ide-submission-ext": "catalog:",
+    "@yukibana/ide-telemetry-ext": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@theia/bundle-plugin": "catalog:",
+    "@theia/cli": "catalog:",
+    "@yukibana/ide": "catalog:",
+    "electron": "42.8.1",
+    "electron-builder": "catalog:",
+    "esbuild": "catalog:",
+    "typescript": "catalog:"
+  },
+  "scripts": {
+    "clean": "theia clean",
+    "watch": "theia build --watch --mode development",
+    "lint": "oxlint",
+    "typecheck": "tsc --build"
+  },
+  "theia": {
+    "target": "electron",
+    "frontend": {
+      "config": {
+        "applicationName": "Yukibana",
+        "reloadOnReconnect": true,
+        "defaultTheme": "Default Dark Modern",
+        "defaultIconTheme": "theia-file-icons",
+        "electron": {
+          "appUserModelId": "isc.yukibana",
+          "uriScheme": "yukibana",
+          "splashScreenOptions": {
+            "content": "resources/YukibanaSplash.svg",
+            "height": 256,
+            "width": 256,
+            "minDuration": 2000
+          }
+        },
+        "preferences": {
+          "security.workspace.trust.enabled": false,
+          "telemetry.telemetryLevel": "all",
+          "debug.internalConsoleOptions": "neverOpen",
+          "debug.openDebug": "neverOpen",
+          "metals.disableReleaseNotes": true,
+          "toolbar.showToolbar": true,
+          "workbench.startupEditor": "none"
+        }
+      }
+    },
+    "backend": {
+      "config": {
+        "configurationFolder": ".yukibana"
+      }
+    }
+  },
+  "theiaPluginsDir": "../plugins",
+  "desktopName": "yukibana"
+}

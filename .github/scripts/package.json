@@ -1,0 +1,18 @@
+{
+  "private": true,
+  "name": "@yukibana/ci-scripts",
+  "description": "The scripts the CI workflows run: the plan of what a change affects, the license check, the release-age exclusion check and the deploy's placeholder check. Node runs them as they are; they import nothing but Node's own modules.",
+  "version": "0.0.0-dev",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "lint": "oxlint --type-aware --deny-warnings",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

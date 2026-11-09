@@ -1,0 +1,35 @@
+{
+  "private": true,
+  "name": "@yukibana/cli",
+  "description": "Build, publish, submit, download and assemble Yukibana course projects from a terminal: the `yukibana` command, over @yukibana/client.",
+  "version": "0.0.0-dev",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "yukibana": "lib/index.js"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "prepare": "tsc --build tsconfig.build.json",
+    "clean": "rimraf lib tsconfig.build.tsbuildinfo",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint --type-aware --deny-warnings"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@yukibana/fixtures": "catalog:",
+    "rimraf": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "dependencies": {
+    "@yukibana/client": "catalog:",
+    "uuid": "catalog:"
+  }
+}

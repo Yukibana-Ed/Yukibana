@@ -1,0 +1,24 @@
+{
+  "name": "@yukibana/ide-common",
+  "description": "Helpers shared by the Yukibana extensions",
+  "version": "0.0.0-dev",
+  "license": "MIT",
+  "files": [
+    "lib",
+    "src"
+  ],
+  "dependencies": {
+    "@theia/core": "catalog:"
+  },
+  "devDependencies": {
+    "@yukibana/ide": "catalog:",
+    "rimraf": "catalog:",
+    "typescript": "catalog:"
+  },
+  "scripts": {
+    "prepare": "tsc --build",
+    "clean": "rimraf lib tsconfig.tsbuildinfo",
+    "lint": "oxlint",
+    "typecheck": "tsc --build"
+  }
+}

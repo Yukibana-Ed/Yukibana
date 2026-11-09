@@ -1,6 +1,6 @@
 <div align="center">
     <img
-        src="https://raw.githubusercontent.com/ISC-HEI/yukibana/main/electron-app/resources/YukibanaSplash.svg?sanitize=true"
+        src="https://raw.githubusercontent.com/Yukibana-Ed/Yukibana/main/ide/electron/resources/YukibanaSplash.svg?sanitize=true"
         alt="Yukibana Logo"
         width="200" />
     <h2>Yukibana</h2>
@@ -14,4 +14,6 @@ distribute, manage and collect assignments.
 ## Developing
 
 Developers eager to contribute to this project can find some info
-to get started in [CONTRIBUTING.md](CONTRIBUTING.md).
+to get started in [CONTRIBUTING.md](CONTRIBUTING.md). The cloud the IDE
+talks to, and the CLI that publishes course projects to it, are in
+[docs/cloud/README.md](docs/cloud/README.md), which says how to run them.

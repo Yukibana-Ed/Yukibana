@@ -1,20 +1,38 @@
 saveExact: true
-linkWorkspacePackages: true
-# Resolves only versions at least 7 days old (in minutes), as Dependabot proposes them.
-minimumReleaseAge: 10080
+# Resolves only versions at least 14 days old (in minutes), the same window as Dependabot's cooldown. It also applies to
+# what the lockfile already holds: `pnpm install --frozen-lockfile` and `pnpm ci` refuse an entry younger than this.
+# An exclusion (minimumReleaseAgeExclude) names each exact version, including the too-young dependencies it pulls in.
+# The Node.js runtime of package.json's devEngines is not checked against it, which is why that names an exact version.
+minimumReleaseAge: 20160
 nodeLinker: hoisted # Needed for Theia's version check
+# Warns, instead of installing every package, when a script runs on node_modules that don't match the lockfile: in a
+# fresh clone, `pnpm setup:cli` would otherwise install the whole workspace before its own filtered install.
+verifyDepsBeforeRun: warn
+# What CI's plan (.github/scripts/plan.mts) leaves out of a package being changed, in `--filter "...[<base>]"`: a change to
+# Markdown changes nothing, and a change to tests only affects the package they test, not the packages depending on it.
+changedFilesIgnorePattern:
+  - '**/*.md'
+testPattern:
+  - '**/tests/**'
+  - '**/*.spec.ts'
+  - '**/*.test.ts'
 packages:
+  - .github/scripts
+  - cloud/db
+  - cloud/dev
+  - cloud/web
+  - ide
+  - ide/browser
+  - ide/common
+  - ide/e2e
+  - ide/electron
+  - ide/extensions/*
+  - ide/extensions/langs/*
   - packages/*
-  - theia-extensions/*
-  - theia-extensions/langs/*
-  - browser-app
-  - electron-app
-  - tests
 allowBuilds:
   '@parcel/watcher': true
   '@theia/ffmpeg': true
   '@vscode/windows-ca-certs': true
-  '@yukibana/cli@https://codeload.github.com/tothambrus11/yukibana-cloud/tar.gz/5ac54db42f6eee76a78a5b44abb6e1e830a107c1#path:/cli': true
   drivelist: true
   electron-winstaller: true
   esbuild: true
@@ -24,69 +42,103 @@ allowBuilds:
   node-pty: true
   # Only needed by `theia test`, which this project doesn't use; skips downloading two Chrome builds.
   puppeteer: false
+  # Download their binaries: the Supabase CLI, squawk, and the Workers runtime that wrangler runs locally.
+  squawk-cli: true
+  supabase: true
+  workerd: true
 
-# electron cannot be specified as 'catalog:' because Theia's CLI checks its version using semver
+# Every dependency of every package is named here, and only here, with its version (catalogMode: strict).
+# electron cannot be specified as 'catalog:' because Theia's CLI checks its version using semver.
 catalog:
-  '@playwright/test': ^1.64.1
-  '@theia/ai-anthropic': ~1.76.0
-  '@theia/ai-chat': ~1.76.0
-  '@theia/ai-chat-ui': ~1.76.0
-  '@theia/ai-core': ~1.76.0
-  '@theia/ai-ide': ~1.76.0
-  '@theia/bundle-plugin': ~1.76.0
-  '@theia/cli': ~1.76.0
-  '@theia/core': ~1.76.0
-  '@theia/debug': ~1.76.0
-  '@theia/editor': ~1.76.0
-  '@theia/electron': ~1.76.0
-  '@theia/file-search': ~1.76.0
-  '@theia/filesystem': ~1.76.0
-  '@theia/markers': ~1.76.0
-  '@theia/messages': ~1.76.0
-  '@theia/monaco': ~1.76.0
-  '@theia/monaco-editor-core': ^1.108.201
-  '@theia/navigator': ~1.76.0
-  '@theia/outline-view': ~1.76.0
-  '@theia/playwright': ~1.76.0
-  '@theia/plugin-ext': ~1.76.0
-  '@theia/plugin-ext-vscode': ~1.76.0
-  '@theia/preferences': ~1.76.0
-  '@theia/process': ~1.76.0
-  '@theia/scm': ~1.76.0
-  '@theia/search-in-workspace': ~1.76.0
-  '@theia/telemetry': ~1.76.0
-  '@theia/terminal': ~1.76.0
-  '@theia/test': ~1.76.0
-  '@theia/toolbar': ~1.76.0
-  '@theia/workspace': ~1.76.0
+  '@date-fns/tz': 1.5.0
+  '@playwright/test': 1.64.1
+  '@supabase/ssr': 0.12.7
+  '@supabase/supabase-js': 2.118.0
+  '@sveltejs/adapter-cloudflare': 8.0.1
+  '@sveltejs/kit': 3.1.0
+  '@sveltejs/vite-plugin-svelte': 7.3.1
+  '@theia/ai-anthropic': 1.76.0
+  '@theia/ai-chat': 1.76.0
+  '@theia/ai-chat-ui': 1.76.0
+  '@theia/ai-core': 1.76.0
+  '@theia/ai-ide': 1.76.0
+  '@theia/bundle-plugin': 1.76.0
+  '@theia/cli': 1.76.0
+  '@theia/core': 1.76.0
+  '@theia/debug': 1.76.0
+  '@theia/editor': 1.76.0
+  '@theia/electron': 1.76.0
+  '@theia/file-search': 1.76.0
+  '@theia/filesystem': 1.76.0
+  '@theia/markers': 1.76.0
+  '@theia/messages': 1.76.0
+  '@theia/monaco': 1.76.0
+  '@theia/monaco-editor-core': 1.108.201
+  '@theia/navigator': 1.76.0
+  '@theia/outline-view': 1.76.0
+  '@theia/playwright': 1.76.0
+  '@theia/plugin-ext': 1.76.0
+  '@theia/plugin-ext-vscode': 1.76.0
+  '@theia/preferences': 1.76.0
+  '@theia/process': 1.76.0
+  '@theia/scm': 1.76.0
+  '@theia/search-in-workspace': 1.76.0
+  '@theia/telemetry': 1.76.0
+  '@theia/terminal': 1.76.0
+  '@theia/test': 1.76.0
+  '@theia/toolbar': 1.76.0
+  '@theia/workspace': 1.76.0
   '@types/archiver': 8.0.0
   '@types/fs-extra': 11.0.4
   '@types/micromatch': 4.0.10
-  '@types/node': 26.6.5
-  '@types/react': ^19.3.0
-  '@types/react-dom': ^19.3.0
+  '@types/node': 24.19.2
+  '@types/react': 19.3.0
+  '@types/react-dom': 19.3.0
   '@vitest/coverage-v8': 5.0.5
   '@vscode/sudo-prompt': 9.3.2
-  '@yukibana/cli': 'github:tothambrus11/yukibana-cloud#5ac54db42f6eee76a78a5b44abb6e1e830a107c1&path:/cli'
+  '@yukibana/client': workspace:*
+  '@yukibana/cloud-db': workspace:*
+  '@yukibana/cloud-web': workspace:*
+  '@yukibana/fixtures': workspace:*
+  '@yukibana/ide': workspace:*
+  '@yukibana/ide-cloud-ext': workspace:*
+  '@yukibana/ide-common': workspace:*
+  '@yukibana/ide-ext': workspace:*
+  '@yukibana/ide-launcher-ext': workspace:*
+  '@yukibana/ide-product-ext': workspace:*
+  '@yukibana/ide-scala-lang-ext': workspace:*
+  '@yukibana/ide-submission-ext': workspace:*
+  '@yukibana/ide-telemetry-ext': workspace:*
+  aws4fetch: 1.0.20
   chai: 6.3.0
-  fs-extra: ^11.4.1
+  electron-builder: 26.18.0
+  esbuild: 0.28.2
+  fs-extra: 11.4.1
+  ignore: 7.0.13
   ignore-styles: 5.0.1
+  jose: 6.2.13
   jsdom: 30.1.3
-  oxfmt: 0.75.0
+  modern-tar: 0.8.6
+  oxfmt: 0.74.0
   oxlint: 1.89.0
   oxlint-tsgolint: 7.0.2005
-  react: ^19.3.1
-  react-dom: ^19.3.1
-  rimraf: ^6.1.3
+  postgres: 3.4.9
+  react: 19.3.1
+  react-dom: 19.3.1
+  rimraf: 6.1.3
+  squawk-cli: 2.70.0
+  supabase: 2.122.0
+  svelte: 5.57.2
+  svelte-check: 4.7.7
   typescript: 7.0.2
+  uuid: 14.0.3
+  vite: 8.3.5
   vitest: 5.0.5
-  yukibana-cloud-ext: workspace:*
-  yukibana-common: workspace:*
-  yukibana-ext: workspace:*
-  yukibana-launcher-ext: workspace:*
-  yukibana-product-ext: workspace:*
-  yukibana-scala-lang-ext: workspace:*
-  yukibana-submission-ext: workspace:*
-  yukibana-telemetry-ext: workspace:*
+  wrangler: 4.152.0
+  zod: 4.6.7
+catalogs:
+  # cloud/web only: svelte-check supports TypeScript 6 at most (its peer dependency is ^5 || ^6).
+  ts6:
+    typescript: 6.0.3
 catalogMode: strict
 catalogPrune: true

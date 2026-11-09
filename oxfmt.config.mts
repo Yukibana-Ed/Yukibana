@@ -13,7 +13,11 @@ export default {
     // The platform's line ending, which Git checks text files out with (see .gitattributes).
     endOfLine: EOL === '\r\n' ? 'crlf' : 'lf',
     sortPackageJson: false,
-    ignorePatterns: ['**/*.md'],
+    ignorePatterns: [
+        '**/*.md',
+        // Generated, and checked byte for byte by packages/client/tests/schema.test.ts.
+        'packages/client/yukibana.schema.json',
+    ],
     overrides: [
         {
             files: ['*.json', '*.code-snippets', '*.yml', '*.yaml'],

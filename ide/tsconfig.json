@@ -1,0 +1,43 @@
+{
+  "extends": "./configs/base.tsconfig.json",
+  "include": [],
+  "compilerOptions": {
+    "composite": true,
+    "allowJs": true
+  },
+  "references": [
+    {
+      "path": "../packages/client/tsconfig.build.json"
+    },
+    {
+      "path": "./common"
+    },
+    {
+      "path": "./extensions/yukibana-launcher"
+    },
+    {
+      "path": "./extensions/yukibana-product"
+    },
+    {
+      "path": "./extensions/yukibana"
+    },
+    {
+      "path": "./extensions/yukibana-submission"
+    },
+    {
+      "path": "./extensions/yukibana-cloud"
+    },
+    {
+      "path": "./extensions/yukibana-telemetry"
+    },
+    {
+      "path": "./extensions/langs/scala"
+    },
+    {
+      "path": "./electron"
+    },
+    {
+      "path": "./browser"
+    }
+  ]
+}

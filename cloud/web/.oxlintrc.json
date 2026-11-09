@@ -1,0 +1,15 @@
+{
+  "$schema": "../../node_modules/oxlint/configuration_schema.json",
+  "extends": ["../../oxlint.strict.json"],
+  "rules": {
+    /* The branded ids in ids.ts and the trust points named `trust*` are the
+       casts this rule cannot tell from careless ones. */
+    "typescript/no-unsafe-type-assertion": "off",
+    /* SvelteKit's `redirect()` and `error()` never return, and an action that
+       ends in one has no other return; the rule cannot see that. */
+    "typescript/consistent-return": "off",
+    /* `export {}` is how a .d.ts becomes a module, per SvelteKit's own template. */
+    "unicorn/require-module-specifiers": "off"
+  },
+  "ignorePatterns": ["build/**", ".svelte-kit/**", "static/**", "node_modules/**", "src/worker-configuration.d.ts"]
+}

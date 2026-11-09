@@ -1,0 +1,34 @@
+{
+  "name": "@yukibana/ide-telemetry-ext",
+  "version": "0.0.0-dev",
+  "license": "MIT",
+  "keywords": [
+    "theia-extension"
+  ],
+  "files": [
+    "lib",
+    "src"
+  ],
+  "dependencies": {
+    "@theia/core": "catalog:",
+    "@theia/telemetry": "catalog:",
+    "@yukibana/ide-ext": "catalog:"
+  },
+  "devDependencies": {
+    "@types/archiver": "catalog:",
+    "@yukibana/ide": "catalog:",
+    "rimraf": "catalog:",
+    "typescript": "catalog:"
+  },
+  "scripts": {
+    "prepare": "tsc --build",
+    "clean": "rimraf lib tsconfig.tsbuildinfo",
+    "lint": "oxlint",
+    "typecheck": "tsc --build"
+  },
+  "theiaExtensions": [
+    {
+      "backend": "lib/node/telemetry-backend-module"
+    }
+  ]
+}

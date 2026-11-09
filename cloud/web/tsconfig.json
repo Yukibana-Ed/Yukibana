@@ -1,0 +1,14 @@
+{
+  /* The strict settings every TypeScript package outside the IDE shares, then
+     what SvelteKit provides: the half that knows where things are
+     ($app/tsconfig, since SvelteKit 3), which also chooses the module system,
+     the target and the libraries for Vite. What is left is the Worker's own. */
+  "extends": ["../../tsconfig.strict.json", "$app/tsconfig"],
+  "compilerOptions": {
+    "moduleDetection": "force",
+    "allowJs": false,
+    "checkJs": false,
+    "types": ["$app/types", "vite/client"]
+  },
+  "include": ["src/**/*.ts", "src/**/*.svelte", "tests/**/*.ts", "vite.config.ts", "vitest.config.ts", "vitest.integration.config.ts"]
+}

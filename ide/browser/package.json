@@ -1,0 +1,74 @@
+{
+  "private": true,
+  "name": "@yukibana/ide-browser",
+  "version": "0.0.0-dev",
+  "license": "MIT",
+  "dependencies": {
+    "@theia/ai-anthropic": "catalog:",
+    "@theia/ai-chat": "catalog:",
+    "@theia/ai-chat-ui": "catalog:",
+    "@theia/ai-core": "catalog:",
+    "@theia/ai-ide": "catalog:",
+    "@theia/core": "catalog:",
+    "@theia/debug": "catalog:",
+    "@theia/editor": "catalog:",
+    "@theia/filesystem": "catalog:",
+    "@theia/markers": "catalog:",
+    "@theia/messages": "catalog:",
+    "@theia/monaco": "catalog:",
+    "@theia/navigator": "catalog:",
+    "@theia/outline-view": "catalog:",
+    "@theia/plugin-ext": "catalog:",
+    "@theia/plugin-ext-vscode": "catalog:",
+    "@theia/preferences": "catalog:",
+    "@theia/process": "catalog:",
+    "@theia/scm": "catalog:",
+    "@theia/terminal": "catalog:",
+    "@theia/test": "catalog:",
+    "@theia/toolbar": "catalog:",
+    "@theia/workspace": "catalog:",
+    "@yukibana/ide-cloud-ext": "catalog:",
+    "@yukibana/ide-ext": "catalog:",
+    "@yukibana/ide-scala-lang-ext": "catalog:",
+    "@yukibana/ide-submission-ext": "catalog:",
+    "@yukibana/ide-telemetry-ext": "catalog:"
+  },
+  "devDependencies": {
+    "@theia/cli": "catalog:",
+    "@yukibana/ide": "catalog:",
+    "esbuild": "catalog:",
+    "typescript": "catalog:"
+  },
+  "scripts": {
+    "clean": "theia clean",
+    "watch": "theia build --watch --mode development",
+    "lint": "oxlint",
+    "typecheck": "tsc --build"
+  },
+  "theia": {
+    "target": "browser",
+    "frontend": {
+      "config": {
+        "applicationName": "Yukibana",
+        "reloadOnReconnect": true,
+        "defaultTheme": "Default Dark Modern",
+        "defaultIconTheme": "theia-file-icons",
+        "preferences": {
+          "security.workspace.trust.enabled": false,
+          "telemetry.telemetryLevel": "all",
+          "debug.internalConsoleOptions": "neverOpen",
+          "debug.openDebug": "neverOpen",
+          "metals.disableReleaseNotes": true,
+          "toolbar.showToolbar": true,
+          "workbench.startupEditor": "none"
+        }
+      }
+    },
+    "backend": {
+      "config": {
+        "configurationFolder": ".yukibana"
+      }
+    }
+  },
+  "theiaPluginsDir": "../plugins"
+}

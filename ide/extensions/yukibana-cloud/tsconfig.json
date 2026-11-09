@@ -1,0 +1,19 @@
+{
+  "extends": "@yukibana/ide/configs/base.tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib"
+  },
+  "include": ["src"],
+  "references": [
+    {
+      "path": "../yukibana-submission"
+    },
+    {
+      "path": "../../common"
+    },
+    {
+      "path": "../../../packages/client/tsconfig.build.json"
+    }
+  ]
+}

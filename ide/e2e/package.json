@@ -1,0 +1,28 @@
+{
+  "private": true,
+  "name": "@yukibana/ide-e2e",
+  "version": "0.0.0-dev",
+  "license": "MIT",
+  "author": "Yukibana Team <info.yukibana@isc-vs.ch>",
+  "homepage": "https://github.com/Yukibana-Ed/Yukibana#readme",
+  "bugs": {
+    "url": "https://github.com/Yukibana-Ed/Yukibana/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Yukibana-Ed/Yukibana.git"
+  },
+  "dependencies": {
+    "@playwright/test": "catalog:",
+    "@theia/playwright": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@yukibana/ide": "catalog:",
+    "typescript": "catalog:"
+  },
+  "scripts": {
+    "lint": "oxlint",
+    "typecheck": "tsc --noEmit"
+  }
+}

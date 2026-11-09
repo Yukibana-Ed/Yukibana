@@ -1,0 +1,280 @@
+# Deploys the cloud from main: the database first (migrations, the per-environment bootstrap, Supabase's settings), then
+# the Worker. Migrations only ever add (cloud/CLAUDE.md), so the Worker still running between the two steps works
+# against the new schema. A failed deploy is re-run by hand; the next one includes everything anyway. A run whose commit
+# is older than the last successful deploy's refuses, so a re-run of an old run cannot put an old Worker back.
+#
+# Once CI has passed for a push to main of Yukibana-Ed/Yukibana (a fork has no production environment). It deploys when the
+# pnpm package graph says @yukibana/cloud-web or @yukibana/cloud-db is affected since the last deploy (so a change to
+# packages they use counts, @yukibana/client's yukibana.schema.json among them), or the lockfile, the workspace's
+# configuration, this file or the placeholder check it runs changed; a change to CI or a root config alone deploys
+# nothing (`deploy` in .github/scripts/plan.mts). CI compares a push with the commit it replaced, and this with the last
+# deploy, so the two can disagree: an admin pushes a migration whose cloud stack fails, nothing deploys, and the next
+# push affects no cloud package, so its CI skips the stack and passes. So a run that would deploy also requires that
+# the CI run it follows ran the cloud stack and passed: no migration reaches production without having run from empty
+# under pgTAP first, whatever merged it. And by hand, from main only, which deploys main's head without waiting for CI
+# and without that check: an operator's decision. A first environment needs it twice: deploy, log in once with GitHub,
+# deploy again so cloud/db/ops/bootstrap.sql can promote the first admin.
+#
+# A run started by CI has the newest commit of main as its own (GITHUB_SHA), which is not necessarily the one CI passed
+# for. So every step uses COMMIT, the commit CI passed for, and the run's title names it: "Deploy <sha>" for a run that
+# may deploy, which is how the guards find the last commit deployed. CI's other runs on a branch named main (a failed
+# one, or a pull request from a fork's main) start a run titled "Not deployed", which does nothing.
+#
+# The secrets are on the `production` environment (Settings, Environments), and each step gets only the ones it uses:
+#   SUPABASE_ACCESS_TOKEN   a Supabase personal access token (sbp_...)
+#   SUPABASE_PROJECT_REF    the project ref, the first label of its API URL
+#   SUPABASE_DB_URL         the SESSION POOLER connection string, percent-encoded. Not the direct one: that resolves to
+#                           IPv6 only, which GitHub's runners do not have. (Hyperdrive is the opposite: it takes the
+#                           direct string.)
+#   SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID, _SECRET   the production GitHub OAuth App
+#   SUPABASE_AUTH_SMTP_PASS a Resend API key with sending access, for the login codes
+#   APP_DB_PASSWORD         the yukibana_app role's password
+#   FIRST_ADMIN_EMAIL       who app.bootstrap_admin promotes, once
+#   CLOUDFLARE_API_TOKEN    a token that can deploy the yukibana-cloud Worker
+#   CLOUDFLARE_ACCOUNT_ID   the Cloudflare account it is in
+# The Worker's own secrets (SUPABASE_PUBLISHABLE_KEY, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY) are set once with
+# `wrangler secret put` and are not touched here. docs/cloud/deploy.md is the whole runbook.
+name: Deploy cloud
+# The three places that ask whether this run may deploy (the title, the concurrency group and the plan's `if`) ask the
+# same question: by hand on main, or CI passed for a push. A run by hand on another branch would apply its unmerged
+# migrations to production, which cannot be undone.
+run-name: >-
+  ${{ ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'))
+  && format('Deploy {0}', github.event.workflow_run.head_sha || github.sha)
+  || (github.event_name == 'workflow_dispatch' && format('Not deployed: run by hand on {0}, not main', github.ref_name))
+  || format('Not deployed: CI {0} for a {1} of {2}', github.event.workflow_run.conclusion, github.event.workflow_run.event, github.event.workflow_run.head_sha) }}
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+# One deploy at a time, and none cancelled halfway: a newer one waits, and a newer one still replaces it while it waits.
+# So a commit can be replaced before it ran, and the plan compares with the last deploy that succeeded, not with the
+# commit just before: the run that replaced it then includes its changes. A run that may not deploy has a group of its
+# own, so that it cannot replace one that waits.
+concurrency:
+  group: >-
+    ${{ ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'))
+    && 'deploy-cloud' || format('deploy-cloud-not-{0}', github.run_id) }}
+  cancel-in-progress: false
+
+env:
+  # The commit this run deploys: the one CI passed for, or the branch's head by hand.
+  COMMIT: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    name: Plan
+    if: >-
+      github.repository == 'Yukibana-Ed/Yukibana'
+      && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      deploy: ${{ steps.plan.outputs.deploy }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.COMMIT }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install pnpm and Node.js
+        uses: ./.github/actions/setup
+        with:
+          cache: false
+
+      # The commit of the last run on main that succeeded, from its title. One whose plan skipped the deploy is a base
+      # too: nothing since the one before it affected the cloud. None (the first run), or a run by hand, means everything
+      # is affected. Only the title run-name writes counts: GitHub titles a run without one "Deploy cloud", which is no
+      # commit.
+      - name: Last deployed
+        id: base
+        if: github.event_name == 'workflow_run'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy-cloud.yml/runs?branch=main&status=success&per_page=100" \
+            --jq '[.workflow_runs[].display_title | select(test("^Deploy [0-9a-f]{40}$"))][0] // empty | ltrimstr("Deploy ")')
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      - name: Plan
+        id: plan
+        run: node .github/scripts/plan.mts
+        env:
+          BASE: ${{ steps.base.outputs.sha }}
+
+      # What was affected since the last deploy, CI must have tested on the stack (the header says why). The run's jobs
+      # are those of its latest attempt.
+      - name: CI ran the cloud stack
+        if: github.event_name == 'workflow_run' && steps.plan.outputs.deploy == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN: ${{ github.event.workflow_run.id }}
+        run: |
+          result=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN/jobs?per_page=100" --jq '[.jobs[] | select(.name == "Cloud stack")][0].conclusion // "not run"')
+          if [ "$result" != success ]; then
+            echo "::error::the cloud is affected since the last deploy, but the cloud stack of CI run $RUN was $result, so what it deploys is untested; nothing was deployed. Fix main through a pull request, or deploy by hand (Run workflow on main)."
+            exit 1
+          fi
+
+  deploy:
+    name: Deploy
+    needs: plan
+    if: needs.plan.outputs.deploy == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+    environment:
+      name: production
+      url: https://cloud.yukibana.dev
+    steps:
+      # Re-running an old run (or only its failed jobs, which reuses the plan) after a newer one deployed would deploy the
+      # old Worker over the newer one, against the newer schema. So this commit must be the last deployed one or after it.
+      - name: Not older than the last deploy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          last=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy-cloud.yml/runs?branch=main&status=success&per_page=100" \
+            --jq '[.workflow_runs[].display_title | select(test("^Deploy [0-9a-f]{40}$"))][0] // empty | ltrimstr("Deploy ")')
+          if [ -n "$last" ]; then
+            status=$(gh api "repos/$GITHUB_REPOSITORY/compare/$last...$COMMIT" --jq .status)
+            case "$status" in
+              ahead|identical) ;;
+              *) echo "::error::$COMMIT is $status of $last, the commit of the last successful Deploy cloud run; nothing was deployed. To deploy main again, use Run workflow on main."
+                 exit 1 ;;
+            esac
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.COMMIT }}
+          persist-credentials: false
+
+      - name: Install pnpm and Node.js
+        uses: ./.github/actions/setup
+
+      - name: Install dependencies
+        run: pnpm --filter '{cloud/**}...' install --frozen-lockfile --fetch-timeout 100000
+
+      # Whether this repository points at an environment at all. A checkout with the placeholders still in it is one
+      # nobody has set up, and there is nothing to deploy. Filled in means someone did, and a missing secret is then a
+      # fault rather than a fresh start: this job once reported success while doing nothing, which is the worst of both.
+      - name: Is an environment configured
+        id: env
+        run: |
+          if node .github/scripts/production-config.mts; then
+            echo "configured=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::the production configuration still has placeholders, so this repository is not pointed at an environment yet; see docs/cloud/deploy.md. Nothing to deploy."
+            echo "configured=no" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Every secret named at once, so a missing one is one failed run rather than several.
+      - name: Credentials
+        if: steps.env.outputs.configured == 'yes'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID: ${{ secrets.SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID }}
+          SUPABASE_AUTH_EXTERNAL_GITHUB_SECRET: ${{ secrets.SUPABASE_AUTH_EXTERNAL_GITHUB_SECRET }}
+          SUPABASE_AUTH_SMTP_PASS: ${{ secrets.SUPABASE_AUTH_SMTP_PASS }}
+          APP_DB_PASSWORD: ${{ secrets.APP_DB_PASSWORD }}
+          FIRST_ADMIN_EMAIL: ${{ secrets.FIRST_ADMIN_EMAIL }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          missing=
+          for v in SUPABASE_ACCESS_TOKEN SUPABASE_PROJECT_REF SUPABASE_DB_URL \
+                   SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID SUPABASE_AUTH_EXTERNAL_GITHUB_SECRET \
+                   SUPABASE_AUTH_SMTP_PASS APP_DB_PASSWORD FIRST_ADMIN_EMAIL \
+                   CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do
+            [ -n "${!v}" ] || missing="$missing $v"
+          done
+          # Shape, not just presence. The access token is used after the migrations, so a wrong one used to fail only
+          # once the schema had gone out and the project's settings had not.
+          case "${SUPABASE_ACCESS_TOKEN:-}" in
+            ''|sbp_*) ;;
+            *) echo "::error::SUPABASE_ACCESS_TOKEN is not a Supabase personal access token: they begin with sbp_ and come from https://supabase.com/dashboard/account/tokens."
+               exit 1 ;;
+          esac
+          if [ -n "$missing" ]; then
+            echo "::error::not set, so nothing was deployed:$missing"
+            echo "::error::they belong on the Secrets tab of the production environment (Settings, Environments). Variables are a different store and are not masked in logs, which SUPABASE_DB_URL must be: it carries the database password."
+            exit 1
+          fi
+
+      # The schema before the code. Only migrations not already in the project's ledger run; `migration list` is the
+      # record of which.
+      - name: Migrations pending
+        if: steps.env.outputs.configured == 'yes'
+        working-directory: cloud/db
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: pnpm exec supabase migration list --db-url "$SUPABASE_DB_URL"
+
+      - name: Apply migrations
+        if: steps.env.outputs.configured == 'yes'
+        working-directory: cloud/db
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: pnpm exec supabase db push --db-url "$SUPABASE_DB_URL" --yes
+
+      # Role passwords and the first admin: the values a migration cannot carry. Idempotent, so it runs on every deploy.
+      - name: Per-environment bootstrap
+        if: steps.env.outputs.configured == 'yes'
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          APP_DB_PASSWORD: ${{ secrets.APP_DB_PASSWORD }}
+          FIRST_ADMIN_EMAIL: ${{ secrets.FIRST_ADMIN_EMAIL }}
+        run: psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -v app_password="$APP_DB_PASSWORD" -v admin_email="$FIRST_ADMIN_EMAIL" -f cloud/db/ops/bootstrap.sql
+
+      # `config push` writes what config.toml declares and leaves the rest alone, but it declares plenty, so the diff
+      # goes in the log first: that is the record of what this deploy changed about the project.
+      - name: Supabase settings, before
+        if: steps.env.outputs.configured == 'yes'
+        working-directory: cloud/db
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID: ${{ secrets.SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID }}
+          SUPABASE_AUTH_EXTERNAL_GITHUB_SECRET: ${{ secrets.SUPABASE_AUTH_EXTERNAL_GITHUB_SECRET }}
+          SUPABASE_AUTH_SMTP_PASS: ${{ secrets.SUPABASE_AUTH_SMTP_PASS }}
+        run: pnpm exec supabase config diff --project-ref "$SUPABASE_PROJECT_REF" || true
+
+      - name: Push Supabase settings
+        if: steps.env.outputs.configured == 'yes'
+        working-directory: cloud/db
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID: ${{ secrets.SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID }}
+          SUPABASE_AUTH_EXTERNAL_GITHUB_SECRET: ${{ secrets.SUPABASE_AUTH_EXTERNAL_GITHUB_SECRET }}
+          SUPABASE_AUTH_SMTP_PASS: ${{ secrets.SUPABASE_AUTH_SMTP_PASS }}
+        run: pnpm exec supabase config push --project-ref "$SUPABASE_PROJECT_REF" --yes
+
+      - name: Build the Worker
+        if: steps.env.outputs.configured == 'yes'
+        run: pnpm --filter @yukibana/cloud-web run build
+
+      - name: Deploy the Worker
+        if: steps.env.outputs.configured == 'yes'
+        working-directory: cloud/web
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: pnpm exec wrangler deploy

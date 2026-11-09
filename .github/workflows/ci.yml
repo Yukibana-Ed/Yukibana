@@ -1,0 +1,394 @@
+# Every check, for pull requests, the merge queue and pushes to main. The plan job decides from pnpm's package graph
+# what a change affects (.github/scripts/plan.mts), and every other job runs only when its package is affected. So the
+# triggers have no paths filters: the workflow always runs, and ci-ok, the one required check, always reports.
+# .github/actions/setup's `node@24.x` runs pnpm and the plan; every script pnpm runs uses the exact release of devEngines.
+name: CI
+
+on:
+  pull_request:
+  # The merge queue tests the commit that lands, with main as it will be.
+  merge_group:
+  # Main's own runs keep its caches warm, which pull requests restore from.
+  push:
+    branches: [main]
+  # By hand: everything runs.
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      packages: ${{ steps.plan.outputs.packages }}
+      cloud: ${{ steps.plan.outputs.cloud }}
+      ide: ${{ steps.plan.outputs.ide }}
+      devcontainer: ${{ steps.plan.outputs.devcontainer }}
+      licenses: ${{ steps.plan.outputs.licenses }}
+      preview: ${{ steps.plan.outputs.preview }}
+    steps:
+      # The whole history, since the base is compared with.
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install pnpm and Node.js
+        uses: ./.github/actions/setup
+        with:
+          cache: false
+
+      # pnpm reads the package graph from the manifests: nothing needs installing.
+      - name: Plan
+        id: plan
+        run: node .github/scripts/plan.mts
+        env:
+          # The pull request's base, the merge queue's, or what the push replaced; none by hand.
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+
+  # Always, the formatting and the release-age exclusions; and every affected package's lint, typecheck, unit tests and
+  # build.
+  check:
+    name: Lint, typecheck and unit tests
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      PACKAGES: ${{ needs.plan.outputs.packages }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install pnpm and Node.js
+        uses: ./.github/actions/setup
+
+      # native-keymap, which every Theia package depends on, compiles against X11 at install, and ubuntu-24.04 has no
+      # headers for it. Always, since an IDE extension alone pulls it in too, and `ide` covers only the apps.
+      - name: Install the IDE's native build headers
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libx11-dev libxkbfile-dev
+
+      # The root's tools, and each affected package with what it depends on. `--filter=<name>` for each, kept for the
+      # steps below.
+      - name: Install dependencies
+        run: |
+          echo "FILTERS=$(jq -r 'map("--filter=" + .) | join(" ")' <<<"$PACKAGES")" >> "$GITHUB_ENV"
+          read -ra deps < <(jq -r 'map("--filter=" + . + "...") | join(" ")' <<<"$PACKAGES")
+          pnpm --filter '{.}' "${deps[@]}" install --frozen-lockfile --fetch-timeout 100000
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check formatting
+        run: pnpm run format:check
+
+      - name: Check for expired minimumReleaseAgeExclude entries
+        run: pnpm run check:release-age
+
+      # The root package has no postinstall: the version check runs here, from the root, where every @theia/* package
+      # is. Only when the IDE's own package is affected: otherwise neither the lockfile nor its Theia changed.
+      - name: Check Theia versions
+        if: contains(fromJSON(needs.plan.outputs.packages), '@yukibana/ide')
+        run: pnpm run check:theia
+
+      - name: Lint
+        if: needs.plan.outputs.packages != '[]'
+        run: |
+          read -ra filters <<<"$FILTERS"
+          pnpm "${filters[@]}" run --if-present lint
+
+      - name: Typecheck
+        if: needs.plan.outputs.packages != '[]'
+        run: |
+          read -ra filters <<<"$FILTERS"
+          pnpm "${filters[@]}" run --if-present typecheck
+
+      - name: Unit tests
+        if: needs.plan.outputs.packages != '[]'
+        run: |
+          read -ra filters <<<"$FILTERS"
+          pnpm "${filters[@]}" run --if-present test
+
+      # The Worker's build (the CLI and the libraries compile on install, `prepare`), but not the IDE's apps, which the e2e
+      # job builds.
+      - name: Build
+        if: needs.plan.outputs.packages != '[]'
+        run: |
+          read -ra filters <<<"$FILTERS"
+          pnpm "${filters[@]}" --filter='!@yukibana/ide' run --if-present build
+
+      # A pull request's Worker, for the Preview workflow to upload once a maintainer approves: bundled here, with the
+      # pull request's dependencies, since SvelteKit's output imports them by name and an upload that bundles would take
+      # them from main's checkout. Only for branches of this repository. A pull request with a migration gets one too: it
+      # runs against production's database without that migration, which is enough to look at a page.
+      - name: Bundle the preview
+        id: preview
+        if: >-
+          needs.plan.outputs.preview == 'true' && github.event_name == 'pull_request'
+          && github.event.pull_request.head.repo.full_name == github.repository
+        working-directory: cloud/web
+        run: pnpm exec wrangler versions upload --dry-run --outdir .svelte-kit/preview-worker
+
+      # The bundle, and the static assets beside it that wrangler.jsonc's `assets` names.
+      - name: Upload the preview
+        if: steps.preview.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: cloud-web-preview
+          path: |
+            cloud/web/.svelte-kit/cloudflare/
+            cloud/web/.svelte-kit/preview-worker/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 5
+
+      # The CLI as a course repository's CI runs it, over the fixture repository, which the CLI's tests depend on.
+      - name: Check the fixture with the built CLI
+        if: contains(fromJSON(needs.plan.outputs.packages), '@yukibana/cli')
+        run: |
+          mkdir -p "$RUNNER_TEMP/fixture"
+          tar -xzf packages/fixtures/repo.tar.gz -C "$RUNNER_TEMP/fixture" --strip-components=1
+          node packages/cli/lib/index.js check "$RUNNER_TEMP/fixture" --folder calc
+
+  # The database and the Worker together: the real Supabase image and a real S3 server on the runner, every migration
+  # applied from empty, the pgTAP suite, and the integration suite driving the server modules through the app's own
+  # connection role. squawk lints the migrations in the check job (@yukibana/cloud-db's lint).
+  cloud:
+    name: Cloud stack
+    needs: plan
+    if: needs.plan.outputs.cloud == 'true'
+    # Must be a VM runner: a `container:` job breaks Supabase's bind mounts.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      # Auth needs a GitHub provider configured to start; nothing logs in here.
+      SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID: ci-placeholder
+      SUPABASE_AUTH_EXTERNAL_GITHUB_SECRET: ci-placeholder
+    steps:
+      # The stack publishes fixed host ports, 54320-54329 (cloud/db/supabase/config.toml), which lie in Linux's
+      # ephemeral range: any outgoing connection, such as an image pull, could take one first and fail the start.
+      # Reserving them takes them out of that range; explicit binds like Docker's still get them.
+      - name: Keep the stack's ports out of the ephemeral range
+        run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=54320-54329
+
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install pnpm and Node.js
+        uses: ./.github/actions/setup
+
+      - name: Install dependencies
+        run: pnpm --filter '{cloud/**}...' install --frozen-lockfile --fetch-timeout 100000
+
+      - name: Preflight
+        run: cloud/dev/scripts/preflight.sh
+
+      - name: Start Supabase
+        run: pnpm --filter @yukibana/cloud-db run start
+
+      # The login tests talk to Auth as the page does, with the publishable key; this is the stack's own rather than
+      # the default env.ts assumes.
+      - name: Publishable key for the integration tests
+        working-directory: cloud/db
+        run: echo "SUPABASE_PUBLISHABLE_KEY=$(pnpm exec supabase status -o json | jq -r .PUBLISHABLE_KEY)" >> "$GITHUB_ENV"
+
+      - name: Start the bucket
+        run: pnpm --filter @yukibana/cloud-dev run storage:start
+
+      - name: Smoke test
+        run: pnpm --filter @yukibana/cloud-dev run smoke
+
+      # Every migration from empty, then the seeds: what a fresh environment is.
+      - name: Rebuild the database from migrations
+        run: pnpm --filter @yukibana/cloud-db run reset
+
+      - name: Database tests (pgTAP)
+        run: pnpm --filter @yukibana/cloud-db run test:db
+
+      # The same check the nightly drift job runs against production: kept here so its expected policy changes in the
+      # same pull request as the migration that changes the policy.
+      - name: Realtime policies are exactly ours
+        run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -q -f cloud/db/ops/realtime-policies.sql
+
+      # And the event triggers, which are in no schema: what drift checks in production is what the migrations build
+      # here.
+      - name: Event triggers are exactly ours
+        run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -q -f cloud/db/ops/event-triggers.sql
+
+      # After the reset, which empties Auth's tables along with ours: the registry's OAuth client, as an environment
+      # has it, for the connect tests (the IDE and CLI login by way of the website).
+      - name: Register the OAuth client
+        run: |
+          id=$(node cloud/dev/scripts/oauth-client.mjs)
+          echo "SUPABASE_OAUTH_CLIENT_ID=$id" >> "$GITHUB_ENV"
+
+      - name: Integration tests
+        run: pnpm --filter @yukibana/cloud-web run test:integration
+
+      - name: Stop
+        if: always()
+        run: |
+          pnpm --filter @yukibana/cloud-db run stop || true
+          pnpm --filter @yukibana/cloud-dev run storage:stop || true
+
+  e2e:
+    name: E2E tests (${{ matrix.app }}, ${{ matrix.os }})
+    needs: plan
+    if: needs.plan.outputs.ide == 'true'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-2022, macos-15]
+        app: [browser, electron]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install pnpm and Node.js
+        uses: ./.github/actions/setup
+
+      # The IDE and what it uses, as `pnpm setup:ide` installs it: not the cloud's Supabase CLI, squawk or workerd.
+      - name: Install dependencies
+        shell: bash
+        run: pnpm --filter "{ide/**}..." install --frozen-lockfile --fetch-timeout 100000
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cache Theia plugins
+        uses: actions/cache@v6
+        with:
+          # With the stamp that `pnpm -C ide download:plugins` compares the plugin list with (ide/scripts/cli.mts).
+          path: |
+            ide/plugins
+            node_modules/.plugins-download-inputs
+          key: plugins-v2-${{ runner.os }}-${{ hashFiles('ide/package.json') }}
+
+      # Not cached, as Playwright recommends: restoring takes about as long as downloading.
+      - name: Install Playwright Chromium
+        if: matrix.app == 'browser'
+        shell: bash
+        run: pnpm --filter @yukibana/ide-e2e exec playwright install --with-deps chromium
+
+      # Builds both apps and downloads the plugins first.
+      - name: E2E tests
+        shell: bash
+        # Electron needs a display, which Linux runners lack.
+        run: ${{ matrix.app == 'electron' && runner.os == 'Linux' && 'xvfb-run -a' || '' }} pnpm -C ide test:e2e --project=${{ matrix.app }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # What the Package workflow builds for a tag, unpacked (`--dir`): no installer, but electron-builder.yml and
+      # after-pack.js run, which no test does otherwise. Once, on Linux, when the Electron app is affected. An unpacked
+      # app takes any executable name, and the AppImage and deb refuse a scoped package's (`@yukibanaide-electron`), so
+      # the step checks for the one electron-builder.yml names, as after-pack.js leaves it.
+      - name: Package the Electron app, unpacked
+        if: matrix.app == 'electron' && runner.os == 'Linux' && contains(fromJSON(needs.plan.outputs.packages), '@yukibana/ide-electron')
+        run: |
+          pnpm -C ide package --preview
+          test -x ide/electron/dist/linux-unpacked/yukibana.bin
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-report-${{ matrix.app }}-${{ matrix.os }}
+          path: |
+            ide/e2e/playwright-report/
+            ide/e2e/test-results/
+          if-no-files-found: ignore
+          retention-days: 5
+
+  # The cloud's devcontainer builds, and the stack it starts answers, so a broken devcontainer.json fails a pull
+  # request rather than a teammate's morning.
+  devcontainer:
+    name: Devcontainer
+    needs: plan
+    if: needs.plan.outputs.devcontainer == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      # As in the cloud stack job.
+      - name: Keep the stack's ports out of the ephemeral range
+        run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=54320-54329
+
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Build the devcontainer and run the smoke test inside it
+        uses: devcontainers/ci@513af61f4de4f75d37e4438f184ba4358f0fc1ca # v0.3
+        with:
+          configFile: cloud/dev/.devcontainer/devcontainer.json
+          runCmd: |
+            cloud/dev/scripts/preflight.sh
+            pnpm --filter @yukibana/cloud-dev run smoke
+
+  # Every npm package's license, and every plugin the IDE bundles, against the rules in .github/scripts/licenses.mts.
+  licenses:
+    name: Licenses
+    needs: plan
+    if: needs.plan.outputs.licenses == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install pnpm and Node.js
+        uses: ./.github/actions/setup
+
+      # Every package, for its manifest: no install scripts, which download binaries the check does not read.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts --fetch-timeout 100000
+
+      - name: Cache Theia plugins
+        uses: actions/cache@v6
+        with:
+          path: |
+            ide/plugins
+            node_modules/.plugins-download-inputs
+          key: plugins-v2-${{ runner.os }}-${{ hashFiles('ide/package.json') }}
+
+      - name: Download the plugins
+        run: pnpm -C ide download:plugins
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check licenses
+        run: pnpm run check:licenses
+
+  # The one required check. A job that was not needed is skipped, which passes; one that failed or was cancelled fails
+  # this.
+  ci-ok:
+    name: ci-ok
+    if: always()
+    needs: [plan, check, cloud, e2e, devcontainer, licenses]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Every job passed or was not needed
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          jq -r 'to_entries[] | "\(.key): \(.value.result)"' <<<"$NEEDS"
+          if jq -e 'any(.[]; .result == "failure" or .result == "cancelled")' <<<"$NEEDS" >/dev/null; then
+            exit 1
+          fi

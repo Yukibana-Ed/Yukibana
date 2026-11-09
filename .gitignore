@@ -2,11 +2,13 @@
 **/node_modules
 **/.browser_modules
 **/dist
-**/lib
+# tsc's output, in the IDE and the packages; a src/lib/ (SvelteKit's $lib, the client's library) is source.
+/ide/**/lib/
+/packages/*/lib/
 **/src-gen
 **/gen-esbuild.*.mjs
 **/plugins
-**/tsconfig.tsbuildinfo
+**/*.tsbuildinfo
 *.log
 **/test-screenshots
 **/test-results
@@ -14,3 +16,19 @@
 **/coverage
 
 .idea
+
+# The cloud's local secrets (this repository is public) and Worker state.
+.env
+.env.local
+.dev.vars
+.wrangler/
+# SvelteKit's generated files and the Worker's build.
+.svelte-kit/
+/cloud/web/build/
+# The Supabase CLI's local state, and the local bucket's data when run without Docker.
+/cloud/db/supabase/.temp/
+/cloud/db/supabase/.branches/
+/cloud/dev/data/
+# direnv (cloud/dev/.envrc), and nyc's coverage data.
+.direnv/
+.nyc_output/
