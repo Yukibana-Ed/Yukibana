@@ -43,12 +43,22 @@ export interface ClientOptions {
     readonly fetch?: typeof fetch;
 }
 
-/** The registry refused, with the sentence it gave. `status` is the HTTP
- *  status: 401 means log in again, 403 not allowed, 404 no such thing or
- *  not visible to you (the registry does not tell those apart), 409 a
- *  conflict, 413 too large. */
+/** The registry refused, with the sentence it gave; or, for a download, the
+ *  bucket the registry sent it to did ("the bucket answered ..."). */
 export class RegistryError extends Error {
+    /** Makes the error for a response with HTTP status `status`; `message` is
+     *  the whole sentence to show. */
     constructor(
+        /** The HTTP status. For the registry's own answers: 400 a request
+         *  that cannot mean anything (an empty body, an id that is not a
+         *  uuid), 401 log in again, 403 not allowed, 404 no such thing or
+         *  not visible to you (the registry does not tell those apart), 409
+         *  a conflict, 413 too large, 415 not gzip (only the magic bytes are
+         *  checked), 5xx the server's fault. For a download whose message
+         *  says "the bucket answered", the status is the bucket's, after the
+         *  registry's redirect: the presigned download failed (a 403 is an
+         *  expired or bad link, a 404 a missing object), which says nothing
+         *  about the person's permission or whether they are logged in. */
         readonly status: number,
         message: string,
     ) {
@@ -60,41 +70,60 @@ export class RegistryError extends Error {
 export interface SubmissionQuery {
     /** Only each author's newest submission: the ones that count. */
     readonly latest?: boolean;
-    /** Only this author's, by user id. */
+    /** Only this author's, by user id. One that is not a uuid is refused
+     *  with 400, not ignored. */
     readonly author?: string;
 }
 
-/** The registry's JSON API, as one person: each method is one request, whose answer is decoded and checked, and a
- *  refusal is thrown as a `RegistryError`. */
+/** The registry's JSON API, as one person: each method is one request (a download also follows its redirect), whose
+ *  answer is decoded and checked. A refusal is thrown as a `RegistryError`, an answer this version cannot read as
+ *  `Unexpected`, and whatever `accessToken` or `fetch` throws is thrown as it is. */
 export class YukibanaClient {
-    /** The registry's origin, like https://cloud.yukibana.dev, without a path. */
+    /** The registry's origin, like https://cloud.yukibana.dev, without a path.
+     *  Invariant: its scheme is `http:` or `https:`, so it is never the
+     *  string "null" that `URL` gives an opaque origin. */
     readonly origin: string;
     readonly #token: () => Promise<string> | string;
     readonly #fetch: typeof fetch;
 
+    /** Makes a client for `options.url`; nothing is sent until a method is called.
+     *
+     *  - Requires: `options.url` is an absolute `http:` or `https:` URL.
+     *    Enforced: what `new URL` cannot parse (a bare host) throws its
+     *    `TypeError`; one that parses with another scheme throws a
+     *    `TypeError` naming it. The second check is there because a
+     *    schemeless `localhost:5173` parses, with `localhost:` read as the
+     *    scheme and an origin of "null", and every request would then go to
+     *    `null/api/...`. Its path, query and fragment are dropped; every
+     *    request goes to the origin. */
     constructor(options: ClientOptions) {
-        this.origin = new URL(options.url).origin;
+        const url = new URL(options.url);
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+            throw new TypeError(`the registry's URL must start with http:// or https://, not ${JSON.stringify(options.url)}`);
+        }
+        this.origin = url.origin;
         this.#token = options.accessToken;
         this.#fetch = options.fetch ?? fetch;
     }
 
-    /** Who the credentials are. */
+    /** Returns who the credentials are. */
     me(): Promise<Me> {
         return this.#json('GET', '/api/me', decodeMe);
     }
 
-    /** The editions the person is enrolled in, with their role in each. */
+    /** Returns the editions the person is enrolled in, with their role in each. */
     editions(): Promise<Edition[]> {
         return this.#json('GET', '/api/editions', decodeList(decodeEdition, 'editions'));
     }
 
-    /** An edition's enrolments. Staff see everyone; a student sees their own. */
+    /** Returns an edition's enrolments. Staff see everyone; a student sees
+     *  their own. Fails with 404 for an edition the person is not in. */
     members(edition: string): Promise<Member[]> {
         return this.#json('GET', `/api/editions/${seg(edition)}/members`, decodeList(decodeMember, 'members'));
     }
 
-    /** Enrols an address (owners only). Enrolling an address twice changes
-     *  nothing, its role included. */
+    /** Enrols an address as `role` (owners only). Enrolling an address twice
+     *  changes nothing, its role included. */
     async enrol(edition: string, email: string, role: EditionRole = 'student'): Promise<void> {
         await this.#json('POST', `/api/editions/${seg(edition)}/members`, () => undefined, { json: { email, role } });
     }
@@ -104,9 +133,9 @@ export class YukibanaClient {
         await this.#json('DELETE', `/api/editions/${seg(edition)}/members?email=${encodeURIComponent(email)}`, () => undefined);
     }
 
-    /** The projects the person can see: for a student, the published ones of
-     *  their editions; for staff, all of their editions'. `edition` narrows
-     *  the list to one. */
+    /** Returns the projects the person can see: for a student, those of their
+     *  editions whose window is open now; for staff, all of their editions',
+     *  drafts included. `edition` narrows the list to one. */
     projects(edition?: string): Promise<Project[]> {
         const q = edition === undefined ? '' : `?edition=${encodeURIComponent(edition)}`;
         return this.#json('GET', `/api/projects${q}`, decodeList(decodeProject, 'projects'));
@@ -118,8 +147,11 @@ export class YukibanaClient {
         return this.#json('GET', `/api/projects/${seg(project)}`, decodeProject);
     }
 
-    /** Submissions to a project, newest first. Staff see everyone's; a
-     *  student sees their own. */
+    /** Returns submissions to a project, newest first, narrowed by `query`.
+     *  A `query.author` that is not a user id (a uuid) fails with 400.
+     *  Staff see everyone's; a student sees their own, also once the
+     *  project's window has closed. Fails with 404 when the person can see
+     *  neither the project nor a submission to it. */
     submissions(project: string, query: SubmissionQuery = {}): Promise<Submission[]> {
         const q = new URLSearchParams();
         if (query.latest === true) q.set('latest', 'true');
@@ -128,22 +160,37 @@ export class YukibanaClient {
         return this.#json('GET', `/api/projects/${seg(project)}/submissions${qs}`, decodeList(decodeSubmission, 'submissions'));
     }
 
-    /** A project's releases, newest first (staff only). */
+    /** Returns a project's releases, newest first. Only staff are listed any:
+     *  a student gets an empty list for a project they can see, and a 404
+     *  for one they cannot. */
     releases(project: string): Promise<Release[]> {
         return this.#json('GET', `/api/projects/${seg(project)}/releases`, decodeList(decodeRelease, 'releases'));
     }
 
-    /** Sends a bundle as a new submission. Refuses, without sending, a bundle
-     *  that has problems or names no project (unless `project` is given). */
+    /** Sends a bundle as a new submission to `project` (the one the bundle
+     *  names, by default), with the release the bundle says it started from,
+     *  and returns the registry's receipt.
+     *
+     *  - Requires: the bundle has no `problems`, and there is a project
+     *    (neither null nor ''). Enforced: each throws a plain `Error`,
+     *    without sending. */
     async submit(bundle: SubmissionBundle, project: string | null = bundle.projectId): Promise<Accepted> {
         if (bundle.problems.length > 0) throw new Error(`not submitted: ${bundle.problems.join('; ')}`);
-        if (project === null) throw new Error('not submitted: the folder names no project; give one');
+        if (project === null || project === '') throw new Error('not submitted: the folder names no project; give one');
         return this.submitArchive(project, await bundle.archive(), bundle.releaseId);
     }
 
-    /** Sends an archive made elsewhere (a `.tar.gz`) as a new submission.
+    /** Sends an archive made elsewhere (a `.tar.gz`) as a new submission, and
+     *  returns the registry's receipt. The archive is sent as it is, and the
+     *  registry does not look inside it. It refuses an empty one (400), one
+     *  over its limit (413) or one that is not gzip (415), and a submission
+     *  the person may not make now (403, with the reason: not a student of
+     *  the edition, or the window not open or closed, also when it closes
+     *  during the upload).
      *  `release` is the release the work started from, as the folder's
-     *  yukibana.json says; null when it says none. */
+     *  yukibana.json says; null when it says none. One that is not a uuid
+     *  is a 400; one that names no release of the project is recorded as
+     *  none. */
     submitArchive(project: string, archive: Uint8Array, release: string | null = null): Promise<Accepted> {
         const q = release === null ? '' : `?release=${encodeURIComponent(release)}`;
         return this.#json('POST', `/api/projects/${seg(project)}/submissions${q}`, decodeAccepted, { bytes: archive, contentType: 'application/gzip' });
@@ -165,17 +212,18 @@ export class YukibanaClient {
         return this.#json('POST', `/api/projects/${seg(project)}/releases`, decodePublished, { form });
     }
 
-    /** A submission's archive, as sent (a `.tar.gz`). */
+    /** Returns a submission's archive, as sent (a `.tar.gz`). */
     downloadSubmission(submission: string): Promise<Uint8Array> {
         return this.#download(`/api/submissions/${seg(submission)}`);
     }
 
-    /** The starter students get now (a `.tar.gz`). */
+    /** Returns the starter of the project's newest release, which students
+     *  get now (a `.tar.gz`). */
     downloadStarter(project: string): Promise<Uint8Array> {
         return this.#download(`/api/projects/${seg(project)}/starter`);
     }
 
-    /** One archive of a release (a `.tar.gz`). Staff may download either;
+    /** Returns one archive of a release (a `.tar.gz`). Staff may download either;
      *  a student only the starter, of a release of a project they may download
      *  from now, which is how an IDE fetches the base of an update. */
     downloadRelease(release: string, archive: 'starter' | 'teacher'): Promise<Uint8Array> {
