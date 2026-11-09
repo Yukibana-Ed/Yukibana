@@ -111,14 +111,22 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           refuse() { echo "::error::$1; nothing was deployed. It reaches production with the next pull request merged up to date with main."; exit 1; }
-          head=$(gh api "repos/$GITHUB_REPOSITORY/commits/$COMMIT/pulls" --jq '[.[] | select(.merged_at != null and .base.ref == "main")][0].head.sha // empty')
-          [ -n "$head" ] || refuse "$COMMIT is not the merge of a pull request into main"
+          # Exactly the pull request whose merge this commit is (a commit can belong to several).
+          pr=$(gh api "repos/$GITHUB_REPOSITORY/commits/$COMMIT/pulls" \
+            --jq "[.[] | select(.merged_at != null and .base.ref == \"main\" and .merge_commit_sha == \"$COMMIT\")][0] // empty")
+          [ -n "$pr" ] || refuse "$COMMIT is not the merge of a pull request into main"
+          head=$(jq -r .head.sha <<<"$pr")
+          branch=$(jq -r .head.ref <<<"$pr")
+          repo=$(jq -r .head.repo.full_name <<<"$pr")
           tree=$(gh api "repos/$GITHUB_REPOSITORY/git/commits/$COMMIT" --jq .tree.sha)
           tested=$(gh api "repos/$GITHUB_REPOSITORY/git/commits/$head" --jq .tree.sha)
           [ "$tree" = "$tested" ] || refuse "$COMMIT's tree is not its pull request head $head's, so the pull request was not up to date with main and no CI run tested what landed"
           runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$head&event=pull_request&per_page=100")
-          run=$(jq -r '.workflow_runs[0].id // empty' <<<"$runs")
-          conclusion=$(jq -r '.workflow_runs[0].conclusion // "none"' <<<"$runs")
+          # That pull request's runs: the same head can be open from another branch or repository too.
+          newest=$(jq --arg branch "$branch" --arg repo "$repo" \
+            '[.workflow_runs[] | select(.head_branch == $branch and .head_repository.full_name == $repo)][0] // {}' <<<"$runs")
+          run=$(jq -r '.id // empty' <<<"$newest")
+          conclusion=$(jq -r '.conclusion // "none"' <<<"$newest")
           [ -n "$run" ] || refuse "no CI run tested $head, the pull request's head"
           [ "$conclusion" = success ] || refuse "the newest CI run for $head, the pull request's head, is $run, whose conclusion is $conclusion"
           echo "run=$run" >> "$GITHUB_OUTPUT"
