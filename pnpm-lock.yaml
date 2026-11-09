@@ -485,6 +485,9 @@ importers:
       '@yukibana/cloud-web':
         specifier: 'catalog:'
         version: link:../web
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.89.0(oxlint-tsgolint@7.0.2005)
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
