@@ -92,7 +92,8 @@ jobs:
 
       # The commit of the last run on main that succeeded, from its title. One whose plan skipped the deploy is a base
       # too: nothing since the one before it affected the cloud. None (the first run), or a run by hand, means everything
-      # is affected.
+      # is affected. Only the title run-name writes counts: GitHub titles a run without one "Deploy cloud", which is no
+      # commit.
       - name: Last deployed
         id: base
         if: github.event_name == 'workflow_run'
@@ -100,7 +101,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           sha=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy-cloud.yml/runs?branch=main&status=success&per_page=100" \
-            --jq '[.workflow_runs[].display_title | select(startswith("Deploy "))][0] // empty | ltrimstr("Deploy ")')
+            --jq '[.workflow_runs[].display_title | select(test("^Deploy [0-9a-f]{40}$"))][0] // empty | ltrimstr("Deploy ")')
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
 
       - name: Plan
@@ -129,7 +130,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           last=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy-cloud.yml/runs?branch=main&status=success&per_page=100" \
-            --jq '[.workflow_runs[].display_title | select(startswith("Deploy "))][0] // empty | ltrimstr("Deploy ")')
+            --jq '[.workflow_runs[].display_title | select(test("^Deploy [0-9a-f]{40}$"))][0] // empty | ltrimstr("Deploy ")')
           if [ -n "$last" ]; then
             status=$(gh api "repos/$GITHUB_REPOSITORY/compare/$last...$COMMIT" --jq .status)
             case "$status" in
