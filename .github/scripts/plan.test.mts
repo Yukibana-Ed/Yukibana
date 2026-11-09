@@ -92,12 +92,12 @@ describe('what runs', () => {
         expect(decide({ kind: 'packages', affected: ['@yukibana/ide'], files: ['ide/scripts/cli.mts'] }, names).ide).toBe(true);
     });
 
-    test('a migration starts the cloud stack and rules out a preview, which would run against the old schema', () => {
+    test('a migration starts the cloud stack and still gets a preview, which runs against the old schema', () => {
         const plan = decide(
             { kind: 'packages', affected: ['@yukibana/cloud-db', '@yukibana/cloud-web'], files: ['cloud/db/supabase/migrations/1_x.sql', 'cloud/web/src/a.ts'] },
             names,
         );
-        expect(plan).toMatchObject({ cloud: true, preview: false });
+        expect(plan).toMatchObject({ cloud: true, preview: true });
     });
 
     test('a change to the Worker alone may have a preview, and deploys', () => {

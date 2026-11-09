@@ -41,7 +41,7 @@ queue. Four workflows listen to the repository:
  pull request, merge queue ─▶ CI (ci.yml)
                                 plan → the affected packages' checks, the cloud stack, …
                                 → ci-ok, the one required check
-                                and, for a pull request without a migration, a preview build
+                                and, for a pull request that affects cloud/web, a preview build
  CI of a pull request ──────▶ Preview (preview.yml), once a maintainer approves
                                 wrangler versions upload → a preview URL on the pull request
  CI passed for main ────────▶ Deploy cloud (deploy-cloud.yml), when the cloud is affected
@@ -55,7 +55,7 @@ queue. Four workflows listen to the repository:
 | | Triggered by | Does | Needs |
 | --- | --- | --- | --- |
 | **CI** | pull requests, the merge queue, pushes to `main` | lint, typecheck, unit tests and builds of the packages the change affects (pnpm's package graph); `yukibana check` over the fixture; when `cloud/web` or `cloud/db` is affected, the real stack on the runner: every migration from empty, pgTAP, the Realtime policy and event trigger checks, the integration suite; squawk is `cloud/db`'s lint; the devcontainer build when `cloud/dev` changed, or what its install reads (`package.json`, the lockfile, `pnpm-workspace.yaml`, the manifests of `cloud/db`, `cloud/web`, `packages/cli` and `packages/client`), or `cloud/db/supabase/config.toml`, which its start runs | nothing secret |
-| **Preview** | CI of a pull request from a branch of this repository that affects `cloud/web` and does not touch `cloud/db` | uploads the build CI made as a preview version (`wrangler versions upload --preview-alias pr-<n>`), and comments its URL | a maintainer's approval of the `preview` environment, and its Cloudflare secrets |
+| **Preview** | CI of a pull request from a branch of this repository that affects `cloud/web`, with or without a change to `cloud/db` | uploads the build CI made as a preview version (`wrangler versions upload --preview-alias pr-<n>`), and comments its URL | a maintainer's approval of the `preview` environment, and its Cloudflare secrets |
 | **Deploy cloud** | CI passing for a push to `main` of ISC-HEI/Yukibana (`workflow_run`), when the changes since the last successful run affect `@yukibana/cloud-web` or `@yukibana/cloud-db` (or a package they use, such as `@yukibana/client`, whose `yukibana.schema.json` the Worker serves), or change the lockfile, `package.json`, `pnpm-workspace.yaml`, `deploy-cloud.yml` or `.github/scripts/production-config.mts`; or by hand, which does not wait for CI. A run's title, `Deploy <commit>`, names the commit it deploys: the one CI passed for, which may be older than `main`'s head by the time it runs | refuses a commit older than the last deploy's, checks no placeholder is left, checks every secret is set, lists then applies pending migrations, runs `cloud/db/ops/bootstrap.sql`, prints the settings diff, pushes `cloud/db/supabase/config.toml`'s production block, then builds and deploys the Worker. One run at a time (`concurrency: deploy-cloud`). | the `production` environment's secrets, step 5 |
 | **Drift** | nightly, or by hand | `supabase db diff` of production against the migrations for `public` and `app`, `cloud/db/ops/realtime-policies.sql` and `cloud/db/ops/event-triggers.sql` | `SUPABASE_DB_URL` only |
 
@@ -66,11 +66,18 @@ Two consequences are worth knowing before the first change:
   the Worker still running is old code against a new schema, which is fine.
   The other direction is not, which is why removing something takes two
   deploys (below).
-* **A preview is production with other code.** A preview URL runs the pull
-  request's Worker with production's bindings and secrets: the same
-  database, the same bucket, the same accounts. Log in there only to look.
-  That is also why a maintainer approves each one, and why a pull request
-  with a migration gets none: the production schema is what it would see.
+* **A preview is production with other code.** A preview URL
+  (`pr-<n>-yukibana-cloud.<subdomain>.workers.dev`, enabled by
+  `preview_urls` in `cloud/web/wrangler.jsonc` from the first deploy that has
+  it) runs the pull request's Worker with production's bindings and secrets:
+  the same database, the same bucket, the same accounts, which is why a
+  maintainer approves each one. It does not have
+  the pull request's migrations, which reach production only once merged,
+  so a page that needs them fails there; previews are for looking at pages.
+  Log in with an email code, and only to look: GitHub's login ends on
+  `cloud.yukibana.dev` instead, because Auth returns only to addresses in
+  `additional_redirect_urls`, and the preview addresses are not there on
+  purpose (`.github/workflows/preview.yml` says why).
 
 ## Shipping a change
 

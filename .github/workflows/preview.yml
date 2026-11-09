@@ -2,6 +2,15 @@
 # Worker, and comments its URL on the pull request. It runs main's copy of this file (workflow_run), never the pull
 # request's, and only after a maintainer approves the `preview` environment: a Cloudflare token cannot be limited to
 # uploads, and the preview runs the pull request's code against production's database and bucket.
+#
+# Logging in there (spike S6, 2026-11): an email code works, since the login page sends and verifies it on the preview's
+# own host and its cookies are that host's. GitHub does not: Auth sends the browser back only to an address in
+# additional_redirect_urls (cloud/db/supabase/config.toml) and otherwise to site_url, so the login ends on
+# cloud.yukibana.dev, without the session. A pattern for the preview addresses there would fix that, and is left out on
+# purpose: it must name this account's workers.dev subdomain exactly, since with a wildcard for it any Cloudflare
+# account's Worker named yukibana-cloud could start a login and receive the victim's code, and even pinned it is a
+# standing promise to Auth that every version ever uploaded may receive GitHub logins of production accounts. An email
+# code needs neither. The CLI's and the IDE's login go to SITE_URL, production, by design (/auth/connect).
 name: Preview
 
 on:
@@ -104,4 +113,6 @@ jobs:
         run: |
           gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --edit-last --create-if-none --body "Preview of $HEAD_SHA: $URL
 
-          It runs this pull request's code against production's database and bucket: what it writes is real."
+          It runs this pull request's Worker against production's database and bucket, **without this pull request's migrations**: a page that needs them fails there, and what it writes is real.
+
+          Log in with an email code. GitHub login is not available on a preview: it ends on cloud.yukibana.dev, not here."
