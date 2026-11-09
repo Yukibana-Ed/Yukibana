@@ -158,7 +158,7 @@ since the base, Markdown aside, and every package depending on them) and runs th
 workflows' scripts are a package too ([.github/scripts](.github/scripts), `@yukibana/ci-scripts`). A change to a file
 that belongs to no package (the lockfile, a root config, a workflow) runs every package's scripts, the cloud stack and
 the end-to-end tests. The devcontainer is built when `cloud/dev/`, what its install reads
-(`package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, the cloud's, the CLI's and the client's `package.json`) or
+(`package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, the cloud's, the CLI's, the client's and the fixtures' `package.json`) or
 `cloud/db/supabase/config.toml` changed, and the license check runs when what it checks or its rules changed. `ci-ok` is the one required check.
 
 [deploy-cloud.yml](.github/workflows/deploy-cloud.yml) deploys the cloud from `main` once CI has passed there, and
