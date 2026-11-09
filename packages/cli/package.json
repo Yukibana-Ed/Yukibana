@@ -16,7 +16,7 @@
   },
   "scripts": {
     "prepare": "tsc --build tsconfig.build.json",
-    "clean": "tsc --build --clean tsconfig.build.json",
+    "clean": "rimraf lib tsconfig.build.tsbuildinfo",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint --type-aware --deny-warnings"
@@ -24,6 +24,7 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "@yukibana/fixtures": "catalog:",
+    "rimraf": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },
