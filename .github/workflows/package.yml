@@ -1,6 +1,6 @@
 # Adapted from https://github.com/eclipse-theia/theia-ide/blob/74bd976ef60102bdbaf754817c88d00811465e72/.github/workflows/build.yml
 # The IDE's installers, for a version tag or by hand, until the tag-driven release workflow replaces this. Only for a
-# commit on main, whose every commit passed CI in the merge queue, so the tests do not run again here. Versions exist
+# commit on main, whose every commit is a pull request's tree that passed CI, so the tests do not run again here. Versions exist
 # only in tags: a tag vX.Y.Z packages version X.Y.Z, and a run by hand the 0.0.0-dev that ide/electron/package.json
 # holds.
 name: Package
@@ -29,7 +29,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      # A tag can be pushed on any commit, and a run by hand started from any branch: neither passed the merge queue.
+      # A tag can be pushed on any commit, and a run by hand started from any branch: neither is known to have passed CI.
       - name: Refuse a commit that is not on main
         run: |
           if ! git merge-base --is-ancestor HEAD origin/main; then

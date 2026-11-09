@@ -151,7 +151,8 @@ Every npm package's license, and every plugin the IDE bundles, must be accepted 
 
 ## CI
 
-[ci.yml](.github/workflows/ci.yml) runs for pull requests, the merge queue and pushes to `main`. Its plan job
+[ci.yml](.github/workflows/ci.yml) runs for pull requests (not for pushes to `main`: a pull request merges only up to date
+with `main`, so what lands is the tree its run tested). Its plan job
 ([.github/scripts/plan.mts](.github/scripts/plan.mts)) asks pnpm which packages a change affects (the packages changed
 since the base, Markdown aside, and every package depending on them) and runs their `lint`, `typecheck`, `test` and
 `build` scripts; the cloud stack and the IDE's end-to-end tests run only when their packages are affected. The CI
