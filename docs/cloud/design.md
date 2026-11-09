@@ -171,8 +171,8 @@ Postgres falls back to text equality without a word, and a role change for
 A release is two archives: the **starter** students download and the
 **teacher archive**, the whole project with the hidden tests, for staff.
 Both are made by `yukibana build` from a checkout, by the same pure
-functions (`packages/client/src/lib`): a tar reader and writer, a glob matcher, and a
-plan per archive, tested against a fixture that is a real pax tarball. The
+functions: a tar reader and writer and a glob matcher (`packages/client/src/lib`), and a
+plan per archive (`packages/cli/src/lib/starter.ts`), tested against a fixture that is a real pax tarball. The
 registry stores what it is given, checks that each is gzip and under a cap,
 records sizes and SHA-256s, and serves the newest starter to students whose
 project is open. Staff see the whole history and can fetch either archive of

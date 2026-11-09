@@ -1,20 +1,22 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { publish, type PublishInput } from '../src/publish.js';
+import { RegistryError, YukibanaClient } from '../src/client.js';
 
-const input = (over: Partial<PublishInput> = {}): PublishInput => ({
-    url: 'https://cloud.yukibana.dev',
-    token: `yk_${'a'.repeat(64)}`,
-    projectId: '01a0b563-aeff-7c42-ae73-5aab2f2b5a5a',
-    starter: new Uint8Array([1, 2, 3]),
-    teacher: new Uint8Array([4, 5, 6, 7]),
-    label: 'v1',
-    commit: null,
-    releaseId: null,
-    ...over,
-});
+const TOKEN = `yk_${'a'.repeat(64)}`;
+const PROJECT = '01a0b563-aeff-7c42-ae73-5aab2f2b5a5a';
 
-/** Records the one request `publish` makes and answers whatever it is told. */
+/** Publishes two small archives through a client for `url` that sends with `fetchFn`. */
+const publish = (fetchFn: typeof fetch, over: { url?: string; commit?: string; release?: string } = {}) =>
+    new YukibanaClient({ url: over.url ?? 'https://cloud.yukibana.dev', accessToken: () => TOKEN, fetch: fetchFn }).publishRelease(
+        PROJECT,
+        new Uint8Array([1, 2, 3]),
+        new Uint8Array([4, 5, 6, 7]),
+        'v1',
+        over.commit ?? null,
+        over.release ?? null,
+    );
+
+/** Records the one request `publishRelease` makes and answers whatever it is told. */
 const recorder = (answer: Response) => {
     const seen: { request?: Request } = {};
     const fetchFn: typeof fetch = async (url, init) => {
@@ -41,27 +43,27 @@ test('a publish says where it is posting, or the registry refuses it as a forged
     // built both archives correctly. A browser always sends the header; a
     // command line tool has to say so itself.
     const { seen, fetchFn } = recorder(accepted());
-    await publish(input(), fetchFn);
+    await publish(fetchFn);
     assert.equal(seen.request?.headers.get('origin'), 'https://cloud.yukibana.dev');
 });
 
 test('the origin is the registry it is posting to, whatever path the teacher gave', async () => {
     const { seen, fetchFn } = recorder(accepted());
-    await publish(input({ url: 'https://cloud.yukibana.dev/projects/abc/' }), fetchFn);
+    await publish(fetchFn, { url: 'https://cloud.yukibana.dev/projects/abc/' });
     assert.equal(seen.request?.headers.get('origin'), 'https://cloud.yukibana.dev');
     assert.equal(seen.request?.url, 'https://cloud.yukibana.dev/api/projects/01a0b563-aeff-7c42-ae73-5aab2f2b5a5a/releases');
 });
 
 test('the token travels as a bearer, which is the only thing the endpoint accepts', async () => {
     const { seen, fetchFn } = recorder(accepted());
-    await publish(input(), fetchFn);
+    await publish(fetchFn);
     assert.equal(seen.request?.method, 'POST');
     assert.equal(seen.request?.headers.get('authorization'), `Bearer yk_${'a'.repeat(64)}`);
 });
 
 test('both archives and the label go in one multipart body', async () => {
     const { seen, fetchFn } = recorder(accepted());
-    await publish(input({ commit: 'deadbeef' }), fetchFn);
+    await publish(fetchFn, { commit: 'deadbeef' });
     assert.ok(seen.request);
     const form = await seen.request.formData();
     const starter = form.get('starter');
@@ -75,14 +77,14 @@ test('both archives and the label go in one multipart body', async () => {
 
 test('a refusal reaches the teacher in the words the registry used, not as a status code', async () => {
     const { fetchFn } = recorder(new Response(JSON.stringify({ message: 'unknown or revoked token' }), { status: 401 }));
-    await assert.rejects(publish(input(), fetchFn), /the registry answered 401: unknown or revoked token/);
+    await assert.rejects(publish(fetchFn), (e: unknown) => e instanceof RegistryError && e.status === 401 && /the registry answered 401: unknown or revoked token/.test(e.message));
 });
 
 test('the release id the starter carries goes with the upload, so the row gets the same one', async () => {
     const { seen, fetchFn } = recorder(accepted());
-    await publish(input({ releaseId: '01a0b563-aeff-7c42-ae73-5aab2f2b5a5c' }), fetchFn);
+    await publish(fetchFn, { release: '01a0b563-aeff-7c42-ae73-5aab2f2b5a5c' });
     assert.equal((await seen.request?.formData())?.get('release'), '01a0b563-aeff-7c42-ae73-5aab2f2b5a5c');
     const none = recorder(accepted());
-    await publish(input(), none.fetchFn);
+    await publish(none.fetchFn);
     assert.equal((await none.seen.request?.formData())?.get('release'), null, 'archives without an id send none');
 });

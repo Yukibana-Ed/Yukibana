@@ -148,8 +148,9 @@ Cloudflare Worker with `adapter-cloudflare`.
   wrong. `any` does not appear; `unknown` at a boundary, narrowed at
   once, does.
 * **What decides something is pure and in a `lib`.** In the client
-  (`packages/client/src/lib`), the tar reader, the glob matcher and the
-  release plans are functions of bytes and strings, tested as tables; the
+  (`packages/client/src/lib`), the tar reader, the glob matcher, the
+  assembly and the update plan, and in the CLI (`packages/cli/src/lib`) the
+  release plans, are functions of bytes and strings, tested as tables; the
   rest of the client and the CLI's commands do the I/O. In the app,
   `src/lib/server` does I/O around the database and the bucket, and
   `src/routes` shows what came back and holds no rules.

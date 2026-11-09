@@ -1,7 +1,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { newReleaseId } from '../src/build.js';
-import { isUuid } from '@yukibana/client';
+import { isUuid } from '@yukibana/client/config';
 
 test('a release id chosen by the CLI is a v7 uuid the database takes as its own', () => {
     const id = newReleaseId();

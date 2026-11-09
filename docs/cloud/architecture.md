@@ -141,7 +141,7 @@ Object keys are `starters/<project>/<uuid>.tar.gz`,
   join. A page that hears one reruns its loads through the Worker, under the
   same policies as the first load.
 * **The CLI and the registry share nothing but the HTTP API.** The archives
-  are made by the CLI before they arrive, by pure functions in `packages/client/src/lib`;
+  are made by the CLI before they arrive, by pure functions in `packages/cli/src/lib/starter.ts`;
   the registry checks they are gzip and under a cap, and stores them
   without opening them. Every archive is a `.tar.gz`.
 

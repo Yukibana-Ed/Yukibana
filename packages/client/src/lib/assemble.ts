@@ -24,7 +24,7 @@
  */
 
 import { matcher } from './glob.js';
-import { escapes, unwrap } from './starter.js';
+import { escapes, unwrap } from './paths.js';
 import type { Entry } from './tar.js';
 import { CONFIG_FILE, excludes, parseConfig, protectedPaths, sameStudentConfig, type Config } from './yukibana.js';
 

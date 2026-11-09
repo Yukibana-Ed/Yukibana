@@ -4,6 +4,7 @@ import { loginWithLoopback, logout } from '@yukibana/client';
 import { callbackPage, openInBrowser } from './browser.js';
 import { clientFor, registryUrl, type Invocation } from './common.js';
 
+/** `login`: logs in through the browser and keeps the session in `inv.store`. */
 export async function login(inv: Invocation): Promise<void> {
     const url = await registryUrl(inv);
     const session = await loginWithLoopback(url, { open: openInBrowser, callbackPage });
@@ -12,11 +13,13 @@ export async function login(inv: Invocation): Promise<void> {
     console.log(`logged in to ${session.url} as ${me.fullName ?? me.githubLogin ?? me.email ?? me.userId}${me.platformRole === 'user' ? '' : ` (${me.platformRole})`}`);
 }
 
+/** `logout`: forgets the session here and ends it at the server when it can, saying which it did. */
 export async function logoutCommand(inv: Invocation): Promise<void> {
     const { revoked, why } = await logout(inv.store);
     console.log(revoked ? 'logged out' : `logged out here; the session was not ended at the server (${why ?? 'no reason given'}), so it lasts until it expires`);
 }
 
+/** `whoami`: prints who the credentials are, and their platform role. */
 export async function whoami(inv: Invocation): Promise<void> {
     const me = await (await clientFor(inv)).me();
     if (inv.options.json === true) {

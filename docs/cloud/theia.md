@@ -3,7 +3,7 @@
 What a student's IDE needs from Yukibana is four things: who the student is,
 which exercises are open to them, what a submission from their folder would
 hold, and a way to send it. All four are in `@yukibana/client`
-(`packages/client/src/library.ts`), whose dependencies are `modern-tar`, `ignore` and `zod` (none
+(`packages/client/src/library.ts`, and `config.ts` for `@yukibana/client/config`), whose dependencies are `modern-tar`, `ignore` and `zod` (none
 with dependencies of its own), and which runs on Node 24, as everything in
 this repository does: a Theia backend, an Electron main process, a VS Code
 extension host. `ide/extensions/yukibana-cloud` is the IDE's client built on
@@ -152,6 +152,10 @@ without `version` or `kind` is fine, so any folder opens), and
 `DEFAULT_SETTINGS` is what a folder without one gets. It is the same
 schema `parseConfig` checks a release with, so the IDE and the CLI read
 every field the same way.
+Browser code imports only that entry at runtime: the root,
+`@yukibana/client`, reads disks and opens sockets, so the frontend imports
+types from it and nothing else (`import type`, which the IDE's lint enforces
+for `src/browser` and `src/common`).
 
 `client.downloadStarter(projectId)` returns the starter archive, and
 `unpackStarter(archive, folder)` unpacks it into `folder`, which must be

@@ -42,12 +42,12 @@ export interface Choice<R extends ReleaseRef> {
     readonly notes: readonly string[];
 }
 
-/** A release's name for a terminal: its label and its whole id, which is
+/** Returns `r`'s name for a terminal: its label and its whole id, which is
  *  what `--release` takes and the only name that tells two unlabelled
  *  releases apart (the start of a v7 id is only its time). */
 export const nameOf = (r: ReleaseRef): string => (r.label === '' ? r.releaseId : `${r.label} (${r.releaseId})`);
 
-/** What `--release` names, checked against the project's releases before
+/** Returns what `--release` (`given`) names, checked against the project's releases before
  *  anything is downloaded: an id that is not one of them is refused, never
  *  quietly replaced by another. */
 export function wantedRelease(releases: readonly ReleaseRef[], given: string | undefined): { ok: true; wanted: Wanted } | { ok: false; problem: string } {
@@ -59,10 +59,12 @@ export function wantedRelease(releases: readonly ReleaseRef[], given: string | u
     return { ok: true, wanted: { releaseId: id } };
 }
 
-/** The releases for one submission. `releases` is the project's list,
- *  newest first and not empty (`wantedRelease` refused an empty one);
- *  `recorded` is what the registry kept, `claimed` what the archive's
- *  yukibana.json says. */
+/** Returns the releases for one submission. `releases` is the project's
+ *  list, newest first; `recorded` is what the registry kept, `claimed` what
+ *  the archive's yukibana.json says.
+ *
+ *  - Requires: `releases` is not empty (`wantedRelease` refuses an empty
+ *    one first); throws otherwise. */
 export function chooseReleases<R extends ReleaseRef>(releases: readonly R[], wanted: Wanted, recorded: string | null, claimed: string | null): Choice<R> {
     const find = (id: string | null): R | null => (id === null ? null : (releases.find(r => r.releaseId === id.toLowerCase()) ?? null));
     const newest = releases[0];
@@ -80,7 +82,7 @@ export function chooseReleases<R extends ReleaseRef>(releases: readonly R[], wan
     return { grade, base, notes };
 }
 
-/** Why a submission is not based on the newest release, as a sentence for a
+/** Returns why a submission is not based on the newest release, as a sentence for a
  *  warning, or null when it is (or there are no releases to compare with:
  *  a student's list is empty, since students cannot read releases).
  *  `releases` is the project's list, newest first; `base` the release the

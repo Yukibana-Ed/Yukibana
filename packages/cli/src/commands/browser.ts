@@ -1,7 +1,6 @@
 /** The terminal's half of a browser login: how `yukibana login` opens the
  *  sign-in address and what the browser shows when it comes back. The
- *  library leaves both to its host; these are the CLI's choices, and are
- *  not exported. */
+ *  library leaves both to its host; these are the CLI's choices. */
 
 import { spawn } from 'node:child_process';
 import { type CallbackOutcome, loginCode } from '@yukibana/client';
@@ -29,7 +28,7 @@ export function openInBrowser(url: URL): void {
 
 const escapeHtml = (s: string): string => s.replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
 
-/** The page the browser lands on: tells the person to go back to the
+/** Returns the page the browser lands on, which tells the person to go back to the
  *  terminal, or why the login failed. */
 export function callbackPage(outcome: CallbackOutcome): string {
     const [title, text] = outcome.ok ? ['Logged in', 'You can close this tab and return to the terminal.'] : ['Not logged in', escapeHtml(outcome.reason)];

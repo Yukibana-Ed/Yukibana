@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 /** yukibana: the registry from a terminal, as whoever is logged in.
  *
- *  Every command is a thin layer over the library (`library.ts`), which the
- *  IDE extension uses too. `usage()` below is the list.
+ *  Every command is a thin layer over `@yukibana/client`, which the IDE's
+ *  extensions use too, and over what only a terminal needs, beside the
+ *  commands: the build of a release (`build.ts`, `lib/starter.ts`), the
+ *  session file (`store.ts`), and the choices and folder names of a
+ *  download (`lib/grading.ts`, `lib/names.ts`). `USAGE` below is the list.
  */
 
 import { parseArgs } from 'node:util';

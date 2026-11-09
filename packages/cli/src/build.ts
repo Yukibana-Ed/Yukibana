@@ -3,13 +3,17 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { v7 as uuidv7 } from 'uuid';
-import { type Config, gzip, planStarter, planTeacher, readTree, writeTar } from '@yukibana/client';
+import { gzip, readTree, writeTar } from '@yukibana/client';
+import type { Config } from '@yukibana/client/config';
+import { planStarter, planTeacher } from './lib/starter.js';
 
+/** A built release, not yet written or published: its two archives and what the build found. */
 export interface Built {
     /** gzipped tar of the starter, unpacking into `folder/`. */
     readonly starter: Uint8Array;
     /** gzipped tar of the whole project, unpacking into `folder/`. */
     readonly teacher: Uint8Array;
+    /** The project's `yukibana.json`, parsed, with its defaults. */
     readonly config: Config;
     /** Paths the starter dropped because `yukibana.json` hid them. */
     readonly hidden: readonly string[];
@@ -19,9 +23,22 @@ export interface Built {
     readonly starterEntries: number;
 }
 
-export type BuildResult = { ok: true; built: Built } | { ok: false; problems: readonly string[] };
+/** What `build` makes of a directory: the release, or every reason there is none. */
+export type BuildResult =
+    | {
+          /** `true` iff the directory built. */
+          readonly ok: true;
+          /** The release. */
+          readonly built: Built;
+      }
+    | {
+          /** `true` iff the directory built. */
+          readonly ok: false;
+          /** Every reason it did not, in sentences for the terminal; never empty. */
+          readonly problems: readonly string[];
+      };
 
-/** Builds `dir`. `folder` is what the archives unpack into; `projectId` and
+/** Returns `dir` built into a release, or why it does not build. `folder` is what the archives unpack into; `projectId` and
  *  `releaseId` go into the starter's copy of yukibana.json, or are left out
  *  (empty, null) when the build is only a check. The release id must be the
  *  one the release is then published with (`newReleaseId`), or the
@@ -36,7 +53,7 @@ export async function build(dir: string, folder: string, projectId: string, rele
     return { ok: true, built: { starter, teacher, config: plan.config, hidden: plan.hidden, warnings: plan.warnings, starterEntries: plan.entries.length - 1 } };
 }
 
-/** The commit `dir` is at, or null when it is not a git checkout. */
+/** Returns the commit `dir` is checked out at, or null when it is not a git checkout (or git is missing). */
 export async function commitOf(dir: string): Promise<string | null> {
     try {
         const { stdout } = await promisify(execFile)('git', ['-C', dir, 'rev-parse', 'HEAD']);
@@ -47,7 +64,7 @@ export async function commitOf(dir: string): Promise<string | null> {
     }
 }
 
-/** A fresh id for a release about to be built and published: chosen here,
+/** Returns a fresh id for a release about to be built and published: chosen here,
  *  before the build, so the starter can carry it. A UUIDv7 (RFC 9562), as
  *  the database's `app.uuidv7()` makes, so it looks and sorts like an id the
  *  database chose. Uniqueness comes from its random bits, not the clock, and

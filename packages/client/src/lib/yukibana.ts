@@ -30,7 +30,6 @@
 import * as z from 'zod';
 // The function form of .default(), which zod spells _default, since default is a keyword.
 import { _default as withDefault } from 'zod';
-import { matcher } from './glob.js';
 import { expectation, fieldOf } from './issues.js';
 
 /** The file's name, at the project root, in the repository and in every
@@ -477,36 +476,4 @@ function canonical(v: unknown): string {
             .map(k => `${JSON.stringify(k)}:${canonical(v[k])}`)
             .join(',')}}`;
     return JSON.stringify(v);
-}
-
-/** Ways a repository can defeat the starter: a build manifest that names a
- *  hidden path. Deleting the file would then leave a manifest pointing at
- *  nothing, and the starter would not build. For now the rule is that hidden
- *  tests must be auto-discovered; rewriting manifests is the per-kind
- *  extension point this function will grow into. `read` returns a file's
- *  text by path, or undefined. */
-export function manifestProblems(config: Config, read: (path: string) => string | undefined): string[] {
-    const hidden = matcher(config.hidden);
-    const problems: string[] = [];
-    if (config.kind === 'rust-cargo') {
-        const cargo = read('Cargo.toml');
-        if (cargo === undefined) {
-            problems.push('Cargo.toml is missing at the repository root');
-            return problems;
-        }
-        for (const m of cargo.matchAll(/\bpath\s*=\s*"([^"]+)"/g)) {
-            const p = m[1] ?? '';
-            if (hidden(p)) problems.push(`Cargo.toml names the hidden path "${p}"; hidden tests must be auto-discovered`);
-        }
-        const members = /\bmembers\s*=\s*\[([^\]]*)\]/.exec(cargo);
-        if (members) {
-            for (const m of (members[1] ?? '').matchAll(/"([^"]+)"/g)) {
-                const p = m[1] ?? '';
-                if (hidden(p)) problems.push(`Cargo.toml lists the hidden workspace member "${p}"`);
-            }
-        }
-    } else {
-        if (read('build.sbt') === undefined) problems.push('build.sbt is missing at the repository root');
-    }
-    return problems;
 }

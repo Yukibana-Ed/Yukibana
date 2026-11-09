@@ -11,10 +11,11 @@
       "default": "./lib/library.js"
     },
     "./config": {
-      "types": "./lib/lib/yukibana.d.ts",
-      "default": "./lib/lib/yukibana.js"
+      "types": "./lib/config.d.ts",
+      "default": "./lib/config.js"
     },
     "./yukibana.schema.json": "./yukibana.schema.json",
+    "./fixtures/repo.tar.gz": "./tests/fixtures/repo.tar.gz",
     "./package.json": "./package.json"
   },
   "scripts": {

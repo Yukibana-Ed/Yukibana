@@ -6,7 +6,6 @@ import {
     DEFAULT_SETTINGS,
     isProjectId,
     excludes,
-    manifestProblems,
     parseConfig,
     parseSettings,
     protectedPaths,
@@ -118,32 +117,6 @@ test('the starter copy carries the project id and not the hidden paths', () => {
     assert.equal(copy['projectId'], '01a0b563-aeff-7c42-ae73-5aab2f2b5a01');
     assert.equal(copy['kind'], 'rust-cargo');
     assert.equal('hidden' in copy, false, 'the copy must not say what was removed');
-});
-
-test('a Cargo.toml that names a hidden path is a problem, not a surprise later', () => {
-    const c = ok('{"version":1,"kind":"rust-cargo","hidden":["tests/hidden"]}');
-    const files: Record<string, string> = {
-        'Cargo.toml': '[package]\nname = "x"\n[[test]]\nname = "secret"\npath = "tests/hidden/secret.rs"\n',
-    };
-    const problems = manifestProblems(c, p => files[p]);
-    assert.equal(problems.length, 1);
-    assert.match(problems[0] ?? '', /tests\/hidden\/secret.rs/);
-    assert.deepEqual(
-        manifestProblems(c, () => undefined),
-        ['Cargo.toml is missing at the repository root'],
-    );
-    assert.deepEqual(
-        manifestProblems(c, p => (p === 'Cargo.toml' ? '[package]\nname = "x"\n' : undefined)),
-        [],
-    );
-});
-
-test('a workspace member that is hidden is a problem too', () => {
-    const c = ok('{"version":1,"kind":"rust-cargo","hidden":["grader"]}');
-    const cargo = '[workspace]\nmembers = ["app", "grader"]\n';
-    const problems = manifestProblems(c, p => (p === 'Cargo.toml' ? cargo : undefined));
-    assert.equal(problems.length, 1);
-    assert.match(problems[0] ?? '', /workspace member "grader"/);
 });
 
 test('a starter built without a project leaves the id out, and its copy still parses so a student can submit', () => {

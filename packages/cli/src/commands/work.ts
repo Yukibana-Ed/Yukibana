@@ -82,7 +82,7 @@ export async function submit(inv: Invocation): Promise<void> {
     if (p.late) console.log('The deadline had passed, so this submission is recorded as late.');
 }
 
-/** Writes bytes, making the folder. */
+/** Writes `data` to the file `path`, making its folder first. */
 export async function save(path: string, data: Uint8Array): Promise<void> {
     await mkdir(resolve(path, '..'), { recursive: true });
     await writeFile(path, data);

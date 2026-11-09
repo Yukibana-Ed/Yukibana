@@ -10,23 +10,23 @@
 import { chmod, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
-import type { Session, SessionStore } from './session.js';
+import type { Session, SessionStore } from '@yukibana/client';
 
 /** Returns where the terminal's session file lives for `env`, by the order the module header gives. */
-export function defaultSessionPath(env: NodeJS.ProcessEnv = process.env): string {
+export function defaultSessionPath(env: NodeJS.ProcessEnv): string {
     const dir = env['YUKIBANA_CONFIG_DIR'] ?? join(env['XDG_CONFIG_HOME'] ?? join(homedir(), '.config'), 'yukibana');
     return join(dir, 'session.json');
 }
 
 /** Returns a session store kept in the file at `path`, written as the module header says. */
-export function fileStore(path: string = defaultSessionPath()): SessionStore {
+export function fileStore(path: string): SessionStore {
     return {
         async load() {
             let text: string;
             try {
                 text = await readFile(path, 'utf8');
             } catch (e) {
-                if ((e as NodeJS.ErrnoException).code === 'ENOENT') return null;
+                if (e instanceof Error && 'code' in e && e.code === 'ENOENT') return null;
                 throw e;
             }
             const raw: unknown = JSON.parse(text);
@@ -50,11 +50,11 @@ export function fileStore(path: string = defaultSessionPath()): SessionStore {
  *  crash. */
 function isSession(v: unknown): v is Session {
     if (typeof v !== 'object' || v === null) return false;
-    const o = v as Record<string, unknown>;
+    const o = new Map<string, unknown>(Object.entries(v));
     return (
-        ['url', 'supabaseUrl', 'publishableKey', 'accessToken', 'refreshToken'].every(k => typeof o[k] === 'string') &&
-        typeof o['expiresAt'] === 'number' &&
-        (o['email'] === null || typeof o['email'] === 'string') &&
-        (o['clientId'] === undefined || typeof o['clientId'] === 'string')
+        ['url', 'supabaseUrl', 'publishableKey', 'accessToken', 'refreshToken'].every(k => typeof o.get(k) === 'string') &&
+        typeof o.get('expiresAt') === 'number' &&
+        (o.get('email') === null || typeof o.get('email') === 'string') &&
+        (o.get('clientId') === undefined || typeof o.get('clientId') === 'string')
     );
 }

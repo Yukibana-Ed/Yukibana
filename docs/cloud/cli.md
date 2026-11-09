@@ -2,7 +2,8 @@
 
 `packages/cli/` (`@yukibana/cli`) is the `yukibana` command, and
 `packages/client/` (`@yukibana/client`) the library it and the IDE's Theia
-extensions share (`packages/client/src/library.ts` is its whole surface).
+extensions share (`packages/client/src/library.ts` and, for what a
+`yukibana.json` says, `packages/client/src/config.ts` are its whole surface).
 Every command is a thin layer over the library, so what the terminal does,
 the IDE can do the same way.
 

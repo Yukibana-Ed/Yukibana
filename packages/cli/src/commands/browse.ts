@@ -1,8 +1,10 @@
 /** Reading the registry as yourself, and the roster writes an owner has. */
 
-import { behind, type EditionRole, type Project, type Submission } from '@yukibana/client';
+import type { EditionRole, Project, Submission } from '@yukibana/client';
+import { behind } from '../lib/grading.js';
 import { bytes, clientFor, fail, print, projectOf, studentsOf, when, type Invocation } from './common.js';
 
+/** `editions`: lists the editions the person is enrolled in, with their role. */
 export async function editions(inv: Invocation): Promise<void> {
     const rows = await (await clientFor(inv)).editions();
     print(inv, rows, {
@@ -14,6 +16,7 @@ export async function editions(inv: Invocation): Promise<void> {
     });
 }
 
+/** `members <edition>`: lists an edition's enrolments, as the person may see them. */
 export async function members(inv: Invocation): Promise<void> {
     const edition = inv.args[0] ?? inv.options.edition ?? fail('which edition? give its id (see `yukibana editions`)');
     const rows = await (await clientFor(inv)).members(edition);
@@ -52,7 +55,7 @@ export async function roster(command: 'enrol' | 'unenrol', inv: Invocation): Pro
     if (problems.length > 0) fail(...problems);
 }
 
-/** Where a project stands for the person asking, in a word: `draft`,
+/** Returns where `p` stands for the person asking at `now` (ms since the epoch), in a word: `draft`,
  *  `scheduled`, `open`, `late` (past the deadline, still accepting) or
  *  `closed`. */
 export function stateOf(p: Project, now = Date.now()): string {
@@ -63,6 +66,7 @@ export function stateOf(p: Project, now = Date.now()): string {
     return p.late ? 'late' : 'open';
 }
 
+/** `projects`: lists the projects the person can see, with where each stands (`stateOf`). */
 export async function projects(inv: Invocation): Promise<void> {
     let rows = await (await clientFor(inv)).projects(inv.options.edition);
     if (inv.options.open === true) rows = rows.filter(p => stateOf(p) === 'open' || stateOf(p) === 'late');
@@ -78,6 +82,7 @@ export async function projects(inv: Invocation): Promise<void> {
     });
 }
 
+/** `project [<project>]`: prints one project as the person sees it. */
 export async function project(inv: Invocation): Promise<void> {
     const id = await projectOf(inv, inv.args[0]);
     const p = await (await clientFor(inv)).project(id);
@@ -96,6 +101,7 @@ export async function project(inv: Invocation): Promise<void> {
         );
 }
 
+/** `releases [<project>]`: lists a project's releases, newest first (staff only). */
 export async function releases(inv: Invocation): Promise<void> {
     const id = await projectOf(inv, inv.args[0]);
     const rows = await (await clientFor(inv)).releases(id);
@@ -110,7 +116,7 @@ export async function releases(inv: Invocation): Promise<void> {
     });
 }
 
-/** Whether `selector` names this submission's author: their user id, GitHub
+/** `true` iff `selector` names `s`'s author: their user id, GitHub
  *  login, enrolled address, or full name, ignoring case. */
 export function names(selector: string, s: Submission): boolean {
     const want = selector.trim().toLowerCase().replace(/^@/, '');
@@ -118,8 +124,7 @@ export function names(selector: string, s: Submission): boolean {
     return [a.userId, a.githubLogin, a.email, a.fullName].some(v => v !== null && v.toLowerCase() === want);
 }
 
-/** The submissions `--student-submissions` and `--submission` select, or every one
- *  given. A selector that matches nothing is a failure: a typo in a name
+/** Returns the submissions of `all` that `students` and `ids` select, or every one when both are empty. A selector that matches nothing is a failure: a typo in a name
  *  must not read as "that student did not submit". */
 export function select(all: readonly Submission[], students: readonly string[], ids: readonly string[]): Submission[] {
     const problems: string[] = [];

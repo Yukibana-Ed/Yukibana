@@ -9,7 +9,7 @@
 import { lstat, mkdir, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve, sep } from 'node:path';
 import { submissionRoot } from './lib/assemble.js';
-import { escapes } from './lib/starter.js';
+import { escapes } from './lib/paths.js';
 import { readTar, type Entry } from './lib/tar.js';
 import { gunzip } from './lib/gzip.js';
 
