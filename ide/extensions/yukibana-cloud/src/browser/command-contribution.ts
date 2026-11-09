@@ -8,6 +8,7 @@ import { CloudAccount, CloudAuth, LoginResult } from '../common/cloud-protocol';
 import { CloudAccountService } from './cloud-account-service';
 import { AuthClientImpl } from './cloud-auth-client';
 
+/** The command that logs in to the registry in the browser, or says who is logged in already. */
 export const LoginCommand: Command = Command.toLocalizedCommand(
     {
         id: 'yukibana.cloudLogin',
@@ -16,6 +17,7 @@ export const LoginCommand: Command = Command.toLocalizedCommand(
     'yukibana/cloud/login',
 );
 
+/** The command that ends this IDE's session with the registry. */
 export const LogoutCommand: Command = Command.toLocalizedCommand(
     {
         id: 'yukibana.cloudLogout',
@@ -24,6 +26,7 @@ export const LogoutCommand: Command = Command.toLocalizedCommand(
     'yukibana/cloud/logout',
 );
 
+/** The command that logs in again as someone else, ending the current session only once the new one is there. */
 export const SwitchAccountCommand: Command = Command.toLocalizedCommand(
     {
         id: 'yukibana.cloudSwitchAccount',
@@ -32,13 +35,27 @@ export const SwitchAccountCommand: Command = Command.toLocalizedCommand(
     'yukibana/cloud/switchAccount',
 );
 
+/**
+ * The handlers of {@link LoginCommand}, {@link SwitchAccountCommand} and {@link LogoutCommand}. Each tells the person
+ * how it went in a notification, unless it rejects; a login shows its progress until it ends, with the code the login
+ * page shows when that page was opened from this window (a login joined from another window shows no code here).
+ */
 @injectable()
 export class LoginCommandContribution implements CommandContribution {
+    /** The backend that logs in and out. */
     @inject(CloudAuth) protected readonly auth!: CloudAuth;
+    /** Where how it went is said. */
     @inject(MessageService) protected readonly messageService!: MessageService;
+    /** The account this window uses, asked after a login so the notification can say who it is. */
     @inject(CloudAccountService) protected readonly accounts!: CloudAccountService;
+    /** Where the code of a login in progress comes from. */
     @inject(AuthClientImpl) protected readonly authClient!: AuthClientImpl;
 
+    /**
+     * Registers the three commands. Each settles once it is over: a login once the backend's login ended, whichever
+     * way. A login that fails is a notification, not a rejection; a backend that cannot be reached rejects. Logout
+     * rejects, with no notification, when the backend cannot be reached or the keystore fails.
+     */
     registerCommands(commands: CommandRegistry): void {
         commands.registerCommand(LoginCommand, {
             execute: async () => {
@@ -62,6 +79,7 @@ export class LoginCommandContribution implements CommandContribution {
         });
     }
 
+    /** Runs `logIn` with progress shown, and says whether it worked and as whom. */
     private async login(logIn: () => Promise<LoginResult>): Promise<void> {
         const progress = await this.messageService.showProgress({ text: nls.localize('yukibana/cloud/loggingIn', 'Logging in...') });
         const showCode = this.authClient.onLoginCode(code =>

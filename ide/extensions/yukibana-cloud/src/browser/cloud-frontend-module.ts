@@ -32,6 +32,13 @@ import { UpdateContribution } from './update/update-contribution';
 import { UpdateResourceResolver } from './update/update-resource';
 import { UpdateWidget } from './update/update-widget';
 
+/**
+ * The cloud extension's frontend: the account and its status bar menu, the login commands, the cloud submission target,
+ * the `yukibana:` link handler, the welcome screen, and assignment updates, with proxies to their backend services.
+ *
+ * It rebinds `@theia/scm`'s `MergeEditorFactory` for the whole window, so that an update's merge never resets the
+ * student's file; every other merge, git's, behaves as Theia's (see `update-merge-editor.ts`).
+ */
 export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(AuthClientImpl).toSelf().inSingletonScope();
 

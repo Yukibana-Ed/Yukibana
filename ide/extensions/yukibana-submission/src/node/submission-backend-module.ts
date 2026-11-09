@@ -8,6 +8,10 @@ import { SubmissionService, submissionServicePath } from '../common/submission-p
 import { YukibanaSubmissionLocalizationContribution } from './submission-localization-contribution';
 import { SubmissionServiceImpl } from './submission-service';
 
+/**
+ * The submission extension's backend: {@link SubmissionServiceImpl} as the singleton {@link SubmissionService}, served
+ * over RPC at {@link submissionServicePath}, and the extension's French translations.
+ */
 export default new ContainerModule(bind => {
     bind(SubmissionServiceImpl).toSelf().inSingletonScope();
     bind(SubmissionService).toService(SubmissionServiceImpl);

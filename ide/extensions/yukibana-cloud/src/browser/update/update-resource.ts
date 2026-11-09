@@ -11,12 +11,17 @@ import { UpdateService, UpdateUri } from '../../common/update-protocol';
  */
 @injectable()
 export class UpdateResourceResolver implements ResourceResolver {
+    /** The backend that reads the versions. */
     @inject(UpdateService) protected readonly service!: UpdateService;
 
     /**
-     * Returns the read-only resource `uri` names.
+     * Returns the read-only resource `uri` names, whose contents the backend reads each time they are asked for: `''`
+     * when that version has no file there or the path is not inside the workspace. Reading them rejects when the
+     * backend cannot read the version (the release's starter cannot be had, or a backup cannot be read) or cannot be
+     * reached.
      *
-     * - Requires: `uri` is a `yukibana-update:` URI that {@link UpdateUri.encode} made.
+     * Throws when `uri` is not one {@link UpdateUri.encode} makes: that is how a resolver declines, and Theia's resource
+     * provider then asks the next one.
      */
     resolve(uri: URI): Resource {
         const parts = UpdateUri.decode(uri);

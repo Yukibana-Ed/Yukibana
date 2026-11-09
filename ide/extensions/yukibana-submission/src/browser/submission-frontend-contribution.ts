@@ -12,6 +12,7 @@ import { SubmissionTelemetry } from '../common/submission-telemetry';
 import { SubmissionSummaryDialog } from './submission-summary-dialog';
 import { localizeMarkdown } from '@yukibana/ide-common/lib/localize-markdown';
 
+/** The command that prepares a submission of the workspace, shows it to the student, and sends it on their go-ahead. */
 export const SubmitCommand: Command = Command.toLocalizedCommand(
     {
         id: 'yukibana.submitAssignment',
@@ -20,18 +21,34 @@ export const SubmitCommand: Command = Command.toLocalizedCommand(
     'yukibana/submission/submitAssignment',
 );
 
+/** Contributes {@link SubmitCommand}. */
 @injectable()
 export class SubmitCommandContribution implements CommandContribution {
+    /** Prepares, and releases, the submission. */
     @inject(SubmissionService) protected readonly submissionService!: SubmissionService;
+    /** Where the workspace is: its first root is what is submitted. */
     @inject(WorkspaceService) protected readonly workspaceService!: WorkspaceService;
+    /** The workspace configuration, whose `submission.target` picks the target. */
     @inject(ConfigProvider) protected readonly configProvider!: ConfigProvider;
+    /** Tells the student how it went. */
     @inject(MessageService) protected readonly messageService!: MessageService;
+    /** Runs the commands a target's unavailability offers, from the summary dialog. */
     @inject(CommandService) protected readonly commandService!: CommandService;
+    /** Receives one `SubmissionTelemetry.SubmitURI` event per send. */
     @inject(TelemetryService) protected readonly telemetry!: TelemetryService;
+    /** Where the command says what it sends. */
     @inject(ILogger) @named('yukibana:SubmitCommand') protected readonly logger!: ILogger;
 
+    /** Every bound {@link SubmissionTarget}. */
     @inject(ContributionProvider) @named(SubmissionTarget) protected readonly targets!: ContributionProvider<SubmissionTarget>;
 
+    /**
+     * Registers {@link SubmitCommand}. Executing it waits for the configuration, picks the target it names (or says
+     * the target is unknown), prepares a submission of the first workspace root (or says why it cannot), shows the
+     * summary dialog, and sends on the student's go-ahead. What it prepared is released however that ends.
+     *
+     * Rejects with a `TypeError` when no folder is open; the command is not disabled then.
+     */
     registerCommands(commands: CommandRegistry): void {
         commands.registerCommand(SubmitCommand, {
             execute: async () => {

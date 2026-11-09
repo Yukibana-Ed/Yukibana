@@ -20,13 +20,26 @@ interface EditReason {
     };
 }
 
+/**
+ * Reports each change a student makes in an editor as telemetry ({@link TypingTelemetry.EditPath}), iff the first config
+ * applied has `telemetry.liveTypingStats` on. Once on it stays on for the window: a later config change neither starts
+ * nor stops it.
+ *
+ * Undo and redo are not reported. It sends sizes, kinds, the command that made a change (Monaco's `detailedSource`) and
+ * the file's URI, which names the student's home directory; never the text.
+ */
 @injectable()
 export class YukibanaTypingTracker implements FrontendApplicationContribution {
+    /** The editors whose changes are reported. */
     @inject(EditorManager) protected readonly editors!: EditorManager;
+    /** Where the reports go. */
     @inject(TelemetryService) protected readonly telemetry!: TelemetryService;
+    /** The config whose `telemetry.liveTypingStats` turns reporting on. */
     @inject(ConfigProvider) protected readonly config!: ConfigProvider;
+    /** The tracker's logger; nothing logs to it yet. */
     @inject(ILogger) @named('yukibana:TypingTracker') protected readonly logger!: ILogger;
 
+    /** Waits for the first config and, if it asks for typing stats, follows every editor open now and opened later. */
     async onStart(): Promise<void> {
         const config = await this.config.ready;
         if (config.telemetry.liveTypingStats) {
@@ -35,6 +48,13 @@ export class YukibanaTypingTracker implements FrontendApplicationContribution {
         }
     }
 
+    /**
+     * Reports every content change of the Monaco editor in `widget`, or does nothing if it has none.
+     *
+     * Reads `detailedReasons` and `detailedReasonsChangeLengths`. Only `detailedReasons` is missing from the public
+     * `IModelContentChangedEvent` (Monaco declares it internally, in `textModelEvents`), hence the cast adding it; an
+     * editor whose event lacks it throws on each change.
+     */
     protected attach(widget: EditorWidget): void {
         const monaco = MonacoEditor.get(widget)?.getControl();
         if (!monaco) {
@@ -76,6 +96,7 @@ export class YukibanaTypingTracker implements FrontendApplicationContribution {
         });
     }
 
+    /** Returns what made a change, from the reason Monaco gives for it; `unknown` when it says nothing we recognise. */
     // Adapted from https://github.com/hexlet-codebattle/codebattle/blob/f030dcca05eb81c87a2bfbc78ec174907969504c/frontend/src/features/game/editor/telemetry.ts
     protected originOfChange(detailedReason: EditReason): TypingTelemetry.EditOrigin {
         const { source, kind, detailedSource } = detailedReason.metadata ?? {};
@@ -105,6 +126,11 @@ export class YukibanaTypingTracker implements FrontendApplicationContribution {
         return 'unknown';
     }
 
+    /**
+     * Sends `event` as columns: `sinceLastTyped` in milliseconds since the editor's previous change (undo and redo
+     * included), or since the page loaded for the first; inserted and removed lengths in UTF-16 code units; a missing
+     * file or command as `''`.
+     */
     protected report(event: TypingTelemetry.Edit): void {
         const data = {
             sinceLastTyped: event.sinceLastTyped,

@@ -29,6 +29,7 @@ export class OpenWorkspacesServerImpl implements OpenWorkspacesServer, Disposabl
         this.client = client;
     }
 
+    /** Records `uri` as this window's workspace, replacing the one before, or forgets it if `uri` is undefined or empty. */
     async setWorkspace(uri: string | undefined): Promise<void> {
         if (uri) {
             this.open.windows.set(this, uri);
@@ -37,10 +38,19 @@ export class OpenWorkspacesServerImpl implements OpenWorkspacesServer, Disposabl
         }
     }
 
+    /** Returns the workspaces of every connected window, this one included, each once, in no order a caller may rely on. */
     async list(): Promise<string[]> {
         return [...new Set(this.open.windows.values())];
     }
 
+    /**
+     * Asks the first window found with `uri` open to come to the front, and returns `true` iff a window with `uri` was
+     * found and was asked without the call failing.
+     *
+     * `true` does not say the window came: the window answers before it knows, and in a browser it cannot come at
+     * all. `uri` is compared as a string, as the window recorded it. `false` also when that window's connection has no
+     * client or closes meanwhile; it never rejects.
+     */
     async focus(uri: string): Promise<boolean> {
         const window = [...this.open.windows].find(([, open]) => open === uri)?.[0];
         if (!window?.client) {

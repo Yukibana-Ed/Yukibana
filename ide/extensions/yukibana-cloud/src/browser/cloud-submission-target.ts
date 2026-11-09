@@ -15,15 +15,34 @@ function asAccount(reason: string, account: CloudAccount): string {
     return nls.localize('yukibana/cloud/reasonAsAccount', '{0} (logged in as {1})', reason, CloudAccount.label(account));
 }
 
+/**
+ * The cloud registry as a place to submit to: says whether the logged-in account may submit for a project now, and
+ * why not, in the account's terms, and sends submissions there.
+ */
 @injectable()
 export class CloudSubmissionTarget implements SubmissionTarget {
+    /** The target's id among the submission targets. */
     readonly id = 'cloud';
+    /** The target's name as the submit dialog shows it. */
     readonly label = 'Cloud';
 
+    /** The backend that asks the registry and sends submissions. */
     @inject(CloudService) protected readonly service!: CloudService;
+    /** The account this window uses. */
     @inject(CloudAccountService) protected readonly accounts!: CloudAccountService;
+    /** Whether the folder is behind the teacher's newest release. */
     @inject(UpdateCheck) protected readonly updates!: UpdateCheck;
 
+    /**
+     * Returns whether the account the registry knows this IDE as may submit for `projectId` now.
+     *
+     * Logged out: unavailable, with a Log in action. Otherwise by the registry's answer: open or late is available, with a
+     * note when an assignment update is waiting; not allowed offers Switch account and, when the account check says who
+     * is logged in, names the account (and for staff their role); not yet open, closed, or a registry that could not be asked is unavailable with no action. A failed account check
+     * (`error`) is not treated as logged out: the registry's answer decides.
+     *
+     * Rejects only when the backend cannot be reached.
+     */
     async getAvailability(projectId: string): Promise<SubmissionTargetAvailability> {
         // The keystore may hold a session the registry no longer accepts, so ask the registry who this is
         const [state, { status, project }] = await Promise.all([this.accounts.refresh(), this.service.canSubmitProject(projectId)]);
@@ -121,6 +140,11 @@ export class CloudSubmissionTarget implements SubmissionTarget {
         return asAccount(notAllowed, state.account);
     }
 
+    /**
+     * Sends submission `submissionId` for `projectId` and returns whether it went. Any failure's reason, a refusal or
+     * not (a submission no longer prepared, a registry that could not be reached), is suffixed with the logged-in
+     * account when the account check says one is.
+     */
     async submit(projectId: string, submissionId: string): Promise<SubmissionResult> {
         const result = await this.service.submit(projectId, submissionId);
         if (result.ok) {

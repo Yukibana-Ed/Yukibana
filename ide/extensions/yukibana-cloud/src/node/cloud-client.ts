@@ -15,8 +15,15 @@ export function isRefused(e: unknown): boolean {
     return (e instanceof RegistryError && e.status === 401) || (e instanceof NotLoggedIn && /the Auth server answered 4\d\d/.test(e.message));
 }
 
+/**
+ * The registry at {@link DEFAULT_REGISTRY}, asked as whoever the IDE's one session is for.
+ *
+ * Every call takes its access token from the session, refreshing (and saving) it first when it is about to expire;
+ * with no session kept, a call rejects with `NotLoggedIn` before anything is sent.
+ */
 @injectable()
 export class CloudClient extends YukibanaClient {
+    /** Makes the client of `cloudService`'s session, which it keeps as `cloudService`: the session every call is made with. */
     constructor(@inject(CloudSessionManager) protected readonly cloudService: CloudSessionManager) {
         super({
             url: DEFAULT_REGISTRY,
@@ -24,6 +31,13 @@ export class CloudClient extends YukibanaClient {
         });
     }
 
+    /**
+     * Returns whether the caller may submit for `projectId` now, by the project the registry answers and the clock of
+     * this machine; see {@link CanSubmitStatus} for the order it is decided in.
+     *
+     * Never rejects: any failure to get the project, being logged out or a 404 included, is `UNKNOWN` with no project.
+     * A date the registry sends that does not parse is not a bound: it neither keeps the window shut nor closes it.
+     */
     async isProjectAcceptingSubmissions(projectId: string): Promise<SubmitAvailability> {
         try {
             const project = await this.project(projectId);

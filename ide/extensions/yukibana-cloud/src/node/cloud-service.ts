@@ -10,13 +10,19 @@ import { CloudService, DownloadResult, ProjectListing, ProjectLookup, Submission
 import { CloudClient, isRefused } from './cloud-client';
 import { CloudSessionManager } from './cloud-session-manager';
 
+/** The backend's {@link CloudService}, one for every window, asking the registry as the IDE's one session. */
 @injectable()
 export class CloudServiceImpl implements CloudService {
+    /** The registry, asked as whoever the session is for. */
     @inject(CloudClient) protected readonly client!: CloudClient;
+    /** The session, asked whether one is kept when a call fails. */
     @inject(CloudSessionManager) protected readonly sessions!: CloudSessionManager;
+    /** Where failed listings and downloads, and entries left out of a starter, are written down. */
     @inject(ILogger) @named('yukibana:CloudService') protected readonly logger!: ILogger;
+    /** The submissions prepared for sending, by id. */
     @inject(SubmissionServiceImpl) protected readonly submissions!: SubmissionServiceImpl;
 
+    /** Sends a prepared submission; see {@link CloudService.submit}. The submission stays prepared either way. */
     async submit(projectId: string, submissionId: string): Promise<SubmissionResult> {
         const bundle = this.submissions.bundle(submissionId);
         if (bundle === undefined) {
@@ -36,6 +42,7 @@ export class CloudServiceImpl implements CloudService {
         }
     }
 
+    /** Returns the project, or why there is none; see {@link CloudService.getProjectInfo}. */
     async getProjectInfo(projectId: string): Promise<ProjectLookup> {
         try {
             return { kind: 'found', project: await this.client.project(projectId) };
@@ -50,6 +57,7 @@ export class CloudServiceImpl implements CloudService {
         }
     }
 
+    /** Returns the projects the person can see; see {@link CloudService.listProjects}. */
     async listProjects(): Promise<ProjectListing> {
         try {
             return { kind: 'found', projects: await this.client.projects() };
@@ -68,6 +76,7 @@ export class CloudServiceImpl implements CloudService {
         return isRefused(e) || !(await this.sessions.isLoggedIn());
     }
 
+    /** Unpacks the project's starter; see {@link CloudService.downloadProject}. */
     async downloadProject(projectId: string, destinationURI: string): Promise<DownloadResult> {
         try {
             const leftOut = await unpackStarter(await this.client.downloadStarter(projectId), FileUri.fsPath(destinationURI));
@@ -81,6 +90,7 @@ export class CloudServiceImpl implements CloudService {
         }
     }
 
+    /** Returns whether the person may submit now; see {@link CloudService.canSubmitProject}. */
     canSubmitProject(projectId: string): Promise<SubmitAvailability> {
         return this.client.isProjectAcceptingSubmissions(projectId);
     }
