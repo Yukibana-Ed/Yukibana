@@ -835,39 +835,45 @@
             display: inline-flex;
             align-items: stretch;
         }
-        .split-button button.download {
-            border-start-end-radius: 0;
-            border-end-end-radius: 0;
+        /* One control in two halves: the halves share a height, a border and
+         * a pair of outer corners, and a press moves neither on its own. */
+        .split-button > button,
+        .split-button > button:hover,
+        .split-button > button:active {
+            margin: 0;
+            border: 1px solid transparent;
+            transform: none;
         }
-        .split-button .menu > summary {
-            height: 100%;
-            display: flex;
-            align-items: center;
+        .split-button button.download {
+            border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+        }
+        /* The ring of a focused half sits inside it: outside, it would wrap one
+         * half with corners of its own and bulge past the other. Closing the
+         * menu returns focus to the arrow, so this is what most people see. */
+        .split-button > button:focus-visible {
+            outline: 2px solid currentcolor;
+            outline-offset: -4px;
+        }
+        .split-button button.menu-toggle,
+        .split-button button.menu-toggle:hover {
             padding: 0 0.5rem;
-            border-start-end-radius: var(--radius-sm);
-            border-end-end-radius: var(--radius-sm);
-            border-inline-start: 1px solid color-mix(in oklab, white 35%, var(--accent));
+            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+            border-inline-start-color: color-mix(in oklab, white 35%, var(--accent));
             background: var(--accent);
             color: light-dark(#fff, #0c0d11);
             font-size: 0.8rem;
         }
-        /* A menu behind a summary: no script, and a second click closes it. */
-        details.menu {
-            position: relative;
+        .split-button button.menu-toggle:hover {
+            background: color-mix(in oklab, var(--accent) 88%, black);
         }
-        details.menu > summary {
-            list-style: none;
-            cursor: pointer;
-        }
-        details.menu > summary::-webkit-details-marker {
-            display: none;
-        }
+        /* A popover in the top layer, so no scrolling box clips it; the row
+         * places it by its button (#lib/hand-ins/popover). */
         .menu-items {
-            position: absolute;
-            inset-inline-end: 0;
-            top: calc(100% + 0.3rem);
-            z-index: 5;
+            position: fixed;
+            inset: auto;
+            margin: 0;
             border: 1px solid var(--line);
+            color: var(--ink);
             border-radius: var(--radius-sm);
             background: var(--surface);
             box-shadow: var(--shadow);
