@@ -464,6 +464,9 @@ importers:
       '@supabase/supabase-js':
         specifier: 'catalog:'
         version: 2.118.0
+      '@yukibana/client':
+        specifier: 'catalog:'
+        version: link:../../packages/client
       aws4fetch:
         specifier: 'catalog:'
         version: 1.0.20
