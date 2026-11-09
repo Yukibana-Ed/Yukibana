@@ -317,26 +317,3 @@ YUKIBANA_URL     {data.origin}</pre>
     </p>
   </section>
 {/if}
-
-<style>
-  nav.designs {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
-    margin-bottom: 1rem;
-  }
-  nav.designs a {
-    padding: 0.25rem 0.7rem;
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    color: var(--ink-soft);
-    font-size: 0.85rem;
-    text-decoration: none;
-  }
-  nav.designs a[aria-current='page'] {
-    background: var(--accent-bg);
-    border-color: color-mix(in oklab, var(--accent) 35%, transparent);
-    color: var(--accent);
-    font-weight: 600;
-  }
-</style>

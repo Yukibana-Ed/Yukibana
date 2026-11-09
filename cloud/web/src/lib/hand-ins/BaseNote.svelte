@@ -17,12 +17,3 @@
 {:else if !quiet}
   <span class="muted small">latest starter (v{handIn.base.version})</span>
 {/if}
-
-<style>
-  /* Not an error, and not the red of "late": amber, something to look at. */
-  .chip.warn {
-    background: light-dark(#fff4e0, #33250c);
-    border-color: light-dark(#f0c36d, #6b4d14);
-    color: light-dark(#8a5300, #ffc66b);
-  }
-</style>
