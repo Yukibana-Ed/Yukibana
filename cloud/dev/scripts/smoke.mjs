@@ -2,7 +2,7 @@
 // API and edge runtime (and so the cloud/db/supabase/functions bind mount), and the
 // bucket. Deliberately no app schema dependency.
 //
-//   node cloud/dev/scripts/smoke.mjs
+//   pnpm --filter @yukibana/cloud-db smoke
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 

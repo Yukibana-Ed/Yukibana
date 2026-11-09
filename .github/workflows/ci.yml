@@ -195,10 +195,10 @@ jobs:
         run: echo "SUPABASE_PUBLISHABLE_KEY=$(pnpm exec supabase status -o json | jq -r .PUBLISHABLE_KEY)" >> "$GITHUB_ENV"
 
       - name: Start the bucket
-        run: docker compose -f cloud/dev/compose.yml up -d
+        run: pnpm --filter @yukibana/cloud-db run storage:start
 
       - name: Smoke test
-        run: node cloud/dev/scripts/smoke.mjs
+        run: pnpm --filter @yukibana/cloud-db run smoke
 
       # Every migration from empty, then the seeds: what a fresh environment is.
       - name: Rebuild the database from migrations
@@ -231,7 +231,7 @@ jobs:
         if: always()
         run: |
           pnpm --filter @yukibana/cloud-db run stop || true
-          docker compose -f cloud/dev/compose.yml down || true
+          pnpm --filter @yukibana/cloud-db run storage:stop || true
 
   e2e:
     name: E2E tests (${{ matrix.app }}, ${{ matrix.os }})
@@ -333,7 +333,7 @@ jobs:
           configFile: cloud/dev/.devcontainer/devcontainer.json
           runCmd: |
             cloud/dev/scripts/preflight.sh
-            node cloud/dev/scripts/smoke.mjs
+            pnpm --filter @yukibana/cloud-db run smoke
 
   # Every npm package's license, and every plugin the IDE bundles, against the rules in .github/scripts/licenses.mts.
   licenses:

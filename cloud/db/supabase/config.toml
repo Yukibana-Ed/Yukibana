@@ -148,7 +148,7 @@ template = "Your code is {{ .Code }}"
 max_frequency = "5s"
 
 # GitHub is the identity provider. A GitHub OAuth App per environment; its
-# callback URL is <auth url>/auth/v1/callback. See .env.example.
+# callback URL is <auth url>/auth/v1/callback. See cloud/dev/.env.example.
 [auth.external.github]
 enabled = true
 client_id = "env(SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID)"

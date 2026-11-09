@@ -2,7 +2,7 @@
 // in wrangler.jsonc, beside it, which is where wrangler looks for it. Reads the running stack for the things that vary by
 // machine, and leaves an existing file alone.
 //
-//   node cloud/dev/scripts/dev-vars.mjs
+//   pnpm --filter @yukibana/cloud-web dev:vars
 import { execFileSync } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -22,7 +22,7 @@ const host = process.env.SUPABASE_SERVICES_HOSTNAME ?? '127.0.0.1';
 // this again.
 const oauthClient = execFileSync(process.execPath, [fileURLToPath(new URL('./oauth-client.mjs', import.meta.url))], { encoding: 'utf8' }).trim();
 const vars = [
-    '# Written by `node cloud/dev/scripts/dev-vars.mjs`. Local overrides for wrangler.jsonc,',
+    '# Written by `pnpm --filter @yukibana/cloud-web dev:vars`. Local overrides for wrangler.jsonc,',
     '# which holds production values. Delete this file to regenerate it.',
     '',
     `SUPABASE_PUBLISHABLE_KEY=${status.PUBLISHABLE_KEY ?? status.ANON_KEY}`,
