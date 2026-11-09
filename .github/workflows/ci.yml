@@ -5,8 +5,7 @@
 #
 # Not on pushes to main, and there is no merge queue. A pull request merges only up to date with main (the ruleset),
 # and a pull request's run tests it merged onto main, so the merge lands the tree its run tested; a run on the push
-# would test it a second time. Deploy cloud deploys on the pull request's run instead, after checking the trees are
-# the same. warm-caches.yml saves, from main, the caches pull requests restore.
+# would test it a second time.
 name: CI
 
 on:
