@@ -4,18 +4,19 @@
 # the next one includes everything anyway. A run whose commit is older than the last successful deploy's refuses, so a
 # re-run of an old run cannot put an old Worker back.
 #
-# Only on a push to main of Yukibana-Ed/Yukibana (a fork has no production environment), once the merge queue's CI run
-# for that very commit has passed. There is no deploying by hand: what reaches production is what the queue tested.
-# Main moves only through the queue, which fast-forwards it to the commit its run tested, so that run is the test of
-# what is deployed, and CI does not run on main a second time. A commit on main with no passing queue run (a push by a
-# ruleset bypass, if one is ever added) is not deployed; it reaches production with the next pull request merged
-# through the queue. It deploys when the pnpm package graph says @yukibana/cloud-web or @yukibana/cloud-db is affected since the last deploy (so a change to
-# packages they use counts, @yukibana/client's yukibana.schema.json among them), or the lockfile, the workspace's
-# configuration, this file or the placeholder check it runs changed; a change to CI or a root config alone deploys
-# nothing (`deploy` in .github/scripts/plan.mts). The queue's run compares with the queue's base, and this with the last
-# deploy, so the two can disagree: a deploy fails, and the next merge affects no cloud package, so its run skips the
-# stack. So a run that would deploy also requires that the queue's run ran the cloud stack and passed: no migration
-# reaches production without having run from empty under pgTAP first. A first environment needs two runs: the first
+# Only on a push to main of Yukibana-Ed/Yukibana (a fork has no production environment), and only a commit whose tree
+# is exactly the tree a pull request's passing CI run tested. There is no deploying by hand: what reaches production
+# is what CI tested. Main moves only by merging a pull request that is up to date with it (the ruleset requires that),
+# so the merge's tree is the pull request head's tree, which its CI tested merged onto main; CI does not run on main a
+# second time. Comparing the trees checks that rather than trusting the ruleset: a commit on main whose tree no passing
+# run tested (a merge that was not up to date, a push by a bypass) is not deployed, and reaches production with the
+# next pull request. It deploys when the pnpm package graph says @yukibana/cloud-web or @yukibana/cloud-db is affected
+# since the last deploy (so a change to packages they use counts, @yukibana/client's yukibana.schema.json among them),
+# or the lockfile, the workspace's configuration, this file or the placeholder check it runs changed; a change to CI or
+# a root config alone deploys nothing (`deploy` in .github/scripts/plan.mts). The pull request's run compares with its
+# base, and this with the last deploy, so the two can disagree: a deploy fails, and the next merge affects no cloud
+# package, so its run skips the stack. So a run that would deploy also requires that the pull request's run ran the
+# cloud stack and passed: no migration reaches production without having run from empty under pgTAP first. A first environment needs two runs: the first
 # deploy, then, after logging in once with GitHub, a re-run of that run's Deploy job alone (it keeps the plan's
 # decision, where re-running every job would find the run itself as the last deploy and skip), so
 # cloud/db/ops/bootstrap.sql can promote the first admin.
@@ -39,7 +40,7 @@
 name: Deploy cloud
 run-name: Deploy ${{ github.sha }}
 
-# Pushes to main only, and no workflow_dispatch: nothing deploys but what the merge queue tested.
+# Pushes to main only, and no workflow_dispatch: nothing deploys but what CI tested.
 on:
   push:
     branches: [main]
@@ -100,25 +101,26 @@ jobs:
         env:
           BASE: ${{ steps.base.outputs.sha }}
 
-      # The merge queue's CI run for this commit must have passed (the header says why). The queue moves main once
-      # ci-ok reports, which can be a moment before GitHub marks the whole run completed, so an unfinished run is
-      # waited for. The run's jobs are those of its latest attempt.
-      - name: The merge queue's CI passed
+      # The merged pull request's newest CI run must have passed, and tested this tree (the header says why). Its
+      # head's tree is what the run tested, merged onto a main the head already contained. The run's jobs are those of
+      # its latest attempt.
+      - name: The pull request's CI tested this tree
         id: ci
         if: steps.plan.outputs.deploy == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$COMMIT&event=merge_group&per_page=100" \
-            --jq '[.workflow_runs[] | select(.conclusion == "success" or .status != "completed")][0].id // empty')
-          if [ -z "$run" ]; then
-            echo "::error::$COMMIT has no passing CI run from the merge queue, so it did not reach main through it and is untested; nothing was deployed. It reaches production with the next pull request merged through the queue."
-            exit 1
-          fi
-          gh run watch "$run" -R "$GITHUB_REPOSITORY" --exit-status --interval 10 > /dev/null || {
-            echo "::error::the merge queue's CI run $run for $COMMIT did not pass; nothing was deployed."
-            exit 1
-          }
+          refuse() { echo "::error::$1; nothing was deployed. It reaches production with the next pull request merged up to date with main."; exit 1; }
+          head=$(gh api "repos/$GITHUB_REPOSITORY/commits/$COMMIT/pulls" --jq '[.[] | select(.merged_at != null and .base.ref == "main")][0].head.sha // empty')
+          [ -n "$head" ] || refuse "$COMMIT is not the merge of a pull request into main"
+          tree=$(gh api "repos/$GITHUB_REPOSITORY/git/commits/$COMMIT" --jq .tree.sha)
+          tested=$(gh api "repos/$GITHUB_REPOSITORY/git/commits/$head" --jq .tree.sha)
+          [ "$tree" = "$tested" ] || refuse "$COMMIT's tree is not its pull request head $head's, so the pull request was not up to date with main and no CI run tested what landed"
+          runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$head&event=pull_request&per_page=100")
+          run=$(jq -r '.workflow_runs[0].id // empty' <<<"$runs")
+          conclusion=$(jq -r '.workflow_runs[0].conclusion // "none"' <<<"$runs")
+          [ -n "$run" ] || refuse "no CI run tested $head, the pull request's head"
+          [ "$conclusion" = success ] || refuse "the newest CI run for $head, the pull request's head, is $run, whose conclusion is $conclusion"
           echo "run=$run" >> "$GITHUB_OUTPUT"
 
       # What was affected since the last deploy, CI must have tested on the stack (the header says why).

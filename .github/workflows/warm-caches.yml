@@ -1,6 +1,5 @@
 # The caches pull requests restore, saved from main. A pull request's run can restore a cache saved on its own branch or
-# on main, but not one the merge queue saved (those belong to its gh-readonly-queue branches), and CI does not run on
-# main (ci.yml says why). So this does the part of a run that fills them: the pnpm store of every package, and the
+# on main, but not one another pull request saved, and CI does not run on main (ci.yml says why). So this does the part of a run that fills them: the pnpm store of every package, and the
 # Theia plugins, on each runner OS that CI uses. A cache whose key is already saved is restored and not saved again, so
 # a push that changes neither the lockfile nor ide/package.json costs little. It tests nothing and gates nothing.
 name: Warm caches
