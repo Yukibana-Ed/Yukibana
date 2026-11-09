@@ -40,11 +40,7 @@ jobs:
           persist-credentials: false
 
       - name: Install pnpm and Node.js
-        uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
-        with:
-          runtime: node@24.x
-          cache: true
-          install: false
+        uses: ./.github/actions/setup
 
       # No install scripts: the Supabase CLI ships its binary as an optional dependency and needs none. A compromised
       # dependency then gets no chance to run while installing; the only code that runs with the password is the

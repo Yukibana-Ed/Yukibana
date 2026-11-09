@@ -42,7 +42,8 @@ updates:
 
   # Actions run with the repository's secrets, so a compromised one reads them.
   - package-ecosystem: github-actions
-    directory: /
+    # The workflows, and the local action they all set pnpm up with.
+    directories: [/, /.github/actions/*]
     schedule:
       interval: weekly
     cooldown:

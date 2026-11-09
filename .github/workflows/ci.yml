@@ -1,7 +1,7 @@
 # Every check, for pull requests, the merge queue and pushes to main. The plan job decides from pnpm's package graph
 # what a change affects (.github/scripts/plan.mts), and every other job runs only when its package is affected. So the
 # triggers have no paths filters: the workflow always runs, and ci-ok, the one required check, always reports.
-# pnpm/setup's `node@24.x` runs pnpm and the plan; every script pnpm runs uses the exact release of devEngines.
+# .github/actions/setup's `node@24.x` runs pnpm and the plan; every script pnpm runs uses the exact release of devEngines.
 name: CI
 
 on:
@@ -42,10 +42,9 @@ jobs:
           persist-credentials: false
 
       - name: Install pnpm and Node.js
-        uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
+        uses: ./.github/actions/setup
         with:
-          runtime: node@24.x
-          install: false
+          cache: false
 
       # pnpm reads the package graph from the manifests: nothing needs installing.
       - name: Plan
@@ -71,11 +70,7 @@ jobs:
           persist-credentials: false
 
       - name: Install pnpm and Node.js
-        uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
-        with:
-          runtime: node@24.x
-          cache: true
-          install: false
+        uses: ./.github/actions/setup
 
       # The root's tools, and each affected package with what it depends on. `--filter=<name>` for each, kept for the
       # steps below.
@@ -160,11 +155,7 @@ jobs:
           persist-credentials: false
 
       - name: Install pnpm and Node.js
-        uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
-        with:
-          runtime: node@24.x
-          cache: true
-          install: false
+        uses: ./.github/actions/setup
 
       - name: Install dependencies
         run: pnpm --filter '{cloud/**}...' install --frozen-lockfile --fetch-timeout 100000
@@ -239,11 +230,7 @@ jobs:
           persist-credentials: false
 
       - name: Install pnpm and Node.js
-        uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
-        with:
-          runtime: node@24.x
-          cache: true
-          install: false
+        uses: ./.github/actions/setup
 
       # The IDE and what it uses, as `pnpm setup:ide` installs it: not the cloud's Supabase CLI, squawk or workerd.
       - name: Install dependencies
@@ -336,11 +323,7 @@ jobs:
           persist-credentials: false
 
       - name: Install pnpm and Node.js
-        uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
-        with:
-          runtime: node@24.x
-          cache: true
-          install: false
+        uses: ./.github/actions/setup
 
       # Every package, for its manifest: no install scripts, which download binaries the check does not read.
       - name: Install dependencies
@@ -396,11 +379,7 @@ jobs:
           persist-credentials: false
 
       - name: Install pnpm and Node.js
-        uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
-        with:
-          runtime: node@24.x
-          cache: true
-          install: false
+        uses: ./.github/actions/setup
 
       - name: Install dependencies
         run: pnpm --filter '@yukibana/cloud-web...' install --frozen-lockfile --fetch-timeout 100000
