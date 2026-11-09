@@ -151,30 +151,60 @@ function line(key: string, name: string, githubLogin: string | null, email: stri
     return { key, name, githubLogin, email, enrolled, submissions, latest, standing };
 }
 
-/** How many lines of `lines` stand each way, for a summary. */
-export function tally(lines: readonly StudentHandIns[]): Record<Standing, number> & { outdated: number } {
-    const t = { missing: 0, late: 0, 'on-time': 0, outdated: 0 };
-    for (const l of lines) {
-        t[l.standing] += 1;
-        if (l.latest !== null && outdated(l.latest)) t.outdated += 1;
+/** `text` lowercased and without accents, so "émile" is found by "emile". */
+const fold = (text: string): string => text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+
+/** How well one search word matches `text` (already folded), or null when
+ *  it does not: every letter of `word` must appear in `text` in order. A
+ *  run of letters as typed counts for more than letters spread apart, a
+ *  letter that starts a word for more than one inside it, and the word
+ *  appearing whole for most, earlier being better. Only the order of the
+ *  scores means anything. */
+function wordScore(word: string, text: string): number | null {
+    const at = text.indexOf(word);
+    if (at !== -1) return 1000 + (at === 0 || /[^\p{L}\p{N}]/u.test(text[at - 1] ?? '') ? 100 : 0) - at;
+    let score = 0;
+    let from = 0;
+    let previous = -2;
+    for (const ch of word) {
+        const i = text.indexOf(ch, from);
+        if (i === -1) return null;
+        score += 1 + (i === previous + 1 ? 10 : 0) + (i === 0 || /[^\p{L}\p{N}]/u.test(text[i - 1] ?? '') ? 5 : 0);
+        previous = i;
+        from = i + 1;
     }
-    return t;
+    return score;
 }
 
-/** The designs the Submissions tab can be drawn in, while one is chosen.
- *  `?design=` names one; anything else is the first. */
-export const DESIGNS = [
-    { id: 'table', label: 'A · Table' },
-    { id: 'cards', label: 'B · Cards' },
-    { id: 'groups', label: 'C · Groups' },
-    { id: 'split', label: 'D · Split view' },
-] as const;
+/** How well `query` matches a student's name, login or address, or null
+ *  when it does not. Every word of `query` (split on spaces) must match one
+ *  of them, typos of omission included ("crla mrau" finds Carla Moreau),
+ *  ignoring case and accents. An empty query matches everyone, equally. */
+export function searchScore(l: StudentHandIns, query: string): number | null {
+    const words = fold(query)
+        .split(/\s+/)
+        .filter(w => w !== '');
+    const fields = [l.name, l.githubLogin ?? '', l.email ?? ''].map(fold);
+    let total = 0;
+    for (const w of words) {
+        let best: number | null = null;
+        for (const f of fields) {
+            const s = wordScore(w, f);
+            if (s !== null && (best === null || s > best)) best = s;
+        }
+        if (best === null) return null;
+        total += best;
+    }
+    return total;
+}
 
-/** One of `DESIGNS`' ids. */
-export type Design = (typeof DESIGNS)[number]['id'];
-
-/** The design `url` asks for, or the first. */
-export function designOf(url: { readonly searchParams: { get(name: string): string | null } }): Design {
-    const asked = url.searchParams.get('design');
-    return DESIGNS.find(d => d.id === asked)?.id ?? DESIGNS[0].id;
+/** The lines of `lines` that `query` matches (`searchScore`), best match
+ *  first, ties keeping `handInsOf`'s order; all of them, in that order,
+ *  for an empty query. */
+export function search(lines: readonly StudentHandIns[], query: string): StudentHandIns[] {
+    return lines
+        .map((l, i) => ({ l, i, s: searchScore(l, query) }))
+        .filter((x): x is { l: StudentHandIns; i: number; s: number } => x.s !== null)
+        .toSorted((a, b) => b.s - a.s || a.i - b.i)
+        .map(x => x.l);
 }

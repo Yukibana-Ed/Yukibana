@@ -7,11 +7,8 @@
   import { ideUrl } from '#lib/ide.ts';
   import { hold, live, refresh } from '#lib/live.svelte.ts';
   import { actionIn, tabOf, type Tab } from '#lib/tabs.ts';
-  import { DESIGNS, designOf, handInsOf } from '#lib/hand-ins.ts';
-  import TableDesign from '#lib/hand-ins/TableDesign.svelte';
-  import CardsDesign from '#lib/hand-ins/CardsDesign.svelte';
-  import GroupsDesign from '#lib/hand-ins/GroupsDesign.svelte';
-  import SplitDesign from '#lib/hand-ins/SplitDesign.svelte';
+  import { handInsOf } from '#lib/hand-ins.ts';
+  import HandInsTable from '#lib/hand-ins/HandInsTable.svelte';
   import type { ActionData, PageData } from './$types';
   let { data, form }: { data: PageData; form: ActionData } = $props();
   const p = $derived(data.project);
@@ -42,7 +39,6 @@
   const late = $derived(data.submissions.filter((s) => s.late).length);
   // Staff see one line per student, including those who sent nothing.
   const lines = $derived(handInsOf(data.students, data.handIns));
-  const design = $derived(designOf(page.url));
 
   // The settings form follows the project live until somebody types in it.
   // From then on changes from others are held back, so the form is never
@@ -153,22 +149,10 @@
   {#if data.staff}
     <section>
       <h2>Submissions</h2>
-      <!-- While a design is chosen: the four drafts, side by side by address. -->
-      <nav class="designs" aria-label="Design">
-        {#each DESIGNS as d (d.id)}
-          <a href="?tab=submissions&design={d.id}" aria-current={d.id === design ? 'page' : undefined}>{d.label}</a>
-        {/each}
-      </nav>
       {#if lines.length === 0}
         <p class="empty">Nobody is enrolled as a student yet.</p>
-      {:else if design === 'cards'}
-        <CardsDesign {lines} latest={p.release_count} />
-      {:else if design === 'groups'}
-        <GroupsDesign {lines} latest={p.release_count} />
-      {:else if design === 'split'}
-        <SplitDesign {lines} latest={p.release_count} />
       {:else}
-        <TableDesign {lines} latest={p.release_count} />
+        <HandInsTable {lines} latest={p.release_count} />
       {/if}
     </section>
   {:else}

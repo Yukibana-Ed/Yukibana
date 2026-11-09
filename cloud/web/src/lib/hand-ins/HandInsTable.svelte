@@ -2,30 +2,36 @@
   import { SvelteMap } from 'svelte/reactivity';
   import { kb, when } from '../format';
   import { viewer } from '../viewer.svelte';
-  import { subtitle, type StudentHandIns } from '../hand-ins';
+  import { search, subtitle, type StudentHandIns } from '../hand-ins';
   import type { SubmissionId } from '../ids';
   import BaseNote from './BaseNote.svelte';
   import StandingChip from './StandingChip.svelte';
 
-  /** Design A: one table row per student. A student with several
-   *  submissions has a dropdown in their row that picks which one the row
-   *  shows; it starts on the newest. Dense, and closest to the page as it
-   *  was. */
+  /** The staff's Submissions tab: one table row per student, with a
+   *  search box over names, logins and addresses that forgives missing
+   *  letters (#lib/hand-ins `search`). A student with several submissions
+   *  has a dropdown in their row that picks which one the row shows; it
+   *  starts on the newest, the one assessed. `latest` is the newest
+   *  release's version. */
   let { lines, latest }: { lines: readonly StudentHandIns[]; latest: number } = $props();
 
   // Which submission each row shows, by the line's key; absent for the newest.
   const picked = new SvelteMap<string, SubmissionId>();
+  let query = $state('');
+  const found = $derived(search(lines, query));
   const shown = (l: StudentHandIns) => l.submissions.find((s) => s.submissionId === picked.get(l.key)) ?? l.latest;
 </script>
 
-<div class="hand-ins-table">
+<div class="hand-ins">
+  <label class="sr-only" for="hand-ins-search">Find a student</label>
+  <input id="hand-ins-search" type="search" placeholder="Find a student by name or email" autocomplete="off" bind:value={query} />
   <div class="scroll">
     <table>
       <thead>
         <tr><th>Student</th><th>Status</th><th>Submission</th><th>Built on</th><th>Size</th><th></th></tr>
       </thead>
       <tbody>
-        {#each lines as l (l.key)}
+        {#each found as l (l.key)}
           {@const s = shown(l)}
           <tr class:missing={s === null}>
             <td>
@@ -54,6 +60,8 @@
               {#if s !== null}<a class="button" href="/api/submissions/{s.submissionId}" download>Download</a>{/if}
             </td>
           </tr>
+        {:else}
+          <tr><td colspan="6" class="muted">Nobody matches “{query}”.</td></tr>
         {/each}
       </tbody>
     </table>

@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest';
-import { designOf, handInsOf, outdated, subtitle, tally, versionName, type EnrolledStudent, type HandIn } from '../src/lib/hand-ins';
+import { handInsOf, outdated, search, subtitle, versionName, type EnrolledStudent, type HandIn } from '../src/lib/hand-ins';
 import { trustId, type ReleaseId, type SubmissionId, type UserId } from '../src/lib/ids';
 
 const user = (n: string) => trustId<UserId>(`00000000-0000-4000-8000-00000000000${n}`);
@@ -60,22 +60,39 @@ test('a version is named by its number, with its label when it has one', () => {
     expect(versionName(release(2, false, 'week 1'))).toBe('v2 (week 1)');
 });
 
-test('the summary counts students, by their newest submission', () => {
-    const lines = handInsOf(
-        [student('a@x', user('1')), student('b@x', user('2')), student('c@x', null)],
-        [handIn(user('1'), '2026-11-01T10:00:00Z', false, release(1, false)), handIn(user('2'), '2026-11-01T10:00:00Z', true)],
-    );
-    expect(tally(lines)).toEqual({ missing: 1, late: 1, 'on-time': 1, outdated: 1 });
-});
-
-test('the page draws the design its address names, and the first for anything else', () => {
-    expect(designOf(new URL('https://cloud.example/?design=split'))).toBe('split');
-    expect(designOf(new URL('https://cloud.example/?design=nope'))).toBe('table');
-});
-
 test('the line under a name never repeats the name, and says when somebody has left', () => {
     const [unlinked] = handInsOf([student('j@x', null)], []);
     expect(unlinked !== undefined && subtitle(unlinked)).toBe('');
     const [gone] = handInsOf([], [{ ...handIn(user('9'), '2026-11-01T10:00:00Z'), githubLogin: 'gone' }]);
     expect(gone !== undefined && subtitle(gone)).toBe('@gone · no longer enrolled');
+});
+
+const people = handInsOf(
+    [
+        { email: 'carla@x', userId: null, fullName: 'Carla Moreau', githubLogin: 'carlam' },
+        { email: 'emile@x', userId: null, fullName: 'Émile Zola', githubLogin: null },
+        { email: 'marc@school.example', userId: null, fullName: 'Marc Cara', githubLogin: null },
+    ],
+    [],
+);
+const names = (q: string) => search(people, q).map(l => l.name);
+
+test('the search finds a student by name, login or address, ignoring case and accents', () => {
+    expect(names('MOREAU')).toEqual(['Carla Moreau']);
+    expect(names('carlam')).toEqual(['Carla Moreau']);
+    expect(names('school.example')).toEqual(['Marc Cara']);
+    expect(names('emile')).toEqual(['Émile Zola']);
+});
+
+test('the search forgives missing letters, and every word typed must match', () => {
+    expect(names('crla mrau')).toEqual(['Carla Moreau']);
+    expect(names('carla zola')).toEqual([]);
+});
+
+test('the search puts a whole-word match before letters scattered through a name', () => {
+    expect(names('cara')).toEqual(['Marc Cara', 'Carla Moreau']);
+});
+
+test('an empty search shows everyone, in the order of the list', () => {
+    expect(names('  ')).toEqual(people.map(l => l.name));
 });
