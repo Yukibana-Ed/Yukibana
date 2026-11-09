@@ -359,7 +359,7 @@ export function configJSONSchema(): Record<string, unknown> {
         $id: SCHEMA_URL,
         title: CONFIG_FILE,
         description:
-            "A project's configuration: its build system, what the student's IDE shows, which files the student may not change, what the student never receives, and what a submission holds. Lives at the project root. docs/cloud/yukibana-json.md in ISC-HEI/Yukibana is the prose.",
+            "A project's configuration: its build system, what the student's IDE shows, which files the student may not change, what the student never receives, and what a submission holds. Lives at the project root. docs/cloud/yukibana-json.md in Yukibana-Ed/Yukibana is the prose.",
         ...generated,
     };
 }

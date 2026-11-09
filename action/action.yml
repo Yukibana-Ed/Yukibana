@@ -3,7 +3,7 @@
 # checked-out tree. Use it from a course repository:
 #
 #   - uses: actions/checkout@v4
-#   - uses: ISC-HEI/Yukibana/action@main
+#   - uses: Yukibana-Ed/Yukibana/action@main
 #     with:
 #       url: https://yukibana.example.org
 #       project: ${{ vars.YUKIBANA_PROJECT }}

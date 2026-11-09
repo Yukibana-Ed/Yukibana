@@ -3,7 +3,7 @@
 # against the new schema. A failed deploy is re-run by hand; the next one includes everything anyway. A run whose commit
 # is older than the last successful deploy's refuses, so a re-run of an old run cannot put an old Worker back.
 #
-# Once CI has passed for a push to main of ISC-HEI/Yukibana (a fork has no production environment). It deploys when the
+# Once CI has passed for a push to main of Yukibana-Ed/Yukibana (a fork has no production environment). It deploys when the
 # pnpm package graph says @yukibana/cloud-web or @yukibana/cloud-db is affected since the last deploy (so a change to
 # packages they use counts, @yukibana/client's yukibana.schema.json among them), or the lockfile, the workspace's
 # configuration, this file or the placeholder check it runs changed; a change to CI or a root config alone deploys
@@ -72,7 +72,7 @@ jobs:
   plan:
     name: Plan
     if: >-
-      github.repository == 'ISC-HEI/Yukibana'
+      github.repository == 'Yukibana-Ed/Yukibana'
       && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'))
     runs-on: ubuntu-24.04
     timeout-minutes: 5

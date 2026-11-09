@@ -126,7 +126,7 @@ In the course repository's own CI, the Action does the same on every push:
 
 ```yaml
 - uses: actions/checkout@v4
-- uses: ISC-HEI/Yukibana/action@main
+- uses: Yukibana-Ed/Yukibana/action@main
   with:
     url: https://yukibana.example.org
     project: ${{ vars.YUKIBANA_PROJECT }}

@@ -21,7 +21,7 @@ On Windows, the Visual Studio Build Tools also need the
 1. Download the repository
   
    ```bash
-   git clone https://github.com/ISC-HEI/yukibana.git
+   git clone https://github.com/Yukibana-Ed/Yukibana.git
    ```
 
 2. Go into the project directory

@@ -4,13 +4,13 @@
   "version": "0.0.0-dev",
   "license": "MIT",
   "author": "Yukibana Team <info.yukibana@isc-vs.ch>",
-  "homepage": "https://github.com/ISC-HEI/Yukibana#readme",
+  "homepage": "https://github.com/Yukibana-Ed/Yukibana#readme",
   "bugs": {
-    "url": "https://github.com/ISC-HEI/Yukibana/issues"
+    "url": "https://github.com/Yukibana-Ed/Yukibana/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ISC-HEI/Yukibana.git"
+    "url": "git+https://github.com/Yukibana-Ed/Yukibana.git"
   },
   "dependencies": {
     "@playwright/test": "catalog:",
