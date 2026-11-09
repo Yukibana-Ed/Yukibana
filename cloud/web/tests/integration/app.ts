@@ -15,7 +15,9 @@
  */
 
 import { spawn } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { createServer } from 'node:net';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from './env.js';
 
@@ -45,7 +47,8 @@ export async function startApp(timeoutMs = 90_000): Promise<App> {
     const port = await freePort();
     const origin = `http://127.0.0.1:${port}`;
     const appDir = fileURLToPath(new URL('../..', import.meta.url));
-    const vite = fileURLToPath(new URL('../../node_modules/vite/bin/vite.js', import.meta.url));
+    // Wherever pnpm put vite: hoisted to the root, or in cloud/web's own node_modules when another version is hoisted.
+    const vite = join(dirname(createRequire(import.meta.url).resolve('vite/package.json')), 'bin', 'vite.js');
     const env: NodeJS.ProcessEnv = {
         ...process.env,
         CLOUDFLARE_INCLUDE_PROCESS_ENV: 'true',

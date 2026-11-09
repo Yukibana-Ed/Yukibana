@@ -72,6 +72,11 @@ jobs:
       - name: Install pnpm and Node.js
         uses: ./.github/actions/setup
 
+      # native-keymap, which every Theia package depends on, compiles against X11 at install, and ubuntu-24.04 has no
+      # headers for it. Always, since an IDE extension alone pulls it in too, and `ide` covers only the apps.
+      - name: Install the IDE's native build headers
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libx11-dev libxkbfile-dev
+
       # The root's tools, and each affected package with what it depends on. `--filter=<name>` for each, kept for the
       # steps below.
       - name: Install dependencies
