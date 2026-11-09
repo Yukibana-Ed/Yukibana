@@ -3,8 +3,9 @@
  */
 // Fails when a dependency's license is not one this project accepts, or when the IDE bundles a plugin nobody reviewed.
 // The rules are below: licenses accepted for any package, the packages accepted under another license (each with why),
-// and the plugins, each with the license it was reviewed under (and why, when that is another license). Every npm package counts, development tools too: the
-// Worker's bundle is built from devDependencies, and a list split by use would need to be maintained by hand.
+// and the plugins, each with the license it was reviewed under (and why, when that is another license). Every npm
+// package counts, development tools too: the Worker's bundle is built from devDependencies, and a list split by use
+// would need to be maintained by hand.
 //
 //   pnpm install && pnpm download:plugins && node .github/scripts/licenses.mts
 import { execFileSync } from 'node:child_process';

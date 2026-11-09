@@ -48,7 +48,7 @@ queue. Four workflows listen to the repository:
 
 | | Triggered by | Does | Needs |
 | --- | --- | --- | --- |
-| **CI** | pull requests, the merge queue, pushes to `main` | lint, typecheck, unit tests and builds of the packages the change affects (pnpm's package graph); `yukibana check` over the fixture; when `cloud/web` or `cloud/db` is affected, the real stack on the runner: every migration from empty, pgTAP, the Realtime policy and event trigger checks, the integration suite; squawk is `cloud/db`'s lint; the devcontainer build when `cloud/dev` changed | nothing secret |
+| **CI** | pull requests, the merge queue, pushes to `main` | lint, typecheck, unit tests and builds of the packages the change affects (pnpm's package graph); `yukibana check` over the fixture; when `cloud/web` or `cloud/db` is affected, the real stack on the runner: every migration from empty, pgTAP, the Realtime policy and event trigger checks, the integration suite; squawk is `cloud/db`'s lint; the devcontainer build when `cloud/dev` changed, or what installs read (`package.json`, the lockfile, `pnpm-workspace.yaml`) | nothing secret |
 | **Preview** | CI of a pull request from a branch of this repository that affects `cloud/web` and does not touch `cloud/db` | uploads the build CI made as a preview version (`wrangler versions upload --preview-alias pr-<n>`), and comments its URL | a maintainer's approval of the `preview` environment, and its Cloudflare secrets |
 | **Deploy cloud** | a push to `main` of ISC-HEI/Yukibana whose changes since the last successful run affect `@yukibana/cloud-web` or `@yukibana/cloud-db` (or a package they use), or change the lockfile, `package.json`, `pnpm-workspace.yaml` or `deploy-cloud.yml`; or by hand | refuses a commit older than the last deploy's, checks no placeholder is left, checks every secret is set, lists then applies pending migrations, runs `cloud/db/ops/bootstrap.sql`, prints the settings diff, pushes `cloud/db/supabase/config.toml`'s production block, then builds and deploys the Worker. One run at a time (`concurrency: deploy-cloud`). | the `production` environment's secrets, step 5 |
 | **Drift** | nightly, or by hand | `supabase db diff` of production against the migrations for `public` and `app`, `cloud/db/ops/realtime-policies.sql` and `cloud/db/ops/event-triggers.sql` | `SUPABASE_DB_URL` only |
@@ -393,8 +393,8 @@ settings, before" step of the last deploy.
 **A merge to `main` changed nothing on the site.** Look at the Deploy cloud
 run of that commit. Its plan job prints which packages the change affected:
 when neither `@yukibana/cloud-web` nor `@yukibana/cloud-db` is among them,
-nothing was deployed, by design, and so is a change to CI or a root config
-alone. A failed run is re-run by hand, and a run that waits on another is the
+nothing was deployed, by design, and so is a change to CI, a root config or
+the fixture repository alone. A failed run is re-run by hand, and a run that waits on another is the
 `deploy-cloud` concurrency group at work.
 `/api/auth/config` answering without `siteUrl` is the sign that code from
 before the website login is live.

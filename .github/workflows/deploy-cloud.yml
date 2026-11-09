@@ -5,7 +5,7 @@
 #
 # On a push to main of ISC-HEI/Yukibana (a fork has no production environment) when the pnpm package graph says
 # @yukibana/cloud-web or @yukibana/cloud-db is affected (so a change to packages they use counts), or the lockfile, the
-# workspace's configuration or this file changed; a change to CI, a root config or the cloud's tests alone deploys
+# workspace's configuration or this file changed; a change to CI, a root config or the fixture repository alone deploys
 # nothing (`deploy` in .github/scripts/plan.mts). And by hand. A first environment needs it twice: deploy, log in once
 # with GitHub, deploy again so cloud/db/ops/bootstrap.sql can promote the first admin.
 #
@@ -105,7 +105,7 @@ jobs:
             status=$(gh api "repos/$GITHUB_REPOSITORY/compare/$last...$GITHUB_SHA" --jq .status)
             case "$status" in
               ahead|identical) ;;
-              *) echo "::error::$GITHUB_SHA is $status of $last, which a later run already deployed. Nothing was deployed; to deploy main again, use Run workflow on main."
+              *) echo "::error::$GITHUB_SHA is $status of $last, the commit of the last successful Deploy cloud run; nothing was deployed. To deploy main again, use Run workflow on main."
                  exit 1 ;;
             esac
           fi

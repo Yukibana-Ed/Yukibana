@@ -40,8 +40,8 @@ export type Change =
 /** What one CI run does. */
 export interface Plan {
     /**
-     * The names of the packages whose `lint`, `typecheck`, `test` and `build` scripts run, sorted. `@yukibana/cli` is
-     * one whenever `@yukibana/client` is.
+     * The names of the packages whose `lint`, `typecheck` and `build` scripts run, and whose Vitest project (named after
+     * the package) runs in the root's one coverage run, sorted. `@yukibana/cli` is one whenever `@yukibana/client` is.
      */
     readonly packages: readonly string[];
     /** `true` iff the cloud stack runs: the migrations from empty, pgTAP and the Worker's integration tests. */
@@ -56,7 +56,7 @@ export interface Plan {
     readonly preview: boolean;
     /**
      * `true` iff Deploy cloud deploys: what it deploys may have changed, because a package in `CLOUD_PACKAGES` is affected
-     * or one of `DEPLOY_INPUTS` changed. A change to CI, a root config or the cloud's tests alone does not deploy.
+     * or one of `DEPLOY_INPUTS` changed. A change to CI, a root config or the fixture repository alone does not deploy.
      */
     readonly deploy: boolean;
 }
