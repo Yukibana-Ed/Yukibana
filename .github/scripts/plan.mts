@@ -40,8 +40,7 @@ export type Change =
 /** What one CI run does. */
 export interface Plan {
     /**
-     * The names of the packages whose `lint`, `typecheck` and `build` scripts run, and whose Vitest project (named after
-     * the package) runs in the root's one coverage run, sorted.
+     * The names of the packages whose `lint`, `typecheck`, `test` and `build` scripts run, sorted.
      */
     readonly packages: readonly string[];
     /** `true` iff the cloud stack runs: the migrations from empty, pgTAP and the Worker's integration tests; a package in
