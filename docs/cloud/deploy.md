@@ -12,15 +12,14 @@
 > 3. Create this repository's `production` and `preview` environments with their secrets (step 5). Drift uses
 >    `production` too.
 > 4. In `main`'s branch protection (or ruleset), remove the old required checks, whose jobs no longer exist (the IDE's
->    build.yml), make `ci-ok` the one required check, and turn on the merge queue with the merge method **Merge
->    commit**. Never squash or rebase, in the queue or for the pull request of step 5: that pull request starts with the
->    merge commit that imports the old repositories' histories, and a squash or a rebase flattens them away.
->    "Require branches to be up to date before merging" adds nothing once the queue is on: the queue already tests the
->    exact commit that lands, the pull request merged onto `main` as it will be, and only that commit reaches `main`.
->    It would only make every pull request be updated by hand before it may enter the queue.
-> 5. Merge the pull request that adds these workflows, through the queue, as a merge commit. It changes
+>    build.yml), make `ci-ok` the one required check, and turn on "Require branches to be up to date before merging".
+>    There is no merge queue: being up to date is what makes a merge land the tree its pull request's run tested, which
+>    is what Deploy cloud relies on. The pull request of step 5 is merged with a **merge commit**, never squashed or
+>    rebased: it starts with the merge commit that imports the old repositories' histories, and a squash or a rebase
+>    flattens them away.
+> 5. Merge the pull request that adds these workflows, as a merge commit. It changes
 >    `deploy-cloud.yml`, so once CI has passed on the commit it puts on `main`, that is the first deploy from here; if
->    it ran before step 3, it fails at Credentials: run Deploy cloud by hand then.
+>    it ran before step 3, it fails at Credentials: re-run it ("Re-run failed jobs") once the secrets are in.
 
 One Supabase project (Postgres and Auth), one Cloudflare Worker, one R2
 bucket. Everything below fits the free tier of both, with one caveat: R2 asks
@@ -34,17 +33,17 @@ from the repository root.
 
 ## The pipeline
 
-After the first setup, deploying is merging to `main` through the merge
-queue. Four workflows listen to the repository:
+After the first setup, deploying is merging a pull request into `main`, up to
+date with it. Four workflows listen to the repository:
 
 ```
- pull request, merge queue ─▶ CI (ci.yml)
+ pull request ──────────────▶ CI (ci.yml)
                                 plan → the affected packages' checks, the cloud stack, …
                                 → ci-ok, the one required check
                                 and, for a pull request that affects cloud/web, a preview build
  CI of a pull request ──────▶ Preview (preview.yml), once a maintainer approves
                                 wrangler versions upload → a preview URL on the pull request
- CI passed for main ────────▶ Deploy cloud (deploy-cloud.yml), when the cloud is affected
+ push to main ──────────────▶ Deploy cloud (deploy-cloud.yml), when the cloud is affected,
                                 placeholders → secrets → migration list → db push
                                 → cloud/db/ops/bootstrap.sql → config diff → config push
                                 → build → wrangler deploy
@@ -54,9 +53,9 @@ queue. Four workflows listen to the repository:
 
 | | Triggered by | Does | Needs |
 | --- | --- | --- | --- |
-| **CI** | pull requests, the merge queue, pushes to `main` | lint, typecheck, unit tests and builds of the packages the change affects (pnpm's package graph); `yukibana check` over the fixture; when `cloud/web`, `cloud/db` or `cloud/dev` is affected, the real stack on the runner: every migration from empty, pgTAP, the Realtime policy and event trigger checks, the integration suite; squawk is `cloud/db`'s lint; the devcontainer build when `cloud/dev` changed, or what its install reads (`package.json`, the lockfile, `pnpm-workspace.yaml`, the manifests of `cloud/db`, `cloud/web`, `packages/cli`, `packages/client` and `packages/fixtures`), or `cloud/db/supabase/config.toml`, which its start runs | nothing secret |
+| **CI** | pull requests (not pushes to `main`: a pull request merges only up to date with `main`, so the merge lands the tree its run tested) | lint, typecheck, unit tests and builds of the packages the change affects (pnpm's package graph); `yukibana check` over the fixture; when `cloud/web`, `cloud/db` or `cloud/dev` is affected, the real stack on the runner: every migration from empty, pgTAP, the Realtime policy and event trigger checks, the integration suite; squawk is `cloud/db`'s lint; the devcontainer build when `cloud/dev` changed, or what its install reads (`package.json`, the lockfile, `pnpm-workspace.yaml`, the manifests of `cloud/db`, `cloud/web`, `packages/cli`, `packages/client` and `packages/fixtures`), or `cloud/db/supabase/config.toml`, which its start runs | nothing secret |
 | **Preview** | CI of a pull request from a branch of this repository that affects `cloud/web`, with or without a change to `cloud/db` | uploads the build CI made as a preview version (`wrangler versions upload --preview-alias pr-<n>`), and comments its URL | a maintainer's approval of the `preview` environment, and its Cloudflare secrets |
-| **Deploy cloud** | CI passing for a push to `main` of Yukibana-Ed/Yukibana (`workflow_run`), when the changes since the last successful run affect `@yukibana/cloud-web` or `@yukibana/cloud-db` (or a package they use, such as `@yukibana/client`, whose `yukibana.schema.json` the Worker serves), or change the lockfile, `package.json`, `pnpm-workspace.yaml`, `deploy-cloud.yml` or `.github/scripts/production-config.mts`; or by hand on `main`, which does not wait for CI. A run's title, `Deploy <commit>`, names the commit it deploys: the one CI passed for, which may be older than `main`'s head by the time it runs | refuses a commit older than the last deploy's, and, unless run by hand, one whose CI run did not pass the cloud stack (CI compares a push with the commit before it, this with the last deploy, so an earlier push's failed migration could otherwise go out with a later push that skipped the stack), checks no placeholder is left, checks every secret is set, lists then applies pending migrations, runs `cloud/db/ops/bootstrap.sql`, prints the settings diff, pushes `cloud/db/supabase/config.toml`'s production block, then builds and deploys the Worker. One run at a time (`concurrency: deploy-cloud`). | the `production` environment's secrets, step 5 |
+| **Deploy cloud** | a push to `main` of Yukibana-Ed/Yukibana, which the ruleset allows only as the merge of an up-to-date pull request whose `ci-ok` passed, so the deploy trusts it without looking for a CI run; when the changes since the last successful run affect `@yukibana/cloud-web` or `@yukibana/cloud-db` (or a package they use, such as `@yukibana/client`, whose `yukibana.schema.json` the Worker serves), or change the lockfile, `package.json`, `pnpm-workspace.yaml`, `deploy-cloud.yml` or `.github/scripts/production-config.mts`. Never by hand: it has no "Run workflow" button, so production only ever gets what CI tested. A run's title, `Deploy <commit>`, names the commit it deploys | refuses a commit older than the last deploy's, checks no placeholder is left, checks every secret is set, lists then applies pending migrations, runs `cloud/db/ops/bootstrap.sql`, prints the settings diff, pushes `cloud/db/supabase/config.toml`'s production block, then builds and deploys the Worker. One run at a time (`concurrency: deploy-cloud`). | the `production` environment's secrets, step 5 |
 | **Drift** | nightly, or by hand | `supabase db diff` of production against the migrations for `public` and `app`, `cloud/db/ops/realtime-policies.sql` and `cloud/db/ops/event-triggers.sql` | `SUPABASE_DB_URL` only |
 
 Two consequences are worth knowing before the first change:
@@ -108,14 +107,14 @@ dropped column is the failure this avoids.
 `pnpm --filter @yukibana/cloud-web exec wrangler secret put <NAME>` from a
 checkout, which takes effect at once and needs no deploy.
 
-**By hand.** Deploy cloud has a "Run workflow" button (`workflow_dispatch`),
-which deploys `main`'s head whatever changed, without waiting for its CI.
-Only on `main`: started on another branch, it deploys nothing, since it
-would apply that branch's unmerged migrations, which cannot be undone. A failed deploy is re-run that way, or
-with "Re-run jobs" while it is the newest run; the next deploy includes
-everything anyway. A re-run of a commit older than the last successful
-deploy's stops before it changes anything, so that it cannot put an older
-Worker back.
+**Never by hand.** Deploy cloud has no "Run workflow" button: production
+only ever gets what a merged pull request's CI tested. A deploy that failed for a
+reason outside the code (a secret, an outage) is retried with "Re-run failed
+jobs" on its run while it is the newest; a re-run keeps the push it was
+started by, so it deploys the same tested commit. Anything else is fixed
+through a pull request, and the next merge deploys everything since the last
+deploy. A re-run of a commit older than the last successful deploy's stops
+before it changes anything, so that it cannot put an older Worker back.
 
 ## Rolling back
 
@@ -317,17 +316,20 @@ connection role every deploy, so it never appears in a migration.
 
 ## 6. Deploy, log in, deploy again
 
-Run Deploy cloud by hand (Actions → Deploy cloud → Run workflow). It will
-check the placeholders are gone, list and apply pending migrations, run
-`cloud/db/ops/bootstrap.sql`, push the Supabase settings, and then build and deploy
-the Worker.
+Merge the pull request with step 3's configuration.
+With no earlier deploy to compare with, Deploy cloud treats everything as
+affected: it will check the placeholders are gone, list and apply pending
+migrations, run `cloud/db/ops/bootstrap.sql`, push the Supabase settings, and
+then build and deploy the Worker.
 
 `cloud/db/ops/bootstrap.sql` sets the connection role's password and then tries to
 promote the first admin. On a brand-new project it finds nobody to promote
 and says so, because an account only exists once someone has logged in. So
 **open the app, log in (with GitHub, or a code mailed to `FIRST_ADMIN_EMAIL`),
-and run the workflow again**. The second
-run promotes you, and every run after that is a no-op.
+and re-run that run's Deploy job alone** (open the run, then the job's "Re-run
+this job"). Re-running only that job keeps the plan's decision to deploy;
+re-running every job would find the run itself as the last deploy and skip.
+The second run promotes you, and every run after that is a no-op.
 
 You are then an admin: `/admin` grants `teacher` to anyone who has logged in
 once, and a teacher creates courses, editions and projects.
@@ -406,12 +408,12 @@ not pushed the settings yet. The pushed values are printed by the "Supabase
 settings, before" step of the last deploy.
 
 **A merge to `main` changed nothing on the site.** Look at the Deploy cloud
-run titled `Deploy <commit>` for it; there is none while CI on `main` is still
-running, and a run titled `Not deployed` means CI failed for it. Its plan job prints which packages the change affected:
-when neither `@yukibana/cloud-web` nor `@yukibana/cloud-db` is among them,
-nothing was deployed, by design, and so is a change to CI or a root config
-alone. A failed run is re-run by hand, and a run that waits on another is the
-`deploy-cloud` concurrency group at work.
+run titled `Deploy <commit>` for it, which starts with the push. Its plan job
+prints which packages the change affected: when neither `@yukibana/cloud-web`
+nor `@yukibana/cloud-db` is among them, nothing was deployed, by design, and
+so is a change to CI or a root config alone. A
+failed run is retried with "Re-run failed jobs", and a run that waits on
+another is the `deploy-cloud` concurrency group at work.
 `/api/auth/config` answering without `siteUrl` is the sign that code from
 before the website login is live.
 
