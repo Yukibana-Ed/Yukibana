@@ -15,11 +15,11 @@ test('an assembly says what it restored, what it dropped and what it had to keep
         refused: ['link'],
     };
     expect(findings(report)).toEqual([
-        'Restored protected files the student changed or deleted: tests/a.rs, tests/b.rs.',
-        'Dropped files the student added under protected paths: tests/hidden/mine.rs.',
-        'Changed by the student and kept, since the release assembled with no longer protects them: tests/old.rs.',
-        "Replaced by the release's version, which protects them: src/lib.rs.",
-        'Dropped symlinks pointing out of the project: link.',
+        'Restored tests/a.rs, tests/b.rs',
+        'Removed tests/hidden/mine.rs',
+        "Kept the student's tests/old.rs (no longer protected)",
+        "Replaced src/lib.rs with the release's",
+        'Removed symlinks link',
     ]);
 });
 

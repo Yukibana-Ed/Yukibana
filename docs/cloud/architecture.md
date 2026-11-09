@@ -187,7 +187,7 @@ read-only and hidden path from the teacher archive, reporting what a student
 had changed under them. The staff page's Download does the same in the
 teacher's browser, with `@yukibana/client/assembly` (the same function,
 from an entry with no Node module) over the two `?inline` downloads, and
-says under the row what it undid; "as sent" is the archive untouched.
+says under the row what it undid; the arrow beside it gives the archive as sent.
 Download all does it for every student's latest submission, into one
 archive laid out as `yukibana download` lays out its folder.
 

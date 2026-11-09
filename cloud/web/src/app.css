@@ -830,17 +830,7 @@
             padding-top: 0;
             text-align: start;
         }
-        ul.findings {
-            margin: 0.4rem 0 0;
-            padding: 0.55rem 0.8rem 0.55rem 1.8rem;
-            border: 1px solid light-dark(#f0c36d, #6b4d14);
-            border-radius: var(--radius-sm);
-            background: light-dark(#fff4e0, #33250c);
-            color: light-dark(#8a5300, #ffc66b);
-            font-size: 0.88rem;
-        }
-
-        /* A: the button, and its alternative behind an arrow joined to it. */
+        /* The button, and the plain download behind an arrow joined to it. */
         .split-button {
             display: inline-flex;
             align-items: stretch;
@@ -862,31 +852,17 @@
             font-size: 0.8rem;
         }
         /* A menu behind a summary: no script, and a second click closes it. */
-        details.menu,
-        details.popover {
+        details.menu {
             position: relative;
         }
-        :is(details.menu, details.popover) > summary {
+        details.menu > summary {
             list-style: none;
             cursor: pointer;
         }
-        :is(details.menu, details.popover) > summary::-webkit-details-marker {
+        details.menu > summary::-webkit-details-marker {
             display: none;
         }
-        summary.kebab {
-            padding: 0.2rem 0.55rem;
-            border: 1px solid var(--line);
-            border-radius: var(--radius-sm);
-            color: var(--ink-soft);
-            font-weight: 700;
-            line-height: 1.3;
-        }
-        summary.kebab:hover {
-            background: var(--sunken);
-            color: var(--ink);
-        }
-        .menu-items,
-        .popover-body {
+        .menu-items {
             position: absolute;
             inset-inline-end: 0;
             top: calc(100% + 0.3rem);
@@ -895,8 +871,6 @@
             border-radius: var(--radius-sm);
             background: var(--surface);
             box-shadow: var(--shadow);
-        }
-        .menu-items {
             min-width: max-content;
             padding: 0.3rem;
         }
@@ -911,122 +885,18 @@
         .menu-items a:hover {
             background: var(--sunken);
         }
-        /* The findings of A: a strip with an amber edge, quieter than a box. */
-        .note-strip {
-            padding: 0.45rem 0.8rem;
+        /* What an assembly changed: a strip with an amber edge, quieter than a box. */
+        ul.note-strip {
+            margin: 0;
+            padding: 0.4rem 0.8rem;
+            list-style: none;
             border-inline-start: 3px solid light-dark(#e0a43a, #c98a1e);
             background: light-dark(#fffaf0, #241b0b);
             font-size: 0.87rem;
             color: light-dark(#6e4300, #f5c77a);
         }
-        .note-strip ul {
-            margin: 0.2rem 0 0;
-            padding-inline-start: 1.2rem;
-        }
-        /* The findings of B: lines of amber text, no box at all. */
-        ul.plain-findings {
-            list-style: none;
-            margin: 0;
-            padding: 0;
-            font-size: 0.86rem;
-            color: light-dark(#8a5300, #ffc66b);
-        }
-        ul.plain-findings li::before {
+        ul.note-strip li::before {
             content: '⚠ ';
         }
-        /* C: the plain download as a line under the button, and the findings
-         * behind a badge beside it. */
-        .stacked {
-            display: grid;
-            justify-items: end;
-            gap: 0.2rem;
-        }
-        summary.badge {
-            padding: 0.15rem 0.5rem;
-            border-radius: 999px;
-            border: 1px solid light-dark(#f0c36d, #6b4d14);
-            background: light-dark(#fff4e0, #33250c);
-            color: light-dark(#8a5300, #ffc66b);
-            font-size: 0.8rem;
-            font-weight: 700;
-        }
-        summary.badge.bad {
-            border-color: color-mix(in oklab, var(--bad) 30%, transparent);
-            background: var(--bad-bg);
-            color: var(--bad);
-        }
-        .popover-body {
-            width: min(26rem, 80vw);
-            padding: 0.6rem 0.8rem;
-            white-space: normal;
-            font-size: 0.86rem;
-        }
-        .popover-body :is(ul, p) {
-            margin: 0;
-        }
-        .popover-body ul {
-            padding-inline-start: 1.1rem;
-        }
-        /* D: both downloads as one control in two halves. */
-        .segmented {
-            display: inline-flex;
-            border: 1px solid var(--accent);
-            border-radius: var(--radius-sm);
-            overflow: hidden;
-        }
-        .segmented > :is(button, a) {
-            padding: 0.32rem 0.7rem;
-            border: 0;
-            border-radius: 0;
-            font-size: 0.85rem;
-            font-weight: 600;
-            text-decoration: none;
-            white-space: nowrap;
-        }
-        .segmented > button,
-        .segmented > button:hover {
-            background: var(--accent);
-            color: light-dark(#fff, #0c0d11);
-        }
-        .segmented > button:hover {
-            background: color-mix(in oklab, var(--accent) 88%, black);
-        }
-        .segmented > a {
-            background: var(--surface);
-            color: var(--accent);
-        }
-        .segmented > a:hover {
-            background: var(--accent-bg);
-        }
-        td button.toggle,
-        td button.toggle:hover {
-            padding: 0.15rem 0.6rem;
-            border: 1px solid light-dark(#f0c36d, #6b4d14);
-            background: light-dark(#fff4e0, #33250c);
-            color: light-dark(#8a5300, #ffc66b);
-            font-size: 0.82rem;
-        }
-    }
-
-    /* While a variant is chosen: the drafts, one link each. */
-    nav.designs {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.35rem;
-        margin-bottom: 1rem;
-    }
-    nav.designs a {
-        padding: 0.25rem 0.7rem;
-        border: 1px solid var(--line);
-        border-radius: 999px;
-        color: var(--ink-soft);
-        font-size: 0.85rem;
-        text-decoration: none;
-    }
-    nav.designs a[aria-current='page'] {
-        background: var(--accent-bg);
-        border-color: color-mix(in oklab, var(--accent) 35%, transparent);
-        color: var(--accent);
-        font-weight: 600;
     }
 }

@@ -201,19 +201,19 @@ export function assemblyFolder(slug: string, login: string | null, submittedAt: 
     return `${slug}-${login ?? 'student'}-${stamp}`.replace(/[^A-Za-z0-9._-]+/g, '_');
 }
 
-/** What `r` should tell a teacher, one sentence per kind of finding, in the
- *  order they matter; empty when the student touched nothing protected. */
+/** What `r` should tell a teacher, one short line per kind of finding, in
+ *  the order they matter; empty when the student touched nothing protected. */
 export function findings(r: AssemblyReport): string[] {
     const list = (paths: readonly string[]) => paths.join(', ');
     const unrestored = new Set(r.unrestored);
     const restored = (paths: readonly string[]) => paths.filter(p => !unrestored.has(p));
     const out: string[] = [];
     const changed = restored([...r.tampering.modified, ...r.tampering.deleted]);
-    if (changed.length > 0) out.push(`Restored protected files the student changed or deleted: ${list(changed)}.`);
+    if (changed.length > 0) out.push(`Restored ${list(changed)}`);
     const added = restored(r.tampering.added);
-    if (added.length > 0) out.push(`Dropped files the student added under protected paths: ${list(added)}.`);
-    if (r.unrestored.length > 0) out.push(`Changed by the student and kept, since the release assembled with no longer protects them: ${list(r.unrestored)}.`);
-    if (r.overridden.length > 0) out.push(`Replaced by the release's version, which protects them: ${list(r.overridden)}.`);
-    if (r.refused.length > 0) out.push(`Dropped symlinks pointing out of the project: ${list(r.refused)}.`);
+    if (added.length > 0) out.push(`Removed ${list(added)}`);
+    if (r.unrestored.length > 0) out.push(`Kept the student's ${list(r.unrestored)} (no longer protected)`);
+    if (r.overridden.length > 0) out.push(`Replaced ${list(r.overridden)} with the release's`);
+    if (r.refused.length > 0) out.push(`Removed symlinks ${list(r.refused)}`);
     return out;
 }
