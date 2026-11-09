@@ -16,10 +16,11 @@ import {
     tampered,
     type Tampering,
     writeEntries,
+    folderNames,
+    stampOf,
 } from '@yukibana/client';
 import { CONFIG_FILE, parseConfig } from '@yukibana/client/config';
 import { behind, chooseReleases, nameOf, type Wanted, wantedRelease } from '../lib/grading.js';
-import { folderNames, stampOf } from '../lib/names.js';
 import { select } from './browse.js';
 import { clientFor, fail, projectOf, studentsOf, type Invocation } from './common.js';
 import { save } from './work.js';

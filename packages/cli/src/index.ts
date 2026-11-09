@@ -5,7 +5,7 @@
  *  extensions use too, and over what only a terminal needs, beside the
  *  commands: the build of a release (`build.ts`, `lib/starter.ts`), the
  *  session file (`store.ts`), and the choices and folder names of a
- *  download (`lib/grading.ts`, `lib/names.ts`). `USAGE` below is the list.
+ *  download (`lib/grading.ts`, and `@yukibana/client`'s folder names). `USAGE` below is the list.
  */
 
 import { parseArgs } from 'node:util';

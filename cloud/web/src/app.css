@@ -773,8 +773,19 @@
 
     /* The staff's Submissions tab (#lib/hand-ins/HandInsTable.svelte). */
     .hand-ins {
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem 1rem;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.9rem;
+        }
         input[type='search'] {
+            flex: 1 1 16rem;
             max-width: 22rem;
+        }
+        .toolbar + :is(.ok, .error) {
             margin-bottom: 0.9rem;
         }
         tr.missing td {

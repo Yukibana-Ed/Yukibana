@@ -57,5 +57,6 @@ export { sha256Hex } from './lib/bytes.js';
 export { gzip } from './lib/gzip.js';
 export { planUpdate, wantedPaths, onlyTheStamp, isText, type Change, type ChooseReason, type Folder, type FolderEntry, type UpdatePlan, type Version } from './lib/update.js';
 export { matcher } from './lib/glob.js';
+export { displayName, folderNames, safeSegment, stampOf, type Person } from './lib/names.js';
 export { writeTar, type Entry } from './lib/tar.js';
 export type { Accepted, EditionRole, Me, Project, Release, Submission } from './lib/wire.js';

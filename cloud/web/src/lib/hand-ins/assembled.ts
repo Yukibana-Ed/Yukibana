@@ -56,6 +56,120 @@ export async function downloadAssembled(submission: SubmissionId, release: Relea
     return { tampering: a.tampering, unrestored: a.unrestored, overridden: a.overridden, refused: a.refused };
 }
 
+/** One submission for `downloadAllAssembled`. */
+export interface ToAssemble {
+    readonly submission: SubmissionId;
+    /** The release to assemble with, as for `downloadAssembled`. */
+    readonly release: ReleaseId;
+    /** Unique among the batch: what the student's folder is named after
+     *  (`folderNames` makes the names, from this and the three below). */
+    readonly key: string;
+    readonly name: string;
+    readonly githubLogin: string | null;
+    readonly email: string | null;
+    readonly submittedAt: Date;
+    readonly late: boolean;
+}
+
+/** What `downloadAllAssembled` did with one submission. */
+export type Outcome =
+    | { readonly submission: SubmissionId; readonly ok: true; readonly folder: string; readonly report: AssemblyReport }
+    | { readonly submission: SubmissionId; readonly ok: false; readonly name: string; readonly why: string };
+
+/** How many submissions are fetched and assembled at once: enough to keep
+ *  the network busy, few enough that a class's archives are not all in
+ *  memory twice at the same moment. */
+const AT_ONCE = 4;
+
+/** Assembles every one of `items` as `downloadAssembled` does, and saves
+ *  them as one `<slug>-submissions.tar.gz`: a folder per student, named as
+ *  `yukibana download` names them, and `yukibana-download.json` beside them
+ *  saying which folder is whose, when it was submitted, whether late, and
+ *  what each assembly found. Each teacher archive is fetched once however
+ *  many students started from it. A submission that cannot be fetched or
+ *  assembled is left out and its outcome says why; the others are saved
+ *  anyway, unless none could be, and then nothing is. `progress` is called
+ *  with the number finished so far after each one. */
+export async function downloadAllAssembled(slug: string, items: readonly ToAssemble[], progress: (done: number) => void): Promise<Outcome[]> {
+    const lib = await import('@yukibana/client/assembly');
+    const folders = lib.folderNames(items.map(i => ({ userId: i.key, fullName: i.name, githubLogin: i.githubLogin, email: i.email })));
+    const root = `${slug}-submissions`;
+    const teachers = new Map<ReleaseId, Promise<Uint8Array>>();
+    const teacherOf = (r: ReleaseId): Promise<Uint8Array> => {
+        let got = teachers.get(r);
+        if (got === undefined) {
+            got = bytesOf(`/api/releases/${r}/teacher?inline`, 'the teacher archive');
+            teachers.set(r, got);
+        }
+        return got;
+    };
+
+    const outcomes: Outcome[] = [];
+    const entries: import('@yukibana/client/assembly').Entry[] = [];
+    let next = 0;
+    const work = async (): Promise<void> => {
+        for (let i = next++; i < items.length; i = next++) {
+            const it = items[i];
+            if (it === undefined) continue;
+            const folder = folders.get(it.key) ?? it.key;
+            try {
+                const [sent, teacher] = await Promise.all([bytesOf(`/api/submissions/${it.submission}?inline`, 'the submission'), teacherOf(it.release)]);
+                const made = await lib.assembleInto(`${root}/${folder}`, sent, teacher);
+                if (!made.ok) throw new Error(`It could not be assembled: ${made.problem}.`);
+                entries.push(...made.entries);
+                const a = made.assembled.assembly;
+                outcomes.push({
+                    submission: it.submission,
+                    ok: true,
+                    folder,
+                    report: { tampering: a.tampering, unrestored: a.unrestored, overridden: a.overridden, refused: a.refused },
+                });
+            } catch (e) {
+                outcomes.push({ submission: it.submission, ok: false, name: it.name, why: e instanceof Error ? e.message : String(e) });
+            }
+            progress(outcomes.length);
+        }
+    };
+    await Promise.all(Array.from({ length: Math.min(AT_ONCE, items.length) }, work));
+
+    if (!outcomes.some(o => o.ok)) return outcomes;
+    const byId = new Map(items.map(i => [i.submission, i]));
+    const manifest = {
+        project: slug,
+        downloadedAt: new Date().toISOString(),
+        submissions: outcomes.flatMap(o => {
+            const it = byId.get(o.submission);
+            if (!o.ok || it === undefined) return [];
+            return [
+                {
+                    folder: o.folder,
+                    submissionId: o.submission,
+                    submittedAt: new Date(it.submittedAt).toISOString(),
+                    late: it.late,
+                    author: { name: it.name, githubLogin: it.githubLogin, email: it.email },
+                    assembledWith: it.release,
+                    ...o.report,
+                },
+            ];
+        }),
+    };
+    const now = Math.floor(Date.now() / 1000);
+    const all = [
+        { path: root, type: 'dir' as const, mode: 0o755, mtime: now, data: new Uint8Array(0) },
+        {
+            path: `${root}/yukibana-download.json`,
+            type: 'file' as const,
+            mode: 0o644,
+            mtime: now,
+            data: new TextEncoder().encode(`${JSON.stringify(manifest, null, 2)}
+`),
+        },
+        ...entries,
+    ];
+    save(await lib.gzip(await lib.writeTar(all)), `${root}.tar.gz`);
+    return outcomes;
+}
+
 async function bytesOf(url: string, what: string): Promise<Uint8Array> {
     const res = await fetch(url, { credentials: 'same-origin' });
     if (!res.ok) {

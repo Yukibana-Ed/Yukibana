@@ -4,7 +4,7 @@
   import { viewer } from '../viewer.svelte';
   import { search, subtitle, type HandIn, type StudentHandIns } from '../hand-ins';
   import type { ReleaseId, SubmissionId } from '../ids';
-  import { assemblyFolder, downloadAssembled, findings } from './assembled';
+  import { assemblyFolder, downloadAllAssembled, downloadAssembled, findings, type ToAssemble } from './assembled';
   import BaseNote from './BaseNote.svelte';
   import StandingChip from './StandingChip.svelte';
 
@@ -19,12 +19,37 @@
    *  Download assembles the submission with the release it started from
    *  (the newest when unknown, as `yukibana download --assemble` does) in
    *  the browser, and says under the row what the assembly undid
-   *  (./assembled). "As sent" is the archive untouched. */
+   *  (./assembled). "As sent" is the archive untouched. Download all does
+   *  the same for every student's latest submission, whatever the search
+   *  shows, into one archive. */
   let { lines, latest, newest, slug }: { lines: readonly StudentHandIns[]; latest: number; newest: ReleaseId | null; slug: string } = $props();
 
   type Fetching = { readonly state: 'busy' } | { readonly state: 'done'; readonly findings: readonly string[] } | { readonly state: 'failed'; readonly why: string };
   // Each submission's assembly this visit, by id; absent for none yet.
   const assemblies = new SvelteMap<SubmissionId, Fetching>();
+  // Download all: every student's latest submission, the one assessed.
+  const everyone = $derived(
+    lines.flatMap((l): ToAssemble[] => {
+      const s = l.latest;
+      const release = s?.base?.releaseId ?? newest;
+      if (s === null || release === null) return [];
+      return [{ submission: s.submissionId, release, key: l.key, name: l.name, githubLogin: l.githubLogin, email: l.email, submittedAt: s.submittedAt, late: s.late }];
+    }),
+  );
+  type All = { readonly state: 'busy'; readonly done: number } | { readonly state: 'done'; readonly saved: number; readonly failed: readonly string[] };
+  let all = $state<All | null>(null);
+  async function downloadAll(): Promise<void> {
+    all = { state: 'busy', done: 0 };
+    for (const it of everyone) assemblies.set(it.submission, { state: 'busy' });
+    const outcomes = await downloadAllAssembled(slug, everyone, (done) => (all = { state: 'busy', done }));
+    const saved = outcomes.some((o) => o.ok);
+    for (const o of outcomes) {
+      if (o.ok) assemblies.set(o.submission, { state: 'done', findings: findings(o.report) });
+      else assemblies.set(o.submission, { state: 'failed', why: o.why });
+    }
+    all = { state: 'done', saved: saved ? outcomes.filter((o) => o.ok).length : 0, failed: outcomes.flatMap((o) => (o.ok ? [] : [o.name])) };
+  }
+
   async function download(l: StudentHandIns, s: HandIn): Promise<void> {
     const release = s.base?.releaseId ?? newest;
     if (release === null) return;
@@ -45,8 +70,22 @@
 </script>
 
 <div class="hand-ins">
-  <label class="sr-only" for="hand-ins-search">Find a student</label>
-  <input id="hand-ins-search" type="search" placeholder="Find a student by name or email" autocomplete="off" bind:value={query} />
+  <div class="toolbar">
+    <label class="sr-only" for="hand-ins-search">Find a student</label>
+    <input id="hand-ins-search" type="search" placeholder="Find a student by name or email" autocomplete="off" bind:value={query} />
+    {#if everyone.length > 0}
+      <button type="button" class="download" disabled={all?.state === 'busy'} onclick={downloadAll} title="Every student's latest submission, assembled with its release, in one archive">
+        {all?.state === 'busy' ? `Assembling ${all.done} of ${everyone.length}…` : `Download all (${everyone.length})`}
+      </button>
+    {/if}
+  </div>
+  {#if all?.state === 'done'}
+    {#if all.saved > 0}
+      <p class="ok" role="status">Saved {all.saved} assembled submission{all.saved === 1 ? '' : 's'}{all.failed.length > 0 ? `; left out ${all.failed.join(', ')}, whose rows say why` : ''}.</p>
+    {:else}
+      <p class="error" role="alert">Nothing could be assembled; each row says why.</p>
+    {/if}
+  {/if}
   <div class="scroll">
     <table>
       <thead>

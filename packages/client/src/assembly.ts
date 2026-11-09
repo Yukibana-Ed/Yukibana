@@ -17,6 +17,7 @@ import { readTar, writeTar, type Entry } from './lib/tar.js';
 export { assemble, submissionRoot, tampered, type Assembled, type Assembly, type Tampering } from './lib/assemble.js';
 export { readTar, writeTar, type Entry } from './lib/tar.js';
 export { gunzip, gzip } from './lib/gzip.js';
+export { displayName, folderNames, safeSegment, stampOf, type Person } from './lib/names.js';
 
 /** The entries of the `.tar.gz` `bytes`; rejects when it is not gzip or
  *  not a tar inside. */
@@ -43,17 +44,34 @@ export type AssembledArchive =
           readonly problem: string;
       };
 
-/** `assemble` from archives to an archive: `submission` (as the student
- *  sent it), `teacher` (the grading release's teacher archive) and, when
- *  the student started from another release, `base` (that release's
- *  teacher archive), all `.tar.gz`. The archive made unpacks into one
- *  folder, `folder`, so that unpacking it beside others never mixes two
- *  students' files.
+/** A submission assembled with a release, as entries inside one folder. */
+export type AssembledEntries =
+    | {
+          /** `true` iff the submission could be assembled. */
+          readonly ok: true;
+          /** The assembled project inside `folder`: the folder first, then
+           *  every entry of the assembly under it. */
+          readonly entries: readonly Entry[];
+          /** What `assemble` found: tampering, restored and overridden paths. */
+          readonly assembled: Extract<Assembled, { ok: true }>;
+      }
+    | {
+          /** `true` iff the submission could be assembled. */
+          readonly ok: false;
+          /** Why it could not, in a sentence. */
+          readonly problem: string;
+      };
+
+/** `assemble` from archives: `submission` (as the student sent it),
+ *  `teacher` (the grading release's teacher archive) and, when the student
+ *  started from another release, `base` (that release's teacher archive),
+ *  all `.tar.gz`. The entries are under `folder`, so that several students'
+ *  assemblies can share one archive without mixing their files.
  *
  *  An archive that cannot be read is a problem named after it, not a throw.
  *
- *  - Requires: `folder` is one path segment, without `/`. */
-export async function assembleArchives(folder: string, submission: Uint8Array, teacher: Uint8Array, base: Uint8Array = teacher): Promise<AssembledArchive> {
+ *  - Requires: `folder` is a relative path without `..` or a trailing `/`. */
+export async function assembleInto(folder: string, submission: Uint8Array, teacher: Uint8Array, base: Uint8Array = teacher): Promise<AssembledEntries> {
     const read = async (bytes: Uint8Array, what: string): Promise<Entry[] | string> => {
         try {
             return await readTarGz(bytes);
@@ -69,9 +87,19 @@ export async function assembleArchives(folder: string, submission: Uint8Array, t
     if (typeof b === 'string') return { ok: false, problem: b };
     const assembled = assemble(s, t, b);
     if (!assembled.ok) return assembled;
-    const inFolder: Entry[] = [
+    const entries: Entry[] = [
         { path: folder, type: 'dir', mode: 0o755, mtime: Math.floor(Date.now() / 1000), data: new Uint8Array(0) },
         ...assembled.assembly.entries.map(e => ({ ...e, path: `${folder}/${e.path}` })),
     ];
-    return { ok: true, assembled, archive: await gzip(await writeTar(inFolder)) };
+    return { ok: true, assembled, entries };
+}
+
+/** `assembleInto`, as one `.tar.gz` that unpacks into `folder`, so that
+ *  unpacking it beside others never mixes two students' files.
+ *
+ *  - Requires: `folder` is one path segment, without `/`. */
+export async function assembleArchives(folder: string, submission: Uint8Array, teacher: Uint8Array, base: Uint8Array = teacher): Promise<AssembledArchive> {
+    const made = await assembleInto(folder, submission, teacher, base);
+    if (!made.ok) return made;
+    return { ok: true, assembled: made.assembled, archive: await gzip(await writeTar(made.entries)) };
 }
