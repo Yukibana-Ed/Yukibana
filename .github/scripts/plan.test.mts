@@ -29,9 +29,9 @@ describe('what runs', () => {
         });
     });
 
-    test('a lockfile change checks every package and their licenses', () => {
+    test('a lockfile change checks every package and their licenses, with no preview', () => {
         const plan = decide({ kind: 'shared', affected: [], files: ['pnpm-lock.yaml'] }, names);
-        expect(plan).toMatchObject({ packages: names.toSorted(), cloud: true, ide: true, licenses: true, devcontainer: true, preview: true, deploy: true });
+        expect(plan).toMatchObject({ packages: names.toSorted(), cloud: true, ide: true, licenses: true, devcontainer: true, preview: false, deploy: true });
     });
 
     test('a change to the CLI alone starts neither the cloud stack nor the IDE end-to-end tests', () => {
@@ -55,9 +55,9 @@ describe('what runs', () => {
         expect(plan).toMatchObject({ packages: ['@yukibana/cli', '@yukibana/client', '@yukibana/cloud-web', '@yukibana/fixtures'], cloud: true });
     });
 
-    test('a change to CI alone checks every package and deploys nothing', () => {
+    test('a change to CI alone checks every package, and neither previews nor deploys', () => {
         const plan = decide({ kind: 'shared', affected: [], files: ['.github/workflows/ci.yml', 'oxfmt.config.mts'] }, names);
-        expect(plan).toMatchObject({ packages: names.toSorted(), cloud: true, devcontainer: false, deploy: false });
+        expect(plan).toMatchObject({ packages: names.toSorted(), cloud: true, devcontainer: false, preview: false, deploy: false });
     });
 
     test('a change to CI together with the Worker deploys', () => {

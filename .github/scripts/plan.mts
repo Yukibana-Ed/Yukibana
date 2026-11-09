@@ -10,6 +10,10 @@
 // BASE is the commit the run compares with: the pull request's base, the merge queue's base, the commit a push replaced,
 // or (deploy-cloud.yml) the last commit deployed. Without one (a run by hand, a new branch), everything runs.
 // ci.yml reads every output but `deploy`; deploy-cloud.yml reads only `deploy`.
+//
+// A test-only dependency counts like any other: packages/fixtures is a devDependency of the client, the CLI and the
+// Worker, so a change to the fixture repository affects those and everything depending on them, and deploys and runs
+// the IDE's end-to-end tests. Accepted: the fixture rarely changes, and telling the graph's edges apart is machinery.
 import { execFileSync } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
 import path from 'node:path';
@@ -56,8 +60,10 @@ export interface Plan {
     /** `true` iff the licenses of the npm dependencies and of the IDE's bundled plugins are checked. */
     readonly licenses: boolean;
     /**
-     * `true` iff a pull request's Worker may be uploaded as a preview: the Worker is affected. A change to `cloud/db` does
-     * not rule one out; its preview runs without the change's migrations, and its comment says so.
+     * `true` iff a pull request's Worker may be uploaded as a preview: a file in `cloud/web` or in a package it depends on
+     * changed. A change to `cloud/db` does not rule one out; its preview runs without the change's migrations, and its
+     * comment says so. A change outside every package alone (CI, a root config, the lockfile) has none, so that it leaves
+     * no approval waiting.
      */
     readonly preview: boolean;
     /**
@@ -126,7 +132,7 @@ export function decide(change: Change, all: readonly string[]): Plan {
         // The npm dependencies are in the lockfile, the plugins are listed in ide/package.json, and the rules are checked
         // against the real tree when they change.
         licenses: files.some(f => LICENSE_INPUTS.has(f)),
-        preview: packages.includes('@yukibana/cloud-web'),
+        preview: change.affected.includes('@yukibana/cloud-web'),
         deploy: change.affected.some(p => CLOUD_PACKAGES.has(p)) || files.some(f => DEPLOY_INPUTS.has(f)),
     };
 }
