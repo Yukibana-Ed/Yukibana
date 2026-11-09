@@ -12,9 +12,15 @@
 > 3. Create this repository's `production` and `preview` environments with their secrets (step 5). Drift uses
 >    `production` too.
 > 4. In `main`'s branch protection (or ruleset), remove the old required checks, whose jobs no longer exist (the IDE's
->    build.yml), make `ci-ok` the one required check, and turn on the merge queue.
-> 5. Merge the pull request that adds these workflows. It changes `deploy-cloud.yml`, so its push to `main` is the
->    first deploy from here; if it ran before step 3, it fails at Credentials: run Deploy cloud by hand then.
+>    build.yml), make `ci-ok` the one required check, and turn on the merge queue with the merge method **Merge
+>    commit**. Never squash or rebase, in the queue or for the pull request of step 5: that pull request starts with the
+>    merge commit that imports the old repositories' histories, and a squash or a rebase flattens them away.
+>    "Require branches to be up to date before merging" adds nothing once the queue is on: the queue already tests the
+>    exact commit that lands, the pull request merged onto `main` as it will be, and only that commit reaches `main`.
+>    It would only make every pull request be updated by hand before it may enter the queue.
+> 5. Merge the pull request that adds these workflows, through the queue, as a merge commit. It changes
+>    `deploy-cloud.yml`, so once CI has passed on the commit it puts on `main`, that is the first deploy from here; if
+>    it ran before step 3, it fails at Credentials: run Deploy cloud by hand then.
 
 One Supabase project (Postgres and Auth), one Cloudflare Worker, one R2
 bucket. Everything below fits the free tier of both, with one caveat: R2 asks
@@ -38,7 +44,7 @@ queue. Four workflows listen to the repository:
                                 and, for a pull request without a migration, a preview build
  CI of a pull request ──────▶ Preview (preview.yml), once a maintainer approves
                                 wrangler versions upload → a preview URL on the pull request
- push to main ──────────────▶ Deploy cloud (deploy-cloud.yml), when the cloud is affected
+ CI passed for main ────────▶ Deploy cloud (deploy-cloud.yml), when the cloud is affected
                                 placeholders → secrets → migration list → db push
                                 → cloud/db/ops/bootstrap.sql → config diff → config push
                                 → build → wrangler deploy
@@ -48,9 +54,9 @@ queue. Four workflows listen to the repository:
 
 | | Triggered by | Does | Needs |
 | --- | --- | --- | --- |
-| **CI** | pull requests, the merge queue, pushes to `main` | lint, typecheck, unit tests and builds of the packages the change affects (pnpm's package graph); `yukibana check` over the fixture; when `cloud/web` or `cloud/db` is affected, the real stack on the runner: every migration from empty, pgTAP, the Realtime policy and event trigger checks, the integration suite; squawk is `cloud/db`'s lint; the devcontainer build when `cloud/dev` changed, or what installs read (`package.json`, the lockfile, `pnpm-workspace.yaml`) | nothing secret |
+| **CI** | pull requests, the merge queue, pushes to `main` | lint, typecheck, unit tests and builds of the packages the change affects (pnpm's package graph); `yukibana check` over the fixture; when `cloud/web` or `cloud/db` is affected, the real stack on the runner: every migration from empty, pgTAP, the Realtime policy and event trigger checks, the integration suite; squawk is `cloud/db`'s lint; the devcontainer build when `cloud/dev` changed, or what its install reads (`package.json`, the lockfile, `pnpm-workspace.yaml`, the manifests of `cloud/db`, `cloud/web`, `packages/cli` and `packages/client`), or `cloud/db/supabase/config.toml`, which its start runs | nothing secret |
 | **Preview** | CI of a pull request from a branch of this repository that affects `cloud/web` and does not touch `cloud/db` | uploads the build CI made as a preview version (`wrangler versions upload --preview-alias pr-<n>`), and comments its URL | a maintainer's approval of the `preview` environment, and its Cloudflare secrets |
-| **Deploy cloud** | a push to `main` of ISC-HEI/Yukibana whose changes since the last successful run affect `@yukibana/cloud-web` or `@yukibana/cloud-db` (or a package they use), or change the lockfile, `package.json`, `pnpm-workspace.yaml` or `deploy-cloud.yml`; or by hand | refuses a commit older than the last deploy's, checks no placeholder is left, checks every secret is set, lists then applies pending migrations, runs `cloud/db/ops/bootstrap.sql`, prints the settings diff, pushes `cloud/db/supabase/config.toml`'s production block, then builds and deploys the Worker. One run at a time (`concurrency: deploy-cloud`). | the `production` environment's secrets, step 5 |
+| **Deploy cloud** | CI passing for a push to `main` of ISC-HEI/Yukibana (`workflow_run`), when the changes since the last successful run affect `@yukibana/cloud-web` or `@yukibana/cloud-db` (or a package they use, such as `@yukibana/client`, whose `yukibana.schema.json` the Worker serves), or change the lockfile, `package.json`, `pnpm-workspace.yaml`, `deploy-cloud.yml` or `.github/scripts/production-config.mts`; or by hand, which does not wait for CI. A run's title, `Deploy <commit>`, names the commit it deploys: the one CI passed for, which may be older than `main`'s head by the time it runs | refuses a commit older than the last deploy's, checks no placeholder is left, checks every secret is set, lists then applies pending migrations, runs `cloud/db/ops/bootstrap.sql`, prints the settings diff, pushes `cloud/db/supabase/config.toml`'s production block, then builds and deploys the Worker. One run at a time (`concurrency: deploy-cloud`). | the `production` environment's secrets, step 5 |
 | **Drift** | nightly, or by hand | `supabase db diff` of production against the migrations for `public` and `app`, `cloud/db/ops/realtime-policies.sql` and `cloud/db/ops/event-triggers.sql` | `SUPABASE_DB_URL` only |
 
 Two consequences are worth knowing before the first change:
@@ -96,7 +102,7 @@ dropped column is the failure this avoids.
 checkout, which takes effect at once and needs no deploy.
 
 **By hand.** Deploy cloud has a "Run workflow" button (`workflow_dispatch`),
-which deploys `main` whatever changed. A failed deploy is re-run that way, or
+which deploys `main`'s head whatever changed, without waiting for its CI. A failed deploy is re-run that way, or
 with "Re-run jobs" while it is the newest run; the next deploy includes
 everything anyway. A re-run of a commit older than the last successful
 deploy's stops before it changes anything, so that it cannot put an older
@@ -229,7 +235,7 @@ R2 S3 endpoint, which `S3_ENDPOINT` and `S3_PUBLIC_ENDPOINT` in
 
 ## 3. Fill in the three placeholders
 
-`node cloud/dev/scripts/check-production-config.mjs` names them and where each lives;
+`node .github/scripts/production-config.mts` names them and where each lives;
 the deploy workflow runs it first and refuses to deploy while any remain.
 
 | Placeholder | Value |
@@ -391,7 +397,8 @@ not pushed the settings yet. The pushed values are printed by the "Supabase
 settings, before" step of the last deploy.
 
 **A merge to `main` changed nothing on the site.** Look at the Deploy cloud
-run of that commit. Its plan job prints which packages the change affected:
+run titled `Deploy <commit>` for it; there is none while CI on `main` is still
+running, and a run titled `Not deployed` means CI failed for it. Its plan job prints which packages the change affected:
 when neither `@yukibana/cloud-web` nor `@yukibana/cloud-db` is among them,
 nothing was deployed, by design, and so is a change to CI, a root config or
 the fixture repository alone. A failed run is re-run by hand, and a run that waits on another is the

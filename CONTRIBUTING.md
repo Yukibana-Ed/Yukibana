@@ -143,12 +143,12 @@ Every npm package's license, and every plugin the IDE bundles, must be accepted 
 since the base, Markdown aside, and every package depending on them) and runs their `lint`, `typecheck` and `build`
 scripts, and their Vitest projects (each named after its package) in the root's one coverage run; the cloud stack and the IDE's end-to-end tests run only when their packages are affected. A change to a
 file that belongs to no package (the lockfile, a root config, `.github/`, `cloud/dev/`) runs every package's scripts,
-the cloud stack and the end-to-end tests. The devcontainer is built when `cloud/dev/` or what installs read
-(`package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`) changed, and the license check runs when what it checks or its
-rules changed. `ci-ok` is the one required check.
+the cloud stack and the end-to-end tests. The devcontainer is built when `cloud/dev/`, what its install reads
+(`package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, the cloud's, the CLI's and the client's `package.json`) or
+`cloud/db/supabase/config.toml` changed, and the license check runs when what it checks or its rules changed. `ci-ok` is the one required check.
 The files no package owns are checked by `pnpm lint:root`, `pnpm typecheck:root` and `pnpm test:root`.
 
-[deploy-cloud.yml](.github/workflows/deploy-cloud.yml) deploys the cloud from `main`, and
+[deploy-cloud.yml](.github/workflows/deploy-cloud.yml) deploys the cloud from `main` once CI has passed there, and
 [preview.yml](.github/workflows/preview.yml) uploads a pull request's Worker as a preview once a maintainer approves;
 [docs/cloud/deploy.md](docs/cloud/deploy.md) describes both.
 
