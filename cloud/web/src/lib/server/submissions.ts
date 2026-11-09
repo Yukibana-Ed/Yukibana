@@ -3,23 +3,32 @@
  *  make exactly the same decisions.
  */
 
-import { error } from '@sveltejs/kit';
+import { error, isHttpError } from '@sveltejs/kit';
 import type { Claims } from '#lib/claims.ts';
 import { isGzip, sha256 } from '#lib/bytes.ts';
 import { submissionKey, trustId, trustKey, type ObjectKey, type ProjectId, type ReleaseId, type SubmissionId } from '#lib/ids.ts';
 import { report } from '#lib/report.ts';
 import { NOT_ACCEPTING, refusalMessage, type RefusalRow } from '#lib/refusal.ts';
-import { asUser, statusOf } from './db';
+import { asUser, Misconfigured, statusOf } from './db';
 import type { Context } from './context';
 
+/** A submission the database has recorded. */
 export interface Accepted {
+    /** Its id, which also names its object (`submissionKey`). */
     readonly submissionId: SubmissionId;
+    /** The body's size in bytes. */
     readonly byteSize: number;
+    /** The body's SHA-256, as 64 lowercase hex digits. */
     readonly sha256: string;
 }
 
 /** Stores `body` as a new submission by the caller to `project`, or throws
- *  the HTTP error that says why not. The order matters: the cheap checks
+ *  the HTTP error that says why not: 400 for an empty body, 413 for one over
+ *  `submissionMaxBytes`, 415 for one that is not gzip, 403 for a refusal,
+ *  500 for a failure of the server's (the database or the bucket), which is
+ *  reported and answered with a fixed sentence, or with the operator's
+ *  sentence when the connection cannot become its role (`Misconfigured`).
+ *  Nothing else is thrown. The order matters: the cheap checks
  *  first, so a late student is told before uploading; the object before the
  *  row, so every row has a body; the row inside the caller's policies, so
  *  the deadline is the database's decision (see `recordSubmission`).
@@ -36,9 +45,26 @@ export async function acceptSubmission(ctx: Context, claims: Claims, project: Pr
     if (body.byteLength > ctx.config.submissionMaxBytes) error(413, `The submission is larger than ${ctx.config.submissionMaxBytes} bytes.`);
     if (!isGzip(body)) error(415, 'A submission is a .tar.gz archive.');
 
-    const refused = await refusal(ctx, claims, project);
+    let refused: string | null;
+    try {
+        refused = await refusal(ctx, claims, project);
+    } catch (e) {
+        failed(e);
+    }
     if (refused !== null) error(403, refused);
     return recordSubmission(ctx, claims, project, body, base);
+}
+
+/** Answers a failure that is not a refusal, always by throwing an HTTP
+ *  error. A SvelteKit error passes through; a connection that cannot
+ *  become its role is a 500 that says so, for the operator; anything else
+ *  is reported and answered with a fixed sentence, since its message may
+ *  quote a query or a value. */
+function failed(e: unknown): never {
+    if (isHttpError(e)) throw e;
+    if (e instanceof Misconfigured) error(500, e.message);
+    report('submissions', e instanceof Error ? e.message : String(e));
+    error(500, 'The submission could not be recorded.');
 }
 
 /** The second half of `acceptSubmission`, after its checks: writes the
@@ -53,12 +79,25 @@ export async function acceptSubmission(ctx: Context, claims: Claims, project: Pr
  *  came back" is a refusal, the object is deleted, and the 403 says why.
  *  The insert policy's own error (42501) is reached by a change of role in
  *  between: unenrolled, or made staff. A failure to delete the object is
- *  reported, not swallowed. */
+ *  reported, not swallowed. Throws only HTTP errors, as `acceptSubmission`
+ *  does.
+ *
+ *  - Requires: `body` passed `acceptSubmission`'s emptiness, size and gzip
+ *    checks. Not checked here: a body that did not is stored and recorded
+ *    as it is. `app.can_submit` is not asked first either; the insert's
+ *    policies are the only check. */
 export async function recordSubmission(ctx: Context, claims: Claims, project: ProjectId, body: Uint8Array, base: ReleaseId | null): Promise<Accepted> {
     const digest = await sha256(body);
     const id = crypto.randomUUID() as SubmissionId; // a v4 is fine here: the key needs to be unguessable, not sortable
     const key = submissionKey(id);
-    await ctx.bucket.put(key, body, 'application/gzip');
+    try {
+        await ctx.bucket.put(key, body, 'application/gzip');
+    } catch (e) {
+        // No row refers to it yet; a put that failed half-way is deleted, if
+        // there is anything to delete, so nothing is left unaccounted for.
+        await forget(ctx, key);
+        failed(e);
+    }
 
     let stored: boolean;
     try {
@@ -72,21 +111,29 @@ export async function recordSubmission(ctx: Context, claims: Claims, project: Pr
         });
     } catch (e) {
         await forget(ctx, key);
-        const { status, message } = statusOf(e);
-        if (status === 500) {
-            report('submissions', message);
-            error(500, 'The submission could not be recorded.');
-        }
-        error(403, (await refusal(ctx, claims, project)) ?? NOT_ACCEPTING);
+        if (statusOf(e).status === 500) failed(e);
+        error(403, (await reason(ctx, claims, project)) ?? NOT_ACCEPTING);
     }
     if (!stored) {
         await forget(ctx, key);
-        error(403, (await refusal(ctx, claims, project)) ?? NOT_ACCEPTING);
+        error(403, (await reason(ctx, claims, project)) ?? NOT_ACCEPTING);
     }
     return { submissionId: id, byteSize: body.byteLength, sha256: Array.from(digest, b => b.toString(16).padStart(2, '0')).join('') };
 }
 
-/** Deletes the object of a submission whose row was refused. */
+/** `refusal`, for a row the database has already refused: a failure to
+ *  ask is reported and answered as a 500 (`failed`) rather than thrown as
+ *  it is. */
+async function reason(ctx: Context, claims: Claims, project: ProjectId): Promise<string | null> {
+    try {
+        return await refusal(ctx, claims, project);
+    } catch (e) {
+        failed(e);
+    }
+}
+
+/** Deletes the object of a submission whose row was refused, reporting
+ *  rather than throwing when it cannot. */
 async function forget(ctx: Context, key: ObjectKey): Promise<void> {
     try {
         await ctx.bucket.delete(key);
@@ -120,8 +167,11 @@ async function refusal(ctx: Context, claims: Claims, project: ProjectId): Promis
     });
 }
 
-/** A URL for the caller to download `submission`, if they may. The policy
- *  on the table is the check: a row the caller cannot read is a 404. */
+/** Returns a presigned URL, valid for 60 seconds, for the caller to
+ *  download `submission`, if they may, named
+ *  `<slug>-<github login or "student">-<time>.tar.gz`. The policy on the
+ *  table is the check: a row the caller cannot read is a 404, the same as
+ *  an id that names nothing. */
 export async function submissionUrl(ctx: Context, claims: Claims, submission: SubmissionId): Promise<URL> {
     const row = await asUser(ctx.sql, claims, async tx => {
         const [r] = await tx<{ object_key: string; slug: string; submitted_at: Date; login: string | null }[]>`
@@ -137,8 +187,10 @@ export async function submissionUrl(ctx: Context, claims: Claims, submission: Su
     return ctx.bucket.presignGet(trustKey(row.object_key), 60, `${row.slug}-${row.login ?? 'student'}-${stamp}.tar.gz`);
 }
 
-/** A URL for the caller to download `project`'s starter, if they may and
- *  one has been built. `app.current_starter` decides both. */
+/** Returns a presigned URL, valid for 60 seconds, for the caller to
+ *  download `project`'s starter, if they may and one has been published,
+ *  named after the project's slug. `app.current_starter` decides both; no
+ *  starter for the caller is a 404, whichever the reason. */
 export async function starterUrl(ctx: Context, claims: Claims, project: ProjectId): Promise<URL> {
     const row = await asUser(ctx.sql, claims, async tx => {
         const [r] = await tx<{ key: string | null; slug: string | null }[]>`

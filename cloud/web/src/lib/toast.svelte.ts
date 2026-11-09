@@ -6,8 +6,12 @@
 
 import { untrack } from 'svelte';
 
+/** One notice on screen. */
 export interface Toast {
+    /** Its number, unique for the life of the page: what `dismiss` takes. */
     readonly id: number;
+    /** The line shown, for the person. Two notices on screen never have the
+     *  same message. */
     readonly message: string;
     /** Text to offer under "Copy details" (an incident's report), or null. */
     readonly details: string | null;

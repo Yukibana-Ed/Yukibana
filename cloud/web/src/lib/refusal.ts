@@ -18,9 +18,14 @@ export type RefusalReason =
 
 /** One row of `app.submit_refusal`. Field names are the database's. */
 export interface RefusalRow {
+    /** Why. A database newer than this code may name a reason not in
+     *  `RefusalReason`; `refusalMessage` answers that as it does no row. */
     readonly reason: RefusalReason;
+    /** The caller's role in the project's edition. */
     readonly role: 'student' | 'assistant' | 'owner';
+    /** The course name of the project's edition. */
     readonly course_title: string;
+    /** The edition's label, like "2026 autumn". */
     readonly edition_label: string;
     /** When the window opens (`not_open`; null for a draft) or closed
      *  (`closed`); null for `staff`. */
@@ -35,9 +40,10 @@ export const NOT_ACCEPTING = 'This project is not accepting submissions from you
 
 const article = (word: string): string => (/^[aeiou]/i.test(word) ? 'an' : 'a');
 
-/** The sentence a refused submission answers with. `row` null, or a reason
- *  this version does not know (a newer database), says only what it always
- *  said. */
+/** Returns the sentence a refused submission answers with, times in UTC
+ *  (`utc` in #lib/format). `row` null, a reason this version does not know
+ *  (a newer database), or `closed` without a time says only
+ *  `NOT_ACCEPTING`, what it always said. */
 export function refusalMessage(row: RefusalRow | null): string {
     switch (row?.reason) {
         case 'staff':

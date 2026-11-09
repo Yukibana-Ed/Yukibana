@@ -22,6 +22,15 @@ function browserIncident(thrown: unknown, route: string | null): Incident {
     return incidentOf(thrown, { id: crypto.randomUUID(), at: new Date(), side: 'browser', version, method: null, url: new URL(location.href), route });
 }
 
+/** SvelteKit's hook for an error while navigating in the browser: returns
+ *  the error page's `App.Error`, a fixed message and a browser incident
+ *  carrying the thrown value's message (it was made in the browser of the
+ *  person reading it), and logs the thrown value to the console.
+ *
+ *  Only `kind: 'unknown'` is answered: SvelteKit's own errors (a 404 for a
+ *  route that does not exist, an `error()` a load threw on purpose) return
+ *  undefined, so SvelteKit shows their own status and message, and nothing
+ *  is logged for them. */
 export const handleError: HandleClientError = ({ kind, error: thrown, event }) => {
     if (kind !== 'unknown') return;
     console.error(thrown);
@@ -41,6 +50,12 @@ function heard(thrown: unknown): void {
     toast(`Something went wrong in this page: ${message}`, incidentText(incident));
 }
 
+/** SvelteKit's hook run once when the app starts in the browser: listens on
+ *  `window` for `error` and `unhandledrejection` for the rest of the page's
+ *  life, and turns each, unless it is one of `NOT_OURS`, into a notice
+ *  (`toast`) whose details are the incident's text. Never sends anything,
+ *  never cancels the event (the console still shows it), and does not
+ *  remove its listeners. */
 export const init: ClientInit = () => {
     window.addEventListener('error', event => heard(event.error ?? event.message));
     window.addEventListener('unhandledrejection', event => heard(event.reason));

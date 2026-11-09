@@ -37,6 +37,13 @@ async function formRequest(event: RequestEvent): Promise<ConnectRequest> {
     return requestOf(q);
 }
 
+/** The confirmation page: returns the CLI's request as the form carries it
+ *  back, the four-character code the CLI printed (`loginCode`), and whom
+ *  the browser is signed in as. Only reads, as a `load` must, even when it
+ *  sends the browser on. In this order: on any origin but the site's, a 303
+ *  to the same address there; a request that is not one, a 400; no OAuth
+ *  client configured, a 503; nobody signed in, a 303 to the login page,
+ *  which comes back here. The page may not be framed. */
 export const load: PageServerLoad = async ({ locals, url, setHeaders }) => {
     const config = workerConfig();
     // The login works only on Auth's site_url (see #lib/connect): elsewhere,
@@ -58,6 +65,8 @@ export const load: PageServerLoad = async ({ locals, url, setHeaders }) => {
     };
 };
 
+/** The page's three buttons. Each reads the request again from the form
+ *  and answers a 400 if it is not one; each ends in a 303 or an error page. */
 export const actions: Actions = {
     /** The person confirmed. The site asks Auth's OAuth server for the
      *  authorization itself and sends the browser with its id to

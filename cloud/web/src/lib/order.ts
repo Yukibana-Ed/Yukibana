@@ -3,6 +3,11 @@
  *  moved item between (see app.move_project). Pure.
  */
 
+/** One move, worked out.
+ *
+ *  Invariant: `after` and `before` are the moved item's neighbours in
+ *  `items`, so at most one of them is null (both only in a list of one,
+ *  which `move` never answers for). */
 export interface Move<T> {
     /** The list after the move. */
     readonly items: T[];
@@ -12,9 +17,16 @@ export interface Move<T> {
     readonly before: T | null;
 }
 
-/** Moves the item at `from` so that it ends up at index `to` of the result.
- *  Null when nothing moves (same place, or an index out of range). */
+/** Returns the move of the item at `from` to index `to` of the result,
+ *  without changing `list`; null when nothing moves (`from === to`,
+ *  either index not a whole number, which includes NaN, or either index
+ *  outside `list`, which includes every index of an empty list). A
+ *  fractional index used to pass the bounds checks and answer a move with
+ *  no neighbours at all. Indices are of `list` and of the result alike: moving down by one
+ *  is `to = from + 1`. Neighbours are compared by position, not by value,
+ *  so a list with repeated items moves the one at `from`. */
 export function move<T>(list: readonly T[], from: number, to: number): Move<T> | null {
+    if (!Number.isInteger(from) || !Number.isInteger(to)) return null;
     if (from === to || from < 0 || from >= list.length || to < 0 || to >= list.length) return null;
     const items = [...list];
     const [moved] = items.splice(from, 1);

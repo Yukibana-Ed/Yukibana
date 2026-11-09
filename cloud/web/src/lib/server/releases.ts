@@ -2,7 +2,8 @@
  *  serves CI (a project token) and the CLI as a person (their access
  *  token), so both make the same decisions in the same order: check the
  *  archives, store both, then record the row under the caller's policies;
- *  a refused row deletes both objects again.
+ *  a refused row, or a bucket that fails part way, deletes both objects
+ *  again.
  */
 
 import { error, isHttpError } from '@sveltejs/kit';
@@ -13,18 +14,42 @@ import { report } from '#lib/report.ts';
 import { asPublisher, asUser, Misconfigured, statusOf } from './db';
 import type { Context } from './context';
 
+/** One archive of a release, as bytes. Nothing in the app uses it any
+ *  more: `publishRelease` takes the two archives as plain `Uint8Array`s. */
 export interface Archive {
+    /** The archive's bytes, a .tar.gz. */
     readonly bytes: Uint8Array;
 }
 
+/** What a publish recorded, for the publisher to check against what it
+ *  sent. */
 export interface Published {
+    /** The release's id: the one the publisher chose, or the database's. */
     readonly releaseId: ReleaseId;
+    /** The starter as stored: its size in bytes and its SHA-256 as 64
+     *  lowercase hex digits. */
     readonly starter: { readonly size: number; readonly sha256: string };
+    /** The teacher archive as stored, likewise. */
     readonly teacher: { readonly size: number; readonly sha256: string };
 }
 
-/** Who is publishing: a person on the page, or a token from CI. */
-export type Publisher = { readonly kind: 'user'; readonly claims: Claims } | { readonly kind: 'token'; readonly secret: string };
+/** Who is publishing: a person (on the page, or the CLI with their access
+ *  token), or a project token from CI. */
+export type Publisher =
+    | {
+          /** A person, on the page or through the CLI with their own access
+           *  token, publishing under their own policies. */
+          readonly kind: 'user';
+          /** Their verified claims. */
+          readonly claims: Claims;
+      }
+    | {
+          /** A project token. */
+          readonly kind: 'token';
+          /** The token's secret as the request carried it; only its SHA-256
+           *  reaches the database, and it is never logged. */
+          readonly secret: string;
+      };
 
 const hex = (b: Uint8Array): string => Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
 
@@ -34,8 +59,16 @@ async function tokenHash(secret: string): Promise<Uint8Array> {
 }
 
 /** Publishes `starter` and `teacher` as a release of `project`, or throws the
- *  HTTP error that says why not. A token that does not name `project` is a
- *  403 before any byte is stored.
+ *  HTTP error that says why not. Every failure is one: a database or bucket
+ *  failure is reported and answered as a 500 that carries its code and not
+ *  its message, and a connection that cannot become its role as a 500 that
+ *  says so (see `refuse`). Whatever fails after the first object is
+ *  written, both objects are deleted again, and an object that cannot be
+ *  deleted is reported as orphaned. Before anything is stored: an empty
+ *  archive or a `commit` that is not 7 to 64 hex digits is a 400, one over
+ *  `releaseMaxBytes` a 413, one that is not gzip a 415; a token that does
+ *  not name `project`, or a person who may not edit its projects, is a 403.
+ *  `label` is passed to the database as it is, which decides what it takes.
  *
  *  `release` is the id the publisher chose and wrote into the starter's
  *  yukibana.json, so a student's folder says which release it is; the row
@@ -89,10 +122,13 @@ export async function publishRelease(
     const object = crypto.randomUUID();
     const keys = { starter: starterKey(project, object), teacher: teacherKey(project, object) };
     const digests = { starter: await sha256(starter), teacher: await sha256(teacher) };
-    await ctx.bucket.put(keys.starter, starter, 'application/gzip');
-    await ctx.bucket.put(keys.teacher, teacher, 'application/gzip');
 
     try {
+        // Inside the try, so a bucket that fails the second put does not leave
+        // the first object behind unreported: the cleanup below deletes both
+        // keys, and deleting one that was never written is not an error.
+        await ctx.bucket.put(keys.starter, starter, 'application/gzip');
+        await ctx.bucket.put(keys.teacher, teacher, 'application/gzip');
         const args = [
             release,
             label,
@@ -143,8 +179,9 @@ export async function publishRelease(
  *  fix it and a generic sentence sends them looking in the wrong place.
  *  Anything else the database refused says what the migration wrote, which
  *  those messages exist to be. An unexpected failure is written down and
- *  answered with its SQLSTATE and nothing more: the message may quote the
- *  query, and the code is enough to say where to look. */
+ *  answered with its code and nothing more (`statusOf`'s: the SQLSTATE, or
+ *  a client or system code such as `ECONNREFUSED`): the message may quote
+ *  the query, and the code is enough to say where to look. */
 function refuse(e: unknown): never {
     if (isHttpError(e)) throw e;
     if (e instanceof Misconfigured) error(500, e.message);
@@ -155,10 +192,15 @@ function refuse(e: unknown): never {
     if (code === '23505') error(409, 'A release with this id has already been published; a retry of the same publish has nothing left to do.');
     if (status !== 500) error(status, message);
     report('releases', message);
-    error(500, `The release could not be recorded${code === '' ? '' : ` (SQLSTATE ${code})`}; the Worker log says why.`);
+    error(500, `The release could not be recorded${code === '' ? '' : ` (code ${code})`}; the Worker log says why.`);
 }
 
-/** A URL for the caller to download one archive of `release`, if they may.
+/** Returns a presigned URL, valid for 60 seconds, for the caller to
+ *  download one archive of `release`, if they may, named
+ *  `<slug>-<archive>[-<label>].tar.gz`, where the label has each run of
+ *  characters outside `[A-Za-z0-9._-]` replaced by one `_` and is left out
+ *  when empty; or `release-<id>-<archive>.tar.gz` when the caller reads no
+ *  release row (a student downloading the starter).
  *
  *  The teacher archive is for staff of the release's edition, and the
  *  release_read policy on the table is the check. The starter is also for a

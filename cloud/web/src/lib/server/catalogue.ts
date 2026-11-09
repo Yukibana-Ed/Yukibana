@@ -16,6 +16,10 @@ import type { Context } from './context';
 
 const iso = (d: Date | null): string | null => (d === null ? null : d.toISOString());
 
+/** Returns the caller as `GET /api/me` shows them: the token's id and
+ *  address, and their profile as their own `app_user` row has it. A caller
+ *  whose row does not exist yet (or is not visible) gets null names and the
+ *  platform role `user`, not an error. */
 export async function me(ctx: Context, claims: Claims): Promise<MeJson> {
     return asUser(ctx.sql, claims, async tx => {
         const [u] = await tx<{ full_name: string | null; github_login: string | null; role: string }[]>`
@@ -24,6 +28,11 @@ export async function me(ctx: Context, claims: Claims): Promise<MeJson> {
     });
 }
 
+/** Returns the editions the caller is enrolled in, with their role in
+ *  each: the policy shows nobody, admins included, any other. Ordered
+ *  current before archived, then by course code, then by label descending
+ *  (so "2026 autumn" before "2025 autumn"). Empty, not an error, for
+ *  someone enrolled nowhere. */
 export async function editions(ctx: Context, claims: Claims): Promise<EditionJson[]> {
     return asUser(ctx.sql, claims, async tx => {
         const rows = await tx<{ edition_id: string; label: string; archived: boolean; code: string; title: string; role: EditionRole }[]>`
@@ -34,6 +43,10 @@ export async function editions(ctx: Context, claims: Claims): Promise<EditionJso
     });
 }
 
+/** Returns the enrolments of `edition` the caller may read: every row for
+ *  staff, only their own for a student. Ordered by role from `owner` down
+ *  (the enum's order, descending), then by address. Throws a 404 when the
+ *  caller cannot see the edition, whether or not it exists. */
 export async function members(ctx: Context, claims: Claims, edition: EditionId): Promise<MemberJson[]> {
     return asUser(ctx.sql, claims, async tx => {
         const seen = await tx`select 1 from course_edition where edition_id = ${edition}`;
@@ -103,28 +116,42 @@ async function projectRows(tx: Tx, claims: Claims, edition: EditionId | null, on
     }));
 }
 
-/** The projects the caller can see, optionally in one edition. */
+/** Returns the projects the caller can see, in `edition` or, for null, in
+ *  every edition: all of them for staff, for a student only those whose
+ *  window is open. Ordered current editions first, then by deadline
+ *  (none last), course code and title. An edition the caller cannot see,
+ *  or that does not exist, is an empty list, not a 404. */
 export async function projects(ctx: Context, claims: Claims, edition: EditionId | null): Promise<ProjectJson[]> {
     return asUser(ctx.sql, claims, tx => projectRows(tx, claims, edition, null));
 }
 
+/** Returns project `id` as `projects` would list it. Throws a 404 when
+ *  the caller cannot see it, whether or not it exists: for a student, that
+ *  includes a project of their own edition outside its window. */
 export async function project(ctx: Context, claims: Claims, id: ProjectId): Promise<ProjectJson> {
     const [p] = await asUser(ctx.sql, claims, tx => projectRows(tx, claims, null, id));
     if (p === undefined) error(404, 'No such project.');
     return p;
 }
 
+/** Which of a project's submissions `submissions` returns. Both apply
+ *  together; neither widens what the policies let the caller read. */
 export interface SubmissionFilter {
-    /** Only each author's newest. */
+    /** `true` for only each author's newest. */
     readonly latest: boolean;
+    /** Only this author's, or null for every author the caller may read. */
     readonly author: UserId | null;
 }
 
-/** Submissions to `id`, newest first. "Newest" is `submitted_at`, which the
- *  database stamps; the id breaks a tie only so the answer is stable. "Late"
- *  is that time against the project's deadline as it is now. The project
- *  comes from `app.deadline_of`, because a student whose window has closed
- *  no longer sees the project but still reads their own submissions to it. */
+/** Returns the submissions to `id` the caller may read (every author's for
+ *  staff, their own for a student), narrowed by `filter`, newest first.
+ *  "Newest" is `submitted_at`, which the database stamps; the id breaks a
+ *  tie only so the answer is stable. "Late" is that time against the
+ *  project's deadline as it is now. Throws a 404 when the caller sees
+ *  neither the project nor any submission to it, whether or not it exists.
+ *  The deadline comes from `app.deadline_of` rather than a join on
+ *  `project`, because a student whose window has closed no longer sees the
+ *  project but still reads their own submissions to it. */
 export async function submissions(ctx: Context, claims: Claims, id: ProjectId, filter: SubmissionFilter): Promise<SubmissionJson[]> {
     return asUser(ctx.sql, claims, async tx => {
         const seen = await tx`
@@ -174,7 +201,7 @@ export async function submissions(ctx: Context, claims: Claims, id: ProjectId, f
     });
 }
 
-/** A project's releases, newest first. Staff only by the table's policy: a
+/** Returns project `id`'s releases, newest first (by `seq`). Staff only by the table's policy: a
  *  student gets an empty list for a project they can see, and a 404 for one
  *  they cannot. */
 export async function releases(ctx: Context, claims: Claims, id: ProjectId): Promise<ReleaseJson[]> {
@@ -211,11 +238,22 @@ export async function releases(ctx: Context, claims: Claims, id: ProjectId): Pro
     });
 }
 
-/** Owner writes on the roster. The functions check the caller and audit. */
+/** Enrols `email` in `edition` with `role`, as `app.enrol` does it: the
+ *  function checks that the caller is an owner of the edition, writes, and
+ *  audits. An address already enrolled stays as it is, role included, and
+ *  this still returns normally (`on conflict do nothing`); changing a role
+ *  is `app.set_edition_role`. Throws the database's error when it refuses,
+ *  a 42501 for a caller who is not an owner (map it with `statusOf`).
+ *  `email` is passed as it is; the function lowercases. */
 export async function enrol(ctx: Context, claims: Claims, edition: EditionId, email: string, role: EditionRole): Promise<void> {
     await asUser(ctx.sql, claims, tx => tx`select app.enrol(${edition}, ${email}, ${role}::app.edition_role)`);
 }
 
+/** Removes `email`'s enrolment from `edition`, as `app.unenrol` does it,
+ *  checking the caller and auditing likewise. An address that is not
+ *  enrolled is a no-op that returns normally. Throws the database's error
+ *  when it refuses: 42501 for a caller who is not an owner, 23514 (a 409 by
+ *  `statusOf`) for removing the edition's last owner. */
 export async function unenrol(ctx: Context, claims: Claims, edition: EditionId, email: string): Promise<void> {
     await asUser(ctx.sql, claims, tx => tx`select app.unenrol(${edition}, ${email})`);
 }

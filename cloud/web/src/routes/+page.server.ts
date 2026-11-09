@@ -1,6 +1,7 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { asUser, clashOf, statusOf } from '#lib/server/db.ts';
+import { uuidOf, type CourseId } from '#lib/ids.ts';
+import { asUser, clashOf, refusalOf } from '#lib/server/db.ts';
 import { text } from '#lib/server/form.ts';
 import { requireClaims, withContext } from '#lib/server/context.ts';
 import { studentProjects } from '#lib/server/student.ts';
@@ -42,7 +43,16 @@ export const load: PageServerLoad = async event => {
     );
 };
 
+/** The home screen's forms, each a teacher's or an admin's. Every action
+ *  requires a signed-in caller (`requireClaims`: otherwise the login page),
+ *  answers `{ ok: true }`, or a `fail` whose `error` is a sentence for the
+ *  person: 400 for an empty field or a course id that is not a uuid, 409
+ *  for a name already taken, the database's status and sentence for
+ *  anything it refused, and a 500 with a fixed sentence (the failure
+ *  itself reported, never shown) for anything else (`refusalOf`). */
 export const actions: Actions = {
+    /** A new course, by `code` and `title`, through `app.create_course`,
+     *  which decides who may (teachers and admins) and audits. */
     createCourse: async event => {
         const claims = requireClaims(event);
         const form = await event.request.formData();
@@ -53,21 +63,29 @@ export const actions: Actions = {
             await withContext(ctx => asUser(ctx.sql, claims, tx => tx`select app.create_course(${code}, ${title})`));
         } catch (e) {
             if (clashOf(e) === 'course_code_key') return fail(409, { error: `A course with the code "${code}" already exists. Add an edition to it instead.` });
-            return fail(statusOf(e).status, { error: statusOf(e).message });
+            const { status, message } = refusalOf('home', e);
+            return fail(status, { error: message });
         }
         return { ok: true };
     },
+    /** A new edition of the course `course_id`, labelled `label`, through
+     *  `app.create_edition`, which decides who may and audits. A `course_id`
+     *  that is empty or not a uuid is a 400 here: left to the database it
+     *  was a 22P02, a 500 whose message quoted the value. A uuid that names
+     *  no course the caller may add to is the database's refusal. */
     createEdition: async event => {
         const claims = requireClaims(event);
         const form = await event.request.formData();
-        const course = text(form, 'course_id');
+        const course = uuidOf<CourseId>(text(form, 'course_id'));
+        if (course === null) return fail(400, { error: 'Choose the course to add the edition to.' });
         const label = text(form, 'label');
         if (label === '') return fail(400, { error: 'An edition needs a label, like "2026 autumn".' });
         try {
             await withContext(ctx => asUser(ctx.sql, claims, tx => tx`select app.create_edition(${course}, ${label})`));
         } catch (e) {
             if (clashOf(e) === 'course_edition_course_id_label_key') return fail(409, { error: `This course already has an edition called "${label}". Choose another label.` });
-            return fail(statusOf(e).status, { error: statusOf(e).message });
+            const { status, message } = refusalOf('home', e);
+            return fail(status, { error: message });
         }
         return { ok: true };
     },

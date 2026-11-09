@@ -26,6 +26,8 @@ type NoSchema = {
         CompositeTypes: Record<string, never>;
     };
 };
+/** A Supabase client used for Auth only: its data API has no tables, by
+ *  type, so a query cannot go around `asUser`. */
 export type Supabase = SupabaseClient<NoSchema>;
 
 /** The options a cookie is set with, as SvelteKit's `cookies.set` takes
@@ -44,13 +46,17 @@ export type CookieSerializeOptions = NonNullable<Parameters<Cookies['set']>[2]>;
  *  browser keeps it rather than dropping it without a word: a Domain asked
  *  for is left out, and Secure is set whether or not it was asked for.
  *
- *  Why it is not left to the library: programs a teacher runs execute on
- *  the packs origin, a different registrable domain, precisely so that they
- *  cannot act as the teacher. That only holds while this cookie stays home.
- *  A SameSite=None session cookie would ride along with a `fetch` that a
- *  submitted program makes to this site, and a POST to enrol, set a
- *  platform role or publish would succeed as the teacher. So a library
- *  default or a future option cannot make it None here.
+ *  Why it is not left to the library: a SameSite=None session cookie would
+ *  ride along with a `fetch` that a page on any other site makes to this
+ *  one, and a POST to enrol, set a platform role or publish would arrive
+ *  as the teacher. So a library default or a future option cannot make it
+ *  None here. Lax does not keep it from a sibling subdomain's requests:
+ *  Light, at light.yukibana.dev, is the same site, and the browser sends
+ *  Lax cookies with whatever its pages make it send here. Those are refused
+ *  by `forgery` (#lib/server/forgery) and by GETs having no side effects,
+ *  not by this. (This comment used to say that programs a teacher runs
+ *  execute on "the packs origin, a different registrable domain"; no such
+ *  origin exists in this repository, and Light is a sibling.)
  *
  *  Strict is kept when asked for, as `'strict'` or as `true`, which is the
  *  `cookie` package's spelling of Strict. (This used to turn `true` into
@@ -65,7 +71,7 @@ export function sessionCookieOptions(options: CookieSerializeOptions): CookieSer
     return { ...kept, path: '/', secure: true, sameSite: strict ? 'strict' : 'lax' };
 }
 
-/** The names among `names` that are session cookies from before they were
+/** Returns the names among `names`, in their order, that are session cookies from before they were
  *  renamed (@supabase/ssr's default, `sb-<project>-auth-token` and its
  *  chunks and verifier), for the hook to delete. Nothing reads them any
  *  more, so deleting them changes nobody's session; it only stops a browser
@@ -77,7 +83,7 @@ export function staleSessionCookies(names: readonly string[]): string[] {
     return names.filter(name => /^sb-[A-Za-z0-9-]+-auth-token(?:-code-verifier|-user)?(?:\.\d+)?$/.test(name));
 }
 
-/** A Supabase client whose session lives in this request's cookies: it
+/** Returns a Supabase client whose session lives in this request's cookies: it
  *  reads them from `cookies` and writes any new or refreshed session back
  *  there, under `SESSION_COOKIE`'s name and every cookie with
  *  `sessionCookieOptions`. A cookie under any other name, such as one a
@@ -96,9 +102,12 @@ export function supabaseFor(cookies: Cookies, url: string, key: string): Supabas
     });
 }
 
-/** The verified claims of this request, or null. A bearer token wins over
- *  cookies when both are present: the IDE extension is explicit about who
- *  it is. */
+/** Returns the verified claims of this request, or null for nobody, for
+ *  whatever reason (`identify` says which). `authorization` is the request's
+ *  `Authorization` header, or null. A bearer token wins over cookies when
+ *  both are present: the IDE extension is explicit about who it is. A
+ *  header that is not `Bearer <token>` counts as absent, so the cookies
+ *  decide. */
 export async function claimsFor(supabase: Supabase, authorization: string | null): Promise<Claims | null> {
     return (await identify(supabase, authorization)).claims;
 }
@@ -106,8 +115,12 @@ export async function claimsFor(supabase: Supabase, authorization: string | null
 /** Who is asking, as `claimsFor` finds out, and, when they are nobody, why.
  *  `refused` is null for a request that brought no session and no token,
  *  which is simply nobody. Otherwise it says what Auth said about the one
- *  it brought, and `by` says which: a bearer (the CLI, the IDE) or the
- *  browser's session cookie.
+ *  it brought (its message and code), or, when Auth verified a token that
+ *  names no logged-in person (anonymous, or a `sub` that is not a uuid), a
+ *  sentence of this module's; `by` says which it brought: a bearer (the
+ *  CLI, the IDE) or the browser's session cookie. `refused` is for the log
+ *  and the layout's notice, in Auth's words, not a sentence to build on.
+ *  Never throws for a bad token; a client that throws is not caught.
  *
  *  A session that stops counting while a tab is open, its refresh token
  *  revoked or already used, or Auth out of reach, used to read as "not

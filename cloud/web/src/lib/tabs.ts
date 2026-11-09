@@ -7,14 +7,19 @@
  *  starts with `/`, wherever it is in the query.
  */
 
+/** One tab a page offers this person. */
 export interface Tab {
+    /** What `?tab=` says for it, and what `tabOf` returns. */
     readonly id: string;
+    /** The words on the tab, for the person. */
     readonly label: string;
-    /** Shown beside the label, like a number of submissions. */
+    /** Shown beside the label, like a number of submissions; absent for
+     *  none (0 is shown as 0). */
     readonly count?: number;
 }
 
-/** The tab `url` asks for, if this person has it, else the first. Only the
+/** Returns the id of the tab `url` asks for, if it is among `tabs`, else
+ *  the first's, or '' when `tabs` is empty. Only the
  *  query is read, so SvelteKit's read-only `page.url` will do. A tab the
  *  person does not have (a student given `?tab=tokens`) is never shown: it
  *  falls back rather than rendering an empty or forbidden section. */
@@ -23,5 +28,8 @@ export function tabOf(url: { readonly searchParams: { get(name: string): string 
     return tabs.find(t => t.id === asked)?.id ?? tabs[0]?.id ?? '';
 }
 
-/** The action URL for a form inside tab `tab`. */
+/** Returns the relative action URL for a form inside tab `tab` posting to
+ *  the page's action `action` (its name, without the `/`). `tab` is
+ *  encoded; `action` is not, and must be an action's name as SvelteKit
+ *  takes it (letters, digits, `_`). */
 export const actionIn = (tab: string, action: string): string => `?tab=${encodeURIComponent(tab)}&/${action}`;
