@@ -22,6 +22,7 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@yukibana/fixtures": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },

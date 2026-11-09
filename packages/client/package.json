@@ -15,7 +15,6 @@
       "default": "./lib/config.js"
     },
     "./yukibana.schema.json": "./yukibana.schema.json",
-    "./fixtures/repo.tar.gz": "./tests/fixtures/repo.tar.gz",
     "./package.json": "./package.json"
   },
   "scripts": {
@@ -28,6 +27,7 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@yukibana/fixtures": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },

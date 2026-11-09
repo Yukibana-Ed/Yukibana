@@ -178,7 +178,7 @@ so; the bugs are the documentation people read.
   and in CI.
 * `cloud/db/supabase/tests/` is pgTAP. `cloud/db/supabase/seeds/10_test_helpers.sql` gives it
   `tests.create_user`, `tests.authenticate` and lookups that see through RLS.
-* The fixture repository `packages/client/tests/fixtures/repo.tar.gz` is a real pax
+* The fixture repository `packages/fixtures/repo.tar.gz` (`@yukibana/fixtures`) is a real pax
   tarball with a wrapper directory, a global header, a long path and a hidden
   test, because that is what `git archive` and GitHub produce. CI also
   unpacks it and runs `yukibana check` over it.

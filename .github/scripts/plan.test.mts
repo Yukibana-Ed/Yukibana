@@ -69,9 +69,10 @@ describe('what runs', () => {
         expect(decide({ kind: 'shared', affected: [], files: ['.github/scripts/licenses.mts'] }, names).licenses).toBe(true);
     });
 
-    test('a change to the fixture repository alone has the built CLI and the cloud stack check it, and deploys nothing', () => {
-        const plan = decide({ kind: 'packages', affected: ['@yukibana/client'], files: ['packages/client/tests/fixtures/repo.tar.gz'] }, names);
-        expect(plan).toMatchObject({ packages: ['@yukibana/cli', '@yukibana/client'], cloud: true, deploy: false });
+    test('a change to the fixture repository has the built CLI and the cloud stack check it, as packages depending on it', () => {
+        const affected = ['@yukibana/fixtures', '@yukibana/client', '@yukibana/cli', '@yukibana/cloud-web'];
+        const plan = decide({ kind: 'packages', affected, files: ['packages/fixtures/repo.tar.gz'] }, [...names, '@yukibana/fixtures']);
+        expect(plan).toMatchObject({ packages: ['@yukibana/cli', '@yukibana/client', '@yukibana/cloud-web', '@yukibana/fixtures'], cloud: true });
     });
 
     test('a change to CI alone checks every package and deploys nothing', () => {

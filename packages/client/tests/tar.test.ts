@@ -3,13 +3,14 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readTar, writeTar, type Entry } from '../src/lib/tar.js';
 import { gunzip, gzip } from '../src/lib/gzip.js';
 
 const text = (s: string) => new TextEncoder().encode(s);
-const fixture = new URL('./fixtures/repo.tar.gz', import.meta.url);
+const fixture = createRequire(import.meta.url).resolve('@yukibana/fixtures/repo.tar.gz');
 
 test('a GitHub-style tarball is read: wrapper directory, pax global header, long paths', async () => {
     const entries = await readTar(await gunzip(new Uint8Array(readFileSync(fixture))));
