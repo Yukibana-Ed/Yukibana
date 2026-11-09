@@ -382,7 +382,7 @@ repository secret.
 The migrations in this repository have been applied to the production
 project as of 2026-09-18, so the ledger there records them. From that point
 a migration that has run is frozen: every change is a new file, including a
-change to something only ever deployed once. CLAUDE.md says the same thing;
+change to something only ever deployed once. `cloud/CLAUDE.md` says the same thing;
 this is the date it started being true.
 
 

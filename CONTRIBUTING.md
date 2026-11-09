@@ -112,7 +112,7 @@ workspace. `pnpm setup:cloud` or `pnpm setup:cli` installs them, and each has it
 migrations, oxlint over the Edge Functions), `start`, `stop`, `reset` and `test:db` (pgTAP), and any other Supabase
 command runs in `cloud/db` with `pnpm --filter @yukibana/cloud-db exec supabase <command>`. The library the CLI and the IDE share,
 [@yukibana/client](packages/client), compiles into its `lib` on install; rebuild it after changing it with
-`pnpm --filter @yukibana/client prepare`. Their guide is [docs/cloud/CLAUDE.md](docs/cloud/CLAUDE.md).
+`pnpm --filter @yukibana/client prepare`. Their guide is [cloud/CLAUDE.md](cloud/CLAUDE.md).
 
 The cloud's devcontainer is not where editors look for one (`.devcontainer/` at the root), so start it from the root
 with `devcontainer up --workspace-folder . --config cloud/dev/.devcontainer/devcontainer.json`.

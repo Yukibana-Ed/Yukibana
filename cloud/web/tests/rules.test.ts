@@ -16,7 +16,7 @@ function files(dir: string, ext: string): string[] {
 const routes = files(join(src, 'routes'), '.svelte');
 
 // Some rules a type cannot state. They are greps because the rule is about
-// the shape of the tree, and a paragraph in CLAUDE.md is a rule nobody runs.
+// the shape of the tree, and a paragraph in cloud/CLAUDE.md is a rule nobody runs.
 
 test('there are pages to check at all, so this file cannot pass by finding nothing', () => {
     expect(routes.length).toBeGreaterThan(4);

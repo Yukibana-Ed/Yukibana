@@ -1,7 +1,7 @@
 # Nightly: is production exactly what the migrations say? `db diff` compares the database with the migrations applied to
 # a fresh one and prints the difference. Anything printed means something was changed through the dashboard or a shell,
 # and this job fails until it is either reverted or written down as a migration. The diff engine is a detector here,
-# never a generator: see docs/cloud/CLAUDE.md.
+# never a generator: see cloud/CLAUDE.md.
 name: Drift
 
 on:

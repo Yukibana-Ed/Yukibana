@@ -43,7 +43,7 @@ grading integrations would later have to fight:
    cleanly a school's SIS could later drive it. `enrollment.source` says
    which rows a sync owns.
 5. **Submissions are append-only.** No update or delete path exists.
-6. **The schema changes only through migrations.** See CLAUDE.md.
+6. **The schema changes only through migrations.** See `cloud/CLAUDE.md`.
 
 ## The model
 
