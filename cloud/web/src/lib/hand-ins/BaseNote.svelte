@@ -1,21 +1,16 @@
 <script lang="ts">
-  import { outdated, versionName, type HandIn } from '../hand-ins';
-  /** What a submission was built on, said only when it matters: a warning
-   *  with the version when it is not the newest release, a quiet "latest"
-   *  otherwise. The bubble names only the version it was built on; the newest
-   *  (`latest`) is in its tooltip, not its text, as is the exact version
-   *  behind "latest". `quiet` leaves out
-   *  the word for an up-to-date one, for a list where only the exceptions
-   *  should catch the eye. */
-  let { handIn, latest, quiet = false }: { handIn: HandIn; latest: number; quiet?: boolean } = $props();
+  import { outdated, versionName, type Base, type HandIn } from '../hand-ins';
+  /** What a submission was built on: a warning naming the version when it
+   *  is not the newest release, a quiet "latest" when it is, "starter
+   *  unknown" when it did not say. The exact versions are in the tooltip,
+   *  not the text. `newest` is the project's newest release. */
+  let { handIn, newest }: { handIn: HandIn; newest: Base } = $props();
 </script>
 
 {#if handIn.base === null}
-  {#if !quiet}<span class="muted small" title="The archive did not say which starter it was built on.">starter unknown</span>{/if}
+  <span class="muted small" title="The archive did not say which starter it was built on.">starter unknown</span>
 {:else if outdated(handIn)}
-  <span class="chip warn" title="Built on {versionName(handIn.base)}; the newest release is v{latest}.">
-    ⚠ on {versionName(handIn.base)}
-  </span>
-{:else if !quiet}
+  <span class="chip warn" title="Built on {versionName(handIn.base)}; the newest release is {versionName(newest)}.">⚠ on {versionName(handIn.base)}</span>
+{:else}
   <span class="muted small" title="Built on {versionName(handIn.base)}, the newest release.">latest</span>
 {/if}

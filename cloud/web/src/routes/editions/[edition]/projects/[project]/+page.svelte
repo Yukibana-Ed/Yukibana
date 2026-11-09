@@ -8,7 +8,6 @@
   import { hold, live, refresh } from '#lib/live.svelte.ts';
   import { actionIn, tabOf, type Tab } from '#lib/tabs.ts';
   import { handInsOf } from '#lib/hand-ins.ts';
-  import { trustId, type ReleaseId } from '#lib/ids.ts';
   import HandInsTable from '#lib/hand-ins/HandInsTable.svelte';
   import type { ActionData, PageData } from './$types';
   let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -36,11 +35,10 @@
     ['closes_at', 'Closes', p.closes_at],
   ] as const);
   const pastDeadline = $derived(p.deadline !== null && new Date(p.deadline).getTime() <= Date.now());
-  const students = $derived(new Set(data.submissions.map((s) => s.author_id)).size);
+  const students = $derived(new Set(data.submissions.map((s) => s.authorId)).size);
   const late = $derived(data.submissions.filter((s) => s.late).length);
   // Staff see one line per student, including those who sent nothing.
-  const lines = $derived(handInsOf(data.students, data.handIns));
-  const newest = $derived(data.releases[0] === undefined ? null : trustId<ReleaseId>(data.releases[0].release_id));
+  const lines = $derived(handInsOf(data.students, data.submissions));
 
   // The settings form follows the project live until somebody types in it.
   // From then on changes from others are held back, so the form is never
@@ -154,7 +152,7 @@
       {#if lines.length === 0}
         <p class="empty">Nobody is enrolled as a student yet.</p>
       {:else}
-        <HandInsTable {lines} latest={p.release_count} newest={newest} slug={p.slug} />
+        <HandInsTable {lines} newest={data.newest} slug={p.slug} />
       {/if}
     </section>
   {:else}
@@ -169,12 +167,12 @@
               <tr><th>Submitted</th><th>Size</th><th>SHA-256</th><th></th></tr>
             </thead>
             <tbody>
-              {#each data.submissions as s (s.submission_id)}
+              {#each data.submissions as s (s.submissionId)}
                 <tr>
-                  <td>{when(s.submitted_at, viewer.zone)}{#if s.late} <span class="chip late">late</span>{/if}</td>
-                  <td>{kb(s.byte_size)}</td>
+                  <td>{when(s.submittedAt, viewer.zone)}{#if s.late} <span class="chip late">late</span>{/if}</td>
+                  <td>{kb(s.byteSize)}</td>
                   <td><code>{s.sha256.slice(0, 12)}</code></td>
-                  <td><a href="/api/submissions/{s.submission_id}">Download</a></td>
+                  <td><a href="/api/submissions/{s.submissionId}">Download</a></td>
                 </tr>
               {/each}
             </tbody>

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { assembleArchives, gzip, readTarGz, writeTar, type Entry } from '../src/assembly.js';
+import { assembleInto, gzip, writeTar, type Entry } from '../src/assembly.js';
 
 const text = (s: string) => new TextEncoder().encode(s);
 const file = (path: string, body: string): Entry => ({ path, type: 'file', mode: 0o644, mtime: 1, data: text(body) });
@@ -18,12 +18,11 @@ const teacher = () =>
         file('p/tests/hidden/secret.scala', 'secret test'),
     ]);
 
-test('a submission and a teacher archive become one archive to grade, in one folder, with the hidden tests in it', async () => {
+test('a submission and a teacher archive become one project to grade, in its own folder, with the hidden tests in it', async () => {
     const submission = await targz([file('yukibana.json', CONFIG), file('Main.scala', 'student solution'), file('tests/public.scala', 'weakened test')]);
-    const made = await assembleArchives('alice', submission, await teacher());
+    const made = await assembleInto('all/alice', submission, await teacher());
     assert.ok(made.ok);
-    const entries = await readTarGz(made.archive);
-    const body = (p: string) => new TextDecoder().decode(entries.find(e => e.path === `alice/${p}`)?.data);
+    const body = (p: string) => new TextDecoder().decode(made.entries.find(e => e.path === `all/alice/${p}`)?.data);
     assert.equal(body('Main.scala'), 'student solution');
     assert.equal(body('tests/public.scala'), 'public test');
     assert.equal(body('tests/hidden/secret.scala'), 'secret test');
@@ -31,7 +30,7 @@ test('a submission and a teacher archive become one archive to grade, in one fol
 });
 
 test('an archive that is not one is a problem that names it, not a throw', async () => {
-    const made = await assembleArchives('alice', text('not gzip'), await teacher());
+    const made = await assembleInto('alice', text('not gzip'), await teacher());
     assert.deepEqual(made, { ok: false, problem: 'the submission could not be read (not a .tar.gz)' });
 });
 

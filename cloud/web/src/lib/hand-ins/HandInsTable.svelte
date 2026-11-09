@@ -2,9 +2,9 @@
   import { SvelteMap } from 'svelte/reactivity';
   import { when } from '../format';
   import { viewer } from '../viewer.svelte';
-  import { search, subtitle, type HandIn, type StudentHandIns } from '../hand-ins';
-  import type { ReleaseId, SubmissionId } from '../ids';
-  import { assemblyFolder, downloadAllAssembled, downloadAssembled, findings, type ToAssemble } from './assembled';
+  import { search, subtitle, type Base, type HandIn, type StudentHandIns } from '../hand-ins';
+  import type { SubmissionId } from '../ids';
+  import { downloadAll as saveAll, downloadOne, findings, type ToAssemble } from './assembled';
   import BaseNote from './BaseNote.svelte';
   import StandingChip from './StandingChip.svelte';
 
@@ -12,9 +12,8 @@
    *  search box over names, logins and addresses that forgives missing
    *  letters (#lib/hand-ins `search`). A student with several submissions
    *  has a dropdown in their row that picks which one the row shows; it
-   *  starts on the newest, the one assessed. `latest` is the newest
-   *  release's version, `newest` its id (null before the first release),
-   *  `slug` the project's.
+   *  starts on the newest, the one assessed. `newest` is the project's
+   *  newest release (null before the first), `slug` the project's.
    *
    *  Download assembles the submission with the release it started from
    *  (the newest when unknown, as `yukibana download --assemble` does) in
@@ -22,44 +21,38 @@
    *  (./assembled). The arrow beside it downloads the archive as sent.
    *  Download all does the same for every student's latest submission,
    *  whatever the search shows, into one archive. */
-  let { lines, latest, newest, slug }: { lines: readonly StudentHandIns[]; latest: number; newest: ReleaseId | null; slug: string } = $props();
+  let { lines, newest, slug }: { lines: readonly StudentHandIns[]; newest: Base | null; slug: string } = $props();
 
   type Fetching = { readonly state: 'busy' } | { readonly state: 'done'; readonly findings: readonly string[] } | { readonly state: 'failed'; readonly why: string };
   // Each submission's assembly this visit, by id; absent for none yet.
   const assemblies = new SvelteMap<SubmissionId, Fetching>();
+  // A submission is assembled with the release it started from, or the
+  // newest when it did not say, as `yukibana download --assemble` does.
+  const job = (l: StudentHandIns, s: HandIn, n: Base): ToAssemble => ({
+    submission: s.submissionId,
+    release: s.base?.releaseId ?? n.releaseId,
+    submittedAt: s.submittedAt,
+    key: l.key,
+    name: l.name,
+    githubLogin: l.githubLogin,
+    email: l.email,
+  });
   // Download all: every student's latest submission, the one assessed.
-  const everyone = $derived(
-    lines.flatMap((l): ToAssemble[] => {
-      const s = l.latest;
-      const release = s?.base?.releaseId ?? newest;
-      if (s === null || release === null) return [];
-      return [{ submission: s.submissionId, release, key: l.key, name: l.name, githubLogin: l.githubLogin, email: l.email, submittedAt: s.submittedAt, late: s.late }];
-    }),
-  );
+  const everyone = $derived(newest === null ? [] : lines.flatMap((l) => (l.latest === null ? [] : [job(l, l.latest, newest)])));
   type All = { readonly state: 'busy'; readonly done: number } | { readonly state: 'done'; readonly saved: number; readonly failed: readonly string[] };
   let all = $state<All | null>(null);
   async function downloadAll(): Promise<void> {
     all = { state: 'busy', done: 0 };
     for (const it of everyone) assemblies.set(it.submission, { state: 'busy' });
-    const outcomes = await downloadAllAssembled(slug, everyone, (done) => (all = { state: 'busy', done }));
-    const saved = outcomes.some((o) => o.ok);
-    for (const o of outcomes) {
-      if (o.ok) assemblies.set(o.submission, { state: 'done', findings: findings(o.report) });
-      else assemblies.set(o.submission, { state: 'failed', why: o.why });
-    }
-    all = { state: 'done', saved: saved ? outcomes.filter((o) => o.ok).length : 0, failed: outcomes.flatMap((o) => (o.ok ? [] : [o.name])) };
+    const outcomes = await saveAll(slug, everyone, (done) => (all = { state: 'busy', done }));
+    for (const o of outcomes) assemblies.set(o.submission, o.ok ? { state: 'done', findings: findings(o.report) } : { state: 'failed', why: o.why });
+    all = { state: 'done', saved: outcomes.filter((o) => o.ok).length, failed: outcomes.flatMap((o) => (o.ok ? [] : [o.name])) };
   }
 
-  async function download(l: StudentHandIns, s: HandIn): Promise<void> {
-    const release = s.base?.releaseId ?? newest;
-    if (release === null) return;
+  async function download(l: StudentHandIns, s: HandIn, n: Base): Promise<void> {
     assemblies.set(s.submissionId, { state: 'busy' });
-    try {
-      const report = await downloadAssembled(s.submissionId, release, assemblyFolder(slug, l.githubLogin, s.submittedAt));
-      assemblies.set(s.submissionId, { state: 'done', findings: findings(report) });
-    } catch (e) {
-      assemblies.set(s.submissionId, { state: 'failed', why: e instanceof Error ? e.message : String(e) });
-    }
+    const o = await downloadOne(slug, job(l, s, n));
+    assemblies.set(s.submissionId, o.ok ? { state: 'done', findings: findings(o.report) } : { state: 'failed', why: o.why });
   }
 
   // Which submission each row shows, by the line's key; absent for the newest.
@@ -115,7 +108,7 @@
               {/if}
               {#if s !== null && s !== l.latest && s.late}<span class="chip late">late</span>{/if}
             </td>
-            <td>{#if s !== null}<BaseNote handIn={s} {latest} />{/if}</td>
+            <td>{#if s !== null && newest !== null}<BaseNote handIn={s} {newest} />{:else if s !== null}<span class="muted small">no release</span>{/if}</td>
             <td>
               {#if s !== null}
                 {@const busy = assemblies.get(s.submissionId)?.state === 'busy'}
@@ -125,7 +118,7 @@
                     <a class="button" href={raw} download>Download</a>
                   {:else}
                     <div class="split-button">
-                      <button type="button" class="download" disabled={busy} onclick={() => download(l, s)} title="With the release's read-only and hidden files, ready to grade">
+                      <button type="button" class="download" disabled={busy} onclick={() => download(l, s, newest)} title="With the release's read-only and hidden files, ready to grade">
                         {busy ? 'Assembling…' : 'Download'}
                       </button>
                       <details class="menu">

@@ -189,7 +189,7 @@ teacher's browser, with `@yukibana/client/assembly` (the same function,
 from an entry with no Node module) over the two `?inline` downloads, and
 says under the row what it undid; the arrow beside it gives the archive as sent.
 Download all does it for every student's latest submission, into one
-archive laid out as `yukibana download` lays out its folder.
+archive with a folder per student, named as `yukibana download` names them.
 
 **Enrolling.** An owner calls `app.enrol` with an address. If an account
 has that confirmed address the row links now; otherwise at that person's
