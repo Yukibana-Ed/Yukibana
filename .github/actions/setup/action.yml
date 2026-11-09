@@ -17,3 +17,12 @@ runs:
         runtime: node@24.x
         cache: ${{ inputs.cache }}
         install: false
+
+    # Node's headers for the devEngines release, once, before any install. native-keymap, @theia/ffmpeg and drivelist
+    # build during the install, in parallel, and each node-gyp downloads and unpacks the headers into the same cache
+    # directory when they are missing: one compiled against headers another was rewriting (merge queue, #80). With
+    # the headers present, none of them downloads.
+    - name: Download Node.js headers
+      if: inputs.cache == 'true'
+      shell: bash
+      run: pnpm dlx node-gyp@12.4.0 install "$(node -p "require('./package.json').devEngines.runtime.version")"
