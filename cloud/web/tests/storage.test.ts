@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 import { expect, test } from 'vitest';
 import { credentialProblem, s3Failure } from '../src/lib/server/storage';
 

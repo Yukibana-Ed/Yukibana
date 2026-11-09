@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { equalBytes, fromHex, hex, isGzip, sha256 } from '../src/lib/bytes.js';

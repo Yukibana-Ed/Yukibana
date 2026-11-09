@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** What a verified session token says, reduced to what the database needs.
  *
  *  These are the claims `db.ts` sets as `request.jwt.claims` for the length

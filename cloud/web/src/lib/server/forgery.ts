@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** Which requests may write on the strength of this site's cookies.
  *
  *  The rule, as CLAUDE.md states it: no cookie-authenticated GET has side

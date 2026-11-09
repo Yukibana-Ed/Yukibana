@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** The local stack the integration suite runs against. Every value has the
  *  local default from wrangler.jsonc and cloud/dev/compose.yml; set them to point
  *  elsewhere. `tests.uid` mirrors the seed's helper of the same name, so a

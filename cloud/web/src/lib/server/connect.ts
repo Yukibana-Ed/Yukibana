@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** The consent half of connecting a terminal or an IDE (see #lib/connect).
  *
  *  Supabase Auth's OAuth 2.1 server does the protocol: it holds the

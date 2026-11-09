@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** The Worker's own environment: where the configuration and `waitUntil`
  *  come from.
  *

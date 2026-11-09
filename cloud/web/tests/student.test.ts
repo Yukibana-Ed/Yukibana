@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 import { test, expect } from 'vitest';
 import { ideUrl } from '../src/lib/ide';
 import { trustId, type ProjectId } from '../src/lib/ids';

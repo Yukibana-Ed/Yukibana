@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** What the login page accepts, decided without asking anyone. */
 
 /** An address as Auth and `enrollment` both keep it: trimmed and lowercased,

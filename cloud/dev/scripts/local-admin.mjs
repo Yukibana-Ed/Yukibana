@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 // Makes an address the first admin of the LOCAL database, after that person
 // has logged in once. Runs psql inside the database container, so it works
 // from the host and from the devcontainer alike, with nothing installed.

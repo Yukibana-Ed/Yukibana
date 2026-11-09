@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** A student's projects and where they stand with each: what the to-do list
  *  and a course's project list are made of.
  *

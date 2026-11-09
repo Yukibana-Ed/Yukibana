@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** What the JSON API answers. The CLI and the IDE extension read these
  *  shapes (`packages/client/src/lib/wire.ts` decodes them, field for field), so a
  *  change here is a change to a published contract: add a field, never

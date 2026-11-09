@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 import { test, expect } from 'vitest';
 import { authorizeUrl, connectCookie, connectQuery, connectRequestOf, declinedUrl, deliveryUrl, loginCode, loopbackPort, relayOf, relayState } from '../src/lib/connect';
 import { approve, consent, nonce, returned, siteOrigin, start, type ConsentAuth, type Decision } from '../src/lib/server/connect';

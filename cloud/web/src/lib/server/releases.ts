@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** Publishing a release and handing out its archives. The same function
  *  serves CI (a project token) and the CLI as a person (their access
  *  token), so both make the same decisions in the same order: check the

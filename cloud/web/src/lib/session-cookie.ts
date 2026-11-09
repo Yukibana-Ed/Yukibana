@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** What the website's session cookies are called and how they are set, for
  *  the two clients that keep the session: the Worker's (`#lib/server/session`)
  *  and the page's (`#lib/live.svelte`). Both must say the same, or the page

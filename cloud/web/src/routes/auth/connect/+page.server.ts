@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 import { error, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad, RequestEvent } from './$types';
 import { authorizeUrl, connectQuery, connectRequestOf, declinedUrl, loginCode, loopback, type ConnectRequest } from '#lib/connect.ts';

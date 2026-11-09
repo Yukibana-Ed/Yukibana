@@ -1,4 +1,3 @@
-<!-- SPDX-License-Identifier: MIT -->
 <script lang="ts">
   /** A button that puts `text` on the clipboard and says whether it did.
    *  Where the clipboard is out of reach (an insecure origin, a denied

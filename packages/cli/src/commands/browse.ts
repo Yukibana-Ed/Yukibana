@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** Reading the registry as yourself, and the roster writes an owner has. */
 
 import { behind, type EditionRole, type Project, type Submission } from '@yukibana/client';

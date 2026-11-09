@@ -1,4 +1,3 @@
-<!-- SPDX-License-Identifier: MIT -->
 <script lang="ts">
   import { page } from '$app/state';
   import CopyButton from '#lib/CopyButton.svelte';

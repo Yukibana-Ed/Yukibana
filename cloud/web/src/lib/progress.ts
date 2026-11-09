@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** Where a student stands with a project, in one word, and when it is due.
  *  Pure: the project's dates, the student's newest submission and a clock in;
  *  what the lists show out. The database decides what may be submitted;

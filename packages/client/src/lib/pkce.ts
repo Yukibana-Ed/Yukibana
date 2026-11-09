@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** The browser half of a terminal login: OAuth's PKCE, against Supabase Auth.
  *
  *  Two ways in. Through the website (`connectUrl`): the registry's page

@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** Where bytes live.
  *
  *  One interface, one implementation: any bucket that speaks S3, which is

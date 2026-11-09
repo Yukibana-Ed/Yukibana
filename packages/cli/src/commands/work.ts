@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** A student's commands: get the starter, look at what would be submitted,
  *  submit it. The same bundle the IDE extension previews. */
 

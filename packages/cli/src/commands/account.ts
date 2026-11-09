@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** Logging in and out from a terminal, and asking who you are. */
 
 import { loginWithLoopback, logout } from '@yukibana/client';

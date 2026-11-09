@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** The two members of the Workers runtime module the app uses (see
  *  #lib/server/worker.ts). Declared here rather than by loading
  *  @cloudflare/workers-types globally, whose Request, Response and friends

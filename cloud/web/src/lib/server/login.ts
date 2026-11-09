@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** Logging in by a code mailed to the address.
  *
  *  Supabase Auth does all of it: these two calls are here so the login page

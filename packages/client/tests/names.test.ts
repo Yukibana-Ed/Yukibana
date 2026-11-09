@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { folderNames, safeSegment, stampOf, type Person } from '../src/lib/names.js';

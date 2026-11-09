@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 /** The small glob language `yukibana.json` uses for hidden paths.
  *
  *  Patterns are relative to the repository root and match whole path
