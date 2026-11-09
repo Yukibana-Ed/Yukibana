@@ -1,7 +1,5 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": { "noEmit": false, "outDir": "lib", "rootDir": "src", "declaration": true },
-  "include": ["src/**/*.ts"],
-  // Builds @yukibana/client first: the commands import its build output.
-  "references": [{ "path": "../client/tsconfig.build.json" }]
+  "include": ["src/**/*.ts"]
 }

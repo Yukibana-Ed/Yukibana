@@ -40,6 +40,10 @@
     "editor.tabSize": 4
   },
   "oxc.enable": true,
+  // The Edge Functions run on Deno, and only they get its language server; the formatter stays oxfmt's.
+  "deno.enablePaths": ["cloud/db/supabase/functions"],
+  "deno.lint": true,
+  "deno.unstable": ["bare-node-builtins", "byonm", "sloppy-imports", "unsafe-proto", "webgpu", "broadcast-channel", "worker-options", "cron", "kv", "ffi", "fs", "http", "net"],
   "editor.codeActionsOnSave": {
     "source.organizeImports": "explicit"
   },

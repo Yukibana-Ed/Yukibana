@@ -118,7 +118,7 @@ are `storage:start` and `storage:stop` (the local bucket), `smoke` (is the local
 (the local database's first admin) and `dev:vars` (the Worker's local `.dev.vars`, from the running stack); any other
 Supabase command runs in `cloud/db` with `pnpm --filter @yukibana/cloud-db exec supabase <command>`. The library the CLI and the IDE share,
 [@yukibana/client](packages/client), and the CLI compile into their `lib` on install; rebuild one after changing it
-with `pnpm --filter <package> prepare` (the CLI's also rebuilds the client). The fixture repository their tests and the cloud's read is
+with `pnpm --filter <package> prepare`. The fixture repository their tests and the cloud's read is
 [@yukibana/fixtures](packages/fixtures), which each of them declares. How to run the cloud locally, publish a project and collect submissions
 is in [docs/cloud/README.md](docs/cloud/README.md), and how their code is written in [cloud/CLAUDE.md](cloud/CLAUDE.md).
 
