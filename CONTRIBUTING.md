@@ -112,13 +112,13 @@ More information can be found in [docs/architecture.md](docs/architecture.md).
 [cloud/web](cloud/web) (`@yukibana/cloud-web`, the Worker), [cloud/db](cloud/db) (`@yukibana/cloud-db`, the database
 with the Supabase CLI and squawk), [cloud/dev](cloud/dev) (`@yukibana/cloud-dev`, the local environment) and
 [packages/cli](packages/cli) (`@yukibana/cli`) are packages of the same workspace. `pnpm setup:cloud` or `pnpm setup:cli` installs them, and each has its own scripts, e.g.
-`pnpm --filter @yukibana/cloud-web dev`, `pnpm --filter @yukibana/cli build`. The database's are `lint` (squawk over the
+`pnpm --filter @yukibana/cloud-web dev`, `pnpm --filter @yukibana/cli test`. The database's are `lint` (squawk over the
 migrations, oxlint over the Edge Functions), `start`, `stop`, `reset` and `test:db` (pgTAP); the local environment's
 are `storage:start` and `storage:stop` (the local bucket), `smoke` (is the local stack reachable?), `admin <email>`
 (the local database's first admin) and `dev:vars` (the Worker's local `.dev.vars`, from the running stack); any other
 Supabase command runs in `cloud/db` with `pnpm --filter @yukibana/cloud-db exec supabase <command>`. The library the CLI and the IDE share,
-[@yukibana/client](packages/client), compiles into its `lib` on install; rebuild it after changing it with
-`pnpm --filter @yukibana/client prepare`. The fixture repository their tests and the cloud's read is
+[@yukibana/client](packages/client), and the CLI compile into their `lib` on install; rebuild one after changing it
+with `pnpm --filter <package> prepare` (the CLI's also rebuilds the client). The fixture repository their tests and the cloud's read is
 [@yukibana/fixtures](packages/fixtures), which each of them declares. How to run the cloud locally, publish a project and collect submissions
 is in [docs/cloud/README.md](docs/cloud/README.md), and how their code is written in [cloud/CLAUDE.md](cloud/CLAUDE.md).
 

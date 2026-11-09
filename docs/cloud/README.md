@@ -105,12 +105,12 @@ right for where you run it, and `.dev.vars` is written the same way.
 ## Publishing a project
 
 A course repository carries a `yukibana.json` ([yukibana-json.md](yukibana-json.md)).
-Build the CLI (installed by `pnpm install`, or on its own by `pnpm setup:cli`)
-and give it a name, then run it from the course repository's checkout:
+Install the CLI (`pnpm install`, or on its own `pnpm setup:cli`, which also
+compiles it; after changing it, `pnpm --filter @yukibana/cli prepare`) and give
+it a name, then run it from the course repository's checkout:
 
 ```bash
-pnpm --filter @yukibana/cli build
-alias yukibana="node $PWD/packages/cli/dist/index.js"
+alias yukibana="node $PWD/packages/cli/lib/index.js"
 
 cd <course checkout>
 yukibana check .                    # what would be hidden; exit 1 on a problem

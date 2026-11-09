@@ -117,7 +117,8 @@ jobs:
           read -ra filters <<<"$FILTERS"
           pnpm "${filters[@]}" run --if-present test
 
-      # The CLI and the Worker are the packages with a build, but for the IDE's apps, which the e2e job builds.
+      # The Worker's build (the CLI and the libraries compile on install, `prepare`), but not the IDE's apps, which the e2e
+      # job builds.
       - name: Build
         if: needs.plan.outputs.packages != '[]'
         run: |
@@ -130,7 +131,7 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/fixture"
           tar -xzf packages/fixtures/repo.tar.gz -C "$RUNNER_TEMP/fixture" --strip-components=1
-          node packages/cli/dist/index.js check "$RUNNER_TEMP/fixture" --folder calc
+          node packages/cli/lib/index.js check "$RUNNER_TEMP/fixture" --folder calc
 
   # The database and the Worker together: the real Supabase image and a real S3 server on the runner, every migration
   # applied from empty, the pgTAP suite, and the integration suite driving the server modules through the app's own
