@@ -8,6 +8,7 @@
   import { hold, live, refresh } from '#lib/live.svelte.ts';
   import { actionIn, tabOf, type Tab } from '#lib/tabs.ts';
   import { handInsOf } from '#lib/hand-ins.ts';
+  import { trustId, type ReleaseId } from '#lib/ids.ts';
   import HandInsTable from '#lib/hand-ins/HandInsTable.svelte';
   import type { ActionData, PageData } from './$types';
   let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -39,6 +40,7 @@
   const late = $derived(data.submissions.filter((s) => s.late).length);
   // Staff see one line per student, including those who sent nothing.
   const lines = $derived(handInsOf(data.students, data.handIns));
+  const newest = $derived(data.releases[0] === undefined ? null : trustId<ReleaseId>(data.releases[0].release_id));
 
   // The settings form follows the project live until somebody types in it.
   // From then on changes from others are held back, so the form is never
@@ -152,7 +154,7 @@
       {#if lines.length === 0}
         <p class="empty">Nobody is enrolled as a student yet.</p>
       {:else}
-        <HandInsTable {lines} latest={p.release_count} />
+        <HandInsTable {lines} latest={p.release_count} newest={newest} slug={p.slug} />
       {/if}
     </section>
   {:else}

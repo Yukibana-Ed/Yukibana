@@ -23,6 +23,10 @@ export interface Bucket {
     head(key: ObjectKey): Promise<{ readonly size: number } | null>;
     /** Returns the object's bytes, or null when there is no such object. */
     get(key: ObjectKey): Promise<Uint8Array | null>;
+    /** Returns the object's bytes as a stream, and its size, or null when there is no such object. For a Worker
+     *  that passes an object on without reading it: piping a body costs a Worker next to no CPU, where `get`
+     *  copies it into memory first. */
+    open(key: ObjectKey): Promise<{ readonly body: ReadableStream<Uint8Array>; readonly size: number } | null>;
     /** Returns a URL that fetches the object for `ttlSeconds`, then stops working, and that the browser saves as
      *  `filename`. Signed here, without asking the bucket, so it is returned whether or not the object exists. The
      *  URL is a bearer token: it outlives the permission that minted it, which is why it is short. */
@@ -123,6 +127,12 @@ export function s3Bucket(cfg: S3Config, fetchFn: typeof fetch = fetch): Bucket {
             if (res.status === 404) return null;
             if (!res.ok) throw new Error(s3Failure(`GET ${key}`, res.status, await res.text()));
             return new Uint8Array(await res.arrayBuffer());
+        },
+        async open(key) {
+            const res = await send(objectUrl(cfg.endpoint, key), { method: 'GET' });
+            if (res.status === 404) return null;
+            if (!res.ok || res.body === null) throw new Error(s3Failure(`GET ${key}`, res.status, await res.text()));
+            return { body: res.body, size: Number(res.headers.get('content-length') ?? '0') };
         },
         async presignGet(key, ttlSeconds, filename) {
             const url = new URL(objectUrl(cfg.publicEndpoint, key));

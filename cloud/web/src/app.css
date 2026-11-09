@@ -784,5 +784,41 @@
             max-width: 19rem;
             font-size: 0.88rem;
         }
+        /* Download is the row's point, not a removal: the accent, not the
+         * red every other row button turns on hover. */
+        button.download {
+            padding: 0.35rem 0.75rem;
+            background: var(--accent);
+            color: light-dark(#fff, #0c0d11);
+            border-color: transparent;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+        button.download:hover {
+            background: color-mix(in oklab, var(--accent) 88%, black);
+            color: light-dark(#fff, #0c0d11);
+        }
+        button.download:disabled {
+            opacity: 0.7;
+            cursor: progress;
+        }
+        .actions {
+            align-items: center;
+        }
+        tr:has(+ tr.assembly) td {
+            border-bottom: 0;
+        }
+        tr.assembly td {
+            padding-top: 0;
+        }
+        ul.findings {
+            margin: 0;
+            padding: 0.55rem 0.8rem 0.55rem 1.8rem;
+            border: 1px solid light-dark(#f0c36d, #6b4d14);
+            border-radius: var(--radius-sm);
+            background: light-dark(#fff4e0, #33250c);
+            color: light-dark(#8a5300, #ffc66b);
+            font-size: 0.88rem;
+        }
     }
 }

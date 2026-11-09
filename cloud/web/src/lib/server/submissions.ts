@@ -10,7 +10,7 @@ import { submissionKey, trustId, trustKey, type ObjectKey, type ProjectId, type 
 import { report } from '#lib/report.ts';
 import { NOT_ACCEPTING, refusalMessage, type RefusalRow } from '#lib/refusal.ts';
 import { asUser, Misconfigured, statusOf } from './db';
-import type { Context } from './context';
+import type { BucketObject, Context } from './context';
 
 /** A submission the database has recorded. */
 export interface Accepted {
@@ -167,12 +167,11 @@ async function refusal(ctx: Context, claims: Claims, project: ProjectId): Promis
     });
 }
 
-/** Returns a presigned URL, valid for 60 seconds, for the caller to
- *  download `submission`, if they may, named
- *  `<slug>-<github login or "student">-<time>.tar.gz`. The policy on the
- *  table is the check: a row the caller cannot read is a 404, the same as
- *  an id that names nothing. */
-export async function submissionUrl(ctx: Context, claims: Claims, submission: SubmissionId): Promise<URL> {
+/** The object of `submission`, if the caller may read it, and the name a
+ *  download of it is saved as: `<slug>-<github login or "student">-<time>.tar.gz`.
+ *  The policy on the table is the check: a row the caller cannot read is a
+ *  404, the same as an id that names nothing. */
+export async function submissionObject(ctx: Context, claims: Claims, submission: SubmissionId): Promise<BucketObject> {
     const row = await asUser(ctx.sql, claims, async tx => {
         const [r] = await tx<{ object_key: string; slug: string; submitted_at: Date; login: string | null }[]>`
       select s.object_key, p.slug, s.submitted_at, u.github_login as login
@@ -184,7 +183,14 @@ export async function submissionUrl(ctx: Context, claims: Claims, submission: Su
     });
     if (row === null) error(404, 'No such submission.');
     const stamp = row.submitted_at.toISOString().replace(/[:.]/g, '-');
-    return ctx.bucket.presignGet(trustKey(row.object_key), 60, `${row.slug}-${row.login ?? 'student'}-${stamp}.tar.gz`);
+    return { key: trustKey(row.object_key), filename: `${row.slug}-${row.login ?? 'student'}-${stamp}.tar.gz` };
+}
+
+/** Returns a presigned URL, valid for 60 seconds, for the caller to
+ *  download `submission`, if they may (`submissionObject`). */
+export async function submissionUrl(ctx: Context, claims: Claims, submission: SubmissionId): Promise<URL> {
+    const o = await submissionObject(ctx, claims, submission);
+    return ctx.bucket.presignGet(o.key, 60, o.filename);
 }
 
 /** Returns a presigned URL, valid for 60 seconds, for the caller to

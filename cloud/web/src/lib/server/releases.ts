@@ -12,7 +12,7 @@ import { isGzip, sha256 } from '#lib/bytes.ts';
 import { starterKey, teacherKey, trustId, trustKey, type ProjectId, type ReleaseId } from '#lib/ids.ts';
 import { report } from '#lib/report.ts';
 import { asPublisher, asUser, Misconfigured, statusOf } from './db';
-import type { Context } from './context';
+import type { BucketObject, Context } from './context';
 
 /** One archive of a release, as bytes. Nothing in the app uses it any
  *  more: `publishRelease` takes the two archives as plain `Uint8Array`s. */
@@ -195,8 +195,8 @@ function refuse(e: unknown): never {
     error(500, `The release could not be recorded${code === '' ? '' : ` (code ${code})`}; the Worker log says why.`);
 }
 
-/** Returns a presigned URL, valid for 60 seconds, for the caller to
- *  download one archive of `release`, if they may, named
+/** The object of one archive of `release` (`starter` or `teacher`), if the
+ *  caller may read it, and the name a download of it is saved as:
  *  `<slug>-<archive>[-<label>].tar.gz`, where the label has each run of
  *  characters outside `[A-Za-z0-9._-]` replaced by one `_` and is left out
  *  when empty; or `release-<id>-<archive>.tar.gz` when the caller reads no
@@ -209,7 +209,7 @@ function refuse(e: unknown): never {
  *  release row, and must not, because the row carries the teacher
  *  archive's key. Either way an answer the caller may not have is a 404,
  *  the same as for an id that names nothing. */
-export async function releaseUrl(ctx: Context, claims: Claims, release: ReleaseId, archive: 'starter' | 'teacher'): Promise<URL> {
+export async function releaseObject(ctx: Context, claims: Claims, release: ReleaseId, archive: 'starter' | 'teacher'): Promise<BucketObject> {
     // A student reads no release row, so for them the joins find nothing:
     // no teacher key, and a download named after the release id
     const [row] = await asUser(
@@ -226,5 +226,12 @@ export async function releaseUrl(ctx: Context, claims: Claims, release: ReleaseI
     const slug = row?.slug ?? undefined;
     const label = row?.label ?? '';
     const name = slug === undefined ? `release-${release}-${archive}` : `${slug}-${archive}${label === '' ? '' : `-${label.replace(/[^A-Za-z0-9._-]+/g, '_')}`}`;
-    return ctx.bucket.presignGet(trustKey(key), 60, `${name}.tar.gz`);
+    return { key: trustKey(key), filename: `${name}.tar.gz` };
+}
+
+/** Returns a presigned URL, valid for 60 seconds, for one archive of
+ *  `release`, if the caller may read it (`releaseObject`). */
+export async function releaseUrl(ctx: Context, claims: Claims, release: ReleaseId, archive: 'starter' | 'teacher'): Promise<URL> {
+    const o = await releaseObject(ctx, claims, release, archive);
+    return ctx.bucket.presignGet(o.key, 60, o.filename);
 }
