@@ -69,7 +69,11 @@ export interface Invocation {
 /** A command that cannot go on, with every reason. `index.ts` prints them
  *  and exits 1; nothing else in the commands exits. */
 export class Failure extends Error {
-    constructor(readonly lines: readonly string[]) {
+    /** Makes the failure; its `message` is `lines` joined by newlines. */
+    constructor(
+        /** The reasons, one sentence each, printed one per line. */
+        readonly lines: readonly string[],
+    ) {
         super(lines.join('\n'));
     }
 }
@@ -85,7 +89,8 @@ export function defaultStore(env: NodeJS.ProcessEnv): SessionStore {
     return fileStore(defaultSessionPath(env));
 }
 
-/** Returns the registry: `--url`, else `YUKIBANA_URL`, else the one logged in to. */
+/** Returns the registry: `--url`, else `YUKIBANA_URL`, else the one logged in to. Fails (`Failure`) when there is
+ *  none; a `--url` or `YUKIBANA_URL` that is set but empty is not skipped, and fails too. */
 export async function registryUrl(inv: Invocation): Promise<string> {
     const url = inv.options.url ?? inv.env['YUKIBANA_URL'] ?? (await inv.store.load())?.url;
     if (url === undefined || url === '') fail('which registry? give --url, set YUKIBANA_URL, or log in first');
@@ -93,7 +98,8 @@ export async function registryUrl(inv: Invocation): Promise<string> {
 }
 
 /** Returns a client as the logged-in person. `YUKIBANA_ACCESS_TOKEN` stands in for a
- *  login where there is no browser, for a token got some other way. */
+ *  login where there is no browser, for a token got some other way. Fails as `registryUrl` does, and throws the
+ *  client's `TypeError` for a registry that is not an absolute http(s) URL. */
 export async function clientFor(inv: Invocation): Promise<YukibanaClient> {
     return new YukibanaClient({ url: await registryUrl(inv), accessToken: accessTokenFor(inv) });
 }
