@@ -22,7 +22,7 @@
     "clean": "pnpm -r --if-present run clean",
     "lint": "pnpm run lint:root && pnpm -r run lint",
     "lint:root": "oxlint .github/scripts cloud/dev oxfmt.config.mts vitest.config.mts",
-    "lint:fix": "oxlint --fix",
+    "lint:fix": "pnpm run lint:root --fix && pnpm -r run lint --fix",
     "typecheck": "pnpm run typecheck:root && pnpm -r run typecheck",
     "typecheck:root": "tsc -p .github/scripts",
     "format": "oxfmt",
