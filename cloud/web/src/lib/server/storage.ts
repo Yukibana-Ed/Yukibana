@@ -12,17 +12,22 @@ import type { ObjectKey } from '#lib/ids.ts';
 import { Misconfigured } from './db';
 import type { S3Config } from './env';
 
+/** The objects of one bucket, by key, as the Worker reaches them. Every method throws `Misconfigured` when the
+ *  bucket's credentials are visibly wrong (`credentialProblem`), and an `Error` whose message says what the bucket
+ *  answered when it refuses; a missing object is not a refusal. Callers decide who may touch which key: the bucket
+ *  checks nothing but the credentials. */
 export interface Bucket {
-    /** Stores `body` under `key`, replacing what was there. */
+    /** Stores `body` under `key` as `contentType`, replacing what was there. */
     put(key: ObjectKey, body: Uint8Array, contentType: string): Promise<void>;
-    /** The object's size, or null when there is no such object. */
-    head(key: ObjectKey): Promise<{ size: number } | null>;
-    /** The object's bytes, or null. */
+    /** Returns the object's size in bytes, or null when there is no such object. */
+    head(key: ObjectKey): Promise<{ readonly size: number } | null>;
+    /** Returns the object's bytes, or null when there is no such object. */
     get(key: ObjectKey): Promise<Uint8Array | null>;
-    /** A URL that fetches the object for `ttlSeconds`, then stops working.
-     *  `filename` is what the browser saves it as. The URL is a bearer token:
-     *  it outlives the permission that minted it, which is why it is short. */
+    /** Returns a URL that fetches the object for `ttlSeconds`, then stops working, and that the browser saves as
+     *  `filename`. Signed here, without asking the bucket, so it is returned whether or not the object exists. The
+     *  URL is a bearer token: it outlives the permission that minted it, which is why it is short. */
     presignGet(key: ObjectKey, ttlSeconds: number, filename: string): Promise<URL>;
+    /** Removes the object under `key`; removing one that is not there succeeds. */
     delete(key: ObjectKey): Promise<void>;
 }
 
@@ -75,6 +80,9 @@ function bufferOf(bytes: Uint8Array): ArrayBuffer {
     return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 }
 
+/** Returns the bucket `cfg` names, over S3 with signed requests sent by `fetchFn`: R2 in production, RustFS or MinIO
+ *  locally. Making one sends nothing; credentials are checked on first use, so a request that never touches the
+ *  bucket never fails for it. */
 export function s3Bucket(cfg: S3Config, fetchFn: typeof fetch = fetch): Bucket {
     const client = new AwsClient({
         accessKeyId: cfg.accessKeyId,
