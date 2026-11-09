@@ -1,6 +1,7 @@
 import { error, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { uuidOf, type EditionId, type ProjectId, type TokenId } from '#lib/ids.ts';
+import { trustId, uuidOf, type EditionId, type ProjectId, type ReleaseId, type SubmissionId, type TokenId, type UserId } from '#lib/ids.ts';
+import type { EnrolledStudent, HandIn } from '#lib/hand-ins.ts';
 import { asUser, refusalOf } from '#lib/server/db.ts';
 import { text } from '#lib/server/form.ts';
 import { requireClaims, withContext } from '#lib/server/context.ts';
@@ -24,6 +25,9 @@ interface ProjectRow {
     can_edit: boolean;
     ready: boolean;
     can_submit: boolean;
+    /** How many releases the project has, so the newest one's version; 0
+     *  for a student, who cannot read releases. */
+    release_count: number;
 }
 
 interface SubmissionRow {
@@ -44,6 +48,34 @@ interface SubmissionRow {
     base_id: string | null;
     /** Whether that release is the newest one. */
     base_is_live: boolean;
+    /** That release's place among the project's releases, from 1; null
+     *  with `base_id`. */
+    base_version: number | null;
+}
+
+interface StudentRow {
+    email: string;
+    user_id: string | null;
+    full_name: string | null;
+    github_login: string | null;
+}
+
+/** `r` as the hand-ins view reads it (#lib/hand-ins). */
+function handInOf(r: SubmissionRow): HandIn {
+    return {
+        submissionId: trustId<SubmissionId>(r.submission_id),
+        authorId: trustId<UserId>(r.author_id),
+        submittedAt: r.submitted_at,
+        byteSize: r.byte_size,
+        sha256: r.sha256,
+        late: r.late,
+        base:
+            r.base_id === null || r.base_version === null
+                ? null
+                : { releaseId: trustId<ReleaseId>(r.base_id), label: r.base ?? '', version: r.base_version, latest: r.base_is_live },
+        fullName: r.full_name,
+        githubLogin: r.github_login,
+    };
 }
 
 interface ReleaseRow {
@@ -75,7 +107,8 @@ function ids(params: { edition: string; project: string }): { edition: EditionId
 /** A project as the caller sees it: the project with the database's
  *  answers to "may this person edit it" and "may they submit now", every
  *  submission they may read (their own for a student, everyone's for
- *  staff), newest first, the newest 20 releases for staff, and the tokens
+ *  staff), newest first, for staff the edition's students and the same
+ *  submissions as `handIns` (#lib/hand-ins), the newest 20 releases for staff, and the tokens
  *  for an owner (never their secrets, which are not stored). A 404 for a
  *  project the caller cannot see, for one that is not in the edition the
  *  address names, and for parameters that are not uuids; the login page
@@ -90,7 +123,8 @@ export const load: PageServerLoad = async event => {
                app.role_in(p.edition_id)::text as role,
                app.may_edit_projects(p.edition_id) as can_edit,
                app.current_starter(p.project_id) is not null as ready,
-               app.can_submit(p.project_id) as can_submit
+               app.can_submit(p.project_id) as can_submit,
+               (select count(*) from project_release r where r.project_id = p.project_id)::int as release_count
         from project p
         join course_edition e on e.edition_id = p.edition_id
         join course c on c.course_id = e.course_id
@@ -102,7 +136,8 @@ export const load: PageServerLoad = async event => {
         select s.submission_id, s.submitted_at, s.byte_size, encode(s.sha256, 'hex') as sha256, s.author_id, u.full_name, u.github_login,
                coalesce(s.submitted_at > ${p.deadline}::timestamptz, false) as late,
                r.label as base, r.release_id as base_id,
-               coalesce(r.seq = (select max(seq) from project_release where project_id = ${project}), false) as base_is_live
+               coalesce(r.seq = (select max(seq) from project_release where project_id = ${project}), false) as base_is_live,
+               case when r.release_id is null then null else (select count(*) from project_release o where o.project_id = ${project} and o.seq <= r.seq)::int end as base_version
         from submission s
         left join app_user u on u.user_id = s.author_id
         left join project_release r on r.release_id = s.base_release_id
@@ -120,7 +155,25 @@ export const load: PageServerLoad = async event => {
             select token_id, label, created_at, last_used_at, revoked_at from project_token
             where project_id = ${project} order by created_at desc`
                 : [];
-            return { project: p, staff, owner, submissions, releases, tokens, origin: event.url.origin };
+            // Every student of the edition, whether or not they have sent
+            // anything: the Submissions tab is about who still owes work.
+            // The enrolment policy shows staff their edition's rows.
+            const students = staff
+                ? (
+                      await tx<StudentRow[]>`
+            select en.email, en.user_id, u.full_name, u.github_login
+            from enrollment en left join app_user u on u.user_id = en.user_id
+            where en.edition_id = ${p.edition_id} and en.role = 'student'
+            order by en.email`
+                  ).map((r): EnrolledStudent => ({
+                      email: r.email,
+                      userId: r.user_id === null ? null : trustId<UserId>(r.user_id),
+                      fullName: r.full_name,
+                      githubLogin: r.github_login,
+                  }))
+                : [];
+            const handIns = staff ? submissions.map(handInOf) : [];
+            return { project: p, staff, owner, submissions, students, handIns, releases, tokens, origin: event.url.origin };
         }),
     );
 };

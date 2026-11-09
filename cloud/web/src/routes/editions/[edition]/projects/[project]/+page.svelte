@@ -7,6 +7,11 @@
   import { ideUrl } from '#lib/ide.ts';
   import { hold, live, refresh } from '#lib/live.svelte.ts';
   import { actionIn, tabOf, type Tab } from '#lib/tabs.ts';
+  import { DESIGNS, designOf, handInsOf } from '#lib/hand-ins.ts';
+  import TableDesign from '#lib/hand-ins/TableDesign.svelte';
+  import CardsDesign from '#lib/hand-ins/CardsDesign.svelte';
+  import GroupsDesign from '#lib/hand-ins/GroupsDesign.svelte';
+  import SplitDesign from '#lib/hand-ins/SplitDesign.svelte';
   import type { ActionData, PageData } from './$types';
   let { data, form }: { data: PageData; form: ActionData } = $props();
   const p = $derived(data.project);
@@ -35,6 +40,9 @@
   const pastDeadline = $derived(p.deadline !== null && new Date(p.deadline).getTime() <= Date.now());
   const students = $derived(new Set(data.submissions.map((s) => s.author_id)).size);
   const late = $derived(data.submissions.filter((s) => s.late).length);
+  // Staff see one line per student, including those who sent nothing.
+  const lines = $derived(handInsOf(data.students, data.handIns));
+  const design = $derived(designOf(page.url));
 
   // The settings form follows the project live until somebody types in it.
   // From then on changes from others are held back, so the form is never
@@ -142,36 +150,53 @@
     </section>
   {/if}
 {:else if tab === 'submissions'}
-  <section>
-    <h2>{data.staff ? 'Submissions' : 'My submissions'}</h2>
-    {#if data.submissions.length === 0}
-      <p class="empty">None yet.</p>
-    {:else}
-      <div class="scroll">
-        <table>
-          <thead>
-            <tr>{#if data.staff}<th>Student</th>{/if}<th>Submitted</th>{#if data.staff}<th>Based on</th>{/if}<th>Size</th><th>SHA-256</th><th></th></tr>
-          </thead>
-          <tbody>
-            {#each data.submissions as s (s.submission_id)}
-              <tr>
-                {#if data.staff}
-                  <td>{s.full_name ?? ''} {#if s.github_login}<span class="muted">@{s.github_login}</span>{/if}</td>
-                {/if}
-                <td>{when(s.submitted_at, viewer.zone)}{#if s.late} <span class="chip late">late</span>{/if}</td>
-                {#if data.staff}
-                  <td>{#if s.base_id === null}<span class="muted">unknown</span>{:else}{#if s.base}{s.base} {/if}<code>{s.base_id}</code>{#if s.base_is_live} <span class="chip live">live</span>{/if}{/if}</td>
-                {/if}
-                <td>{kb(s.byte_size)}</td>
-                <td><code>{s.sha256.slice(0, 12)}</code></td>
-                <td><a href="/api/submissions/{s.submission_id}">Download</a></td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
-      </div>
-    {/if}
-  </section>
+  {#if data.staff}
+    <section>
+      <h2>Submissions</h2>
+      <!-- While a design is chosen: the four drafts, side by side by address. -->
+      <nav class="designs" aria-label="Design">
+        {#each DESIGNS as d (d.id)}
+          <a href="?tab=submissions&design={d.id}" aria-current={d.id === design ? 'page' : undefined}>{d.label}</a>
+        {/each}
+      </nav>
+      {#if lines.length === 0}
+        <p class="empty">Nobody is enrolled as a student yet.</p>
+      {:else if design === 'cards'}
+        <CardsDesign {lines} latest={p.release_count} />
+      {:else if design === 'groups'}
+        <GroupsDesign {lines} latest={p.release_count} />
+      {:else if design === 'split'}
+        <SplitDesign {lines} latest={p.release_count} />
+      {:else}
+        <TableDesign {lines} latest={p.release_count} />
+      {/if}
+    </section>
+  {:else}
+    <section>
+      <h2>My submissions</h2>
+      {#if data.submissions.length === 0}
+        <p class="empty">None yet.</p>
+      {:else}
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr><th>Submitted</th><th>Size</th><th>SHA-256</th><th></th></tr>
+            </thead>
+            <tbody>
+              {#each data.submissions as s (s.submission_id)}
+                <tr>
+                  <td>{when(s.submitted_at, viewer.zone)}{#if s.late} <span class="chip late">late</span>{/if}</td>
+                  <td>{kb(s.byte_size)}</td>
+                  <td><code>{s.sha256.slice(0, 12)}</code></td>
+                  <td><a href="/api/submissions/{s.submission_id}">Download</a></td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+      {/if}
+    </section>
+  {/if}
 {:else if tab === 'releases'}
   <section>
     <h2>Releases</h2>
@@ -292,3 +317,26 @@ YUKIBANA_URL     {data.origin}</pre>
     </p>
   </section>
 {/if}
+
+<style>
+  nav.designs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 1rem;
+  }
+  nav.designs a {
+    padding: 0.25rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--ink-soft);
+    font-size: 0.85rem;
+    text-decoration: none;
+  }
+  nav.designs a[aria-current='page'] {
+    background: var(--accent-bg);
+    border-color: color-mix(in oklab, var(--accent) 35%, transparent);
+    color: var(--accent);
+    font-weight: 600;
+  }
+</style>
