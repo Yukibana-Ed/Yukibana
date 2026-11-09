@@ -1,24 +1,26 @@
 # Deploys the cloud from main: the database first (migrations, the per-environment bootstrap, Supabase's settings), then
 # the Worker. Migrations only ever add (cloud/CLAUDE.md), so the Worker still running between the two steps works
-# against the new schema. A failed deploy is re-run by hand; the next one includes everything anyway. A run whose commit
-# is older than the last successful deploy's refuses, so a re-run of an old run cannot put an old Worker back.
+# against the new schema. A failed deploy is re-run ("Re-run jobs" on its run, which keeps the push it was started by);
+# the next one includes everything anyway. A run whose commit is older than the last successful deploy's refuses, so a
+# re-run of an old run cannot put an old Worker back.
 #
-# On every push to main of Yukibana-Ed/Yukibana (a fork has no production environment), once the merge queue's CI run
-# for that very commit has passed. Main moves only through the queue, which fast-forwards it to the commit its run
-# tested, so that run is the test of what is deployed, and CI does not run on main a second time. A commit on main with
-# no passing queue run (a push by a ruleset bypass, if one is ever added) is not deployed; deploy it by hand. It
-# deploys when the pnpm package graph says @yukibana/cloud-web or @yukibana/cloud-db is affected since the last deploy (so a change to
+# Only on a push to main of Yukibana-Ed/Yukibana (a fork has no production environment), once the merge queue's CI run
+# for that very commit has passed. There is no deploying by hand: what reaches production is what the queue tested.
+# Main moves only through the queue, which fast-forwards it to the commit its run tested, so that run is the test of
+# what is deployed, and CI does not run on main a second time. A commit on main with no passing queue run (a push by a
+# ruleset bypass, if one is ever added) is not deployed; it reaches production with the next pull request merged
+# through the queue. It deploys when the pnpm package graph says @yukibana/cloud-web or @yukibana/cloud-db is affected since the last deploy (so a change to
 # packages they use counts, @yukibana/client's yukibana.schema.json among them), or the lockfile, the workspace's
 # configuration, this file or the placeholder check it runs changed; a change to CI or a root config alone deploys
 # nothing (`deploy` in .github/scripts/plan.mts). The queue's run compares with the queue's base, and this with the last
 # deploy, so the two can disagree: a deploy fails, and the next merge affects no cloud package, so its run skips the
 # stack. So a run that would deploy also requires that the queue's run ran the cloud stack and passed: no migration
-# reaches production without having run from empty under pgTAP first. And by hand, from main only, which deploys
-# main's head without any CI run and without that check: an operator's decision. A first environment needs it twice:
-# deploy, log in once with GitHub, deploy again so cloud/db/ops/bootstrap.sql can promote the first admin.
+# reaches production without having run from empty under pgTAP first. A first environment needs two runs: the first
+# deploy, then, after logging in once with GitHub, a re-run of that run's Deploy job alone (it keeps the plan's
+# decision, where re-running every job would find the run itself as the last deploy and skip), so
+# cloud/db/ops/bootstrap.sql can promote the first admin.
 #
-# The run's title, "Deploy <sha>" for a run that may deploy, is how the guards find the last commit deployed. A run by
-# hand on another branch is titled "Not deployed" and does nothing.
+# The run's title, "Deploy <sha>", is how the guards find the last commit deployed.
 #
 # The secrets are on the `production` environment (Settings, Environments), and each step gets only the ones it uses:
 #   SUPABASE_ACCESS_TOKEN   a Supabase personal access token (sbp_...)
@@ -35,28 +37,22 @@
 # The Worker's own secrets (SUPABASE_PUBLISHABLE_KEY, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY) are set once with
 # `wrangler secret put` and are not touched here. docs/cloud/deploy.md is the whole runbook.
 name: Deploy cloud
-# The three places that ask whether this run may deploy (the title, the concurrency group and the plan's `if`) ask the
-# same question: is it on main. A run by hand on another branch would apply its unmerged migrations to production,
-# which cannot be undone.
-run-name: >-
-  ${{ github.ref == 'refs/heads/main' && format('Deploy {0}', github.sha) || format('Not deployed: run by hand on {0}, not main', github.ref_name) }}
+run-name: Deploy ${{ github.sha }}
 
+# Pushes to main only, and no workflow_dispatch: nothing deploys but what the merge queue tested.
 on:
   push:
     branches: [main]
-  workflow_dispatch:
 
 # One deploy at a time, and none cancelled halfway: a newer one waits, and a newer one still replaces it while it waits.
 # So a commit can be replaced before it ran, and the plan compares with the last deploy that succeeded, not with the
-# commit just before: the run that replaced it then includes its changes. A run that may not deploy has a group of its
-# own, so that it cannot replace one that waits.
+# commit just before: the run that replaced it then includes its changes.
 concurrency:
-  group: >-
-    ${{ github.ref == 'refs/heads/main' && 'deploy-cloud' || format('deploy-cloud-not-{0}', github.run_id) }}
+  group: deploy-cloud
   cancel-in-progress: false
 
 env:
-  # The commit this run deploys: the one pushed to main, or main's head by hand.
+  # The commit this run deploys: the one pushed to main.
   COMMIT: ${{ github.sha }}
 
 permissions:
@@ -65,9 +61,7 @@ permissions:
 jobs:
   plan:
     name: Plan
-    if: >-
-      github.repository == 'Yukibana-Ed/Yukibana'
-      && github.ref == 'refs/heads/main'
+    if: github.repository == 'Yukibana-Ed/Yukibana'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -89,12 +83,10 @@ jobs:
           cache: false
 
       # The commit of the last run on main that succeeded, from its title. One whose plan skipped the deploy is a base
-      # too: nothing since the one before it affected the cloud. None (the first run), or a run by hand, means everything
-      # is affected. Only the title run-name writes counts: GitHub titles a run without one "Deploy cloud", which is no
-      # commit.
+      # too: nothing since the one before it affected the cloud. None (the first run) means everything is affected. Only
+      # the title run-name writes counts: GitHub titles a run without one "Deploy cloud", which is no commit.
       - name: Last deployed
         id: base
-        if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -113,14 +105,14 @@ jobs:
       # waited for. The run's jobs are those of its latest attempt.
       - name: The merge queue's CI passed
         id: ci
-        if: github.event_name == 'push' && steps.plan.outputs.deploy == 'true'
+        if: steps.plan.outputs.deploy == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           run=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$COMMIT&event=merge_group&per_page=100" \
             --jq '[.workflow_runs[] | select(.conclusion == "success" or .status != "completed")][0].id // empty')
           if [ -z "$run" ]; then
-            echo "::error::$COMMIT has no passing CI run from the merge queue, so it did not reach main through it and is untested; nothing was deployed. Deploy by hand (Run workflow on main) if that is what you mean."
+            echo "::error::$COMMIT has no passing CI run from the merge queue, so it did not reach main through it and is untested; nothing was deployed. It reaches production with the next pull request merged through the queue."
             exit 1
           fi
           gh run watch "$run" -R "$GITHUB_REPOSITORY" --exit-status --interval 10 > /dev/null || {
@@ -131,14 +123,14 @@ jobs:
 
       # What was affected since the last deploy, CI must have tested on the stack (the header says why).
       - name: CI ran the cloud stack
-        if: github.event_name == 'push' && steps.plan.outputs.deploy == 'true'
+        if: steps.plan.outputs.deploy == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           RUN: ${{ steps.ci.outputs.run }}
         run: |
           result=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN/jobs?per_page=100" --jq '[.jobs[] | select(.name == "Cloud stack")][0].conclusion // "not run"')
           if [ "$result" != success ]; then
-            echo "::error::the cloud is affected since the last deploy, but the cloud stack of CI run $RUN was $result, so what it deploys is untested; nothing was deployed. Fix main through a pull request, or deploy by hand (Run workflow on main)."
+            echo "::error::the cloud is affected since the last deploy, but the cloud stack of CI run $RUN was $result, so what it deploys is untested; nothing was deployed. Fix it through a pull request: the next merge deploys everything since the last deploy."
             exit 1
           fi
 
@@ -167,7 +159,7 @@ jobs:
             status=$(gh api "repos/$GITHUB_REPOSITORY/compare/$last...$COMMIT" --jq .status)
             case "$status" in
               ahead|identical) ;;
-              *) echo "::error::$COMMIT is $status of $last, the commit of the last successful Deploy cloud run; nothing was deployed. To deploy main again, use Run workflow on main."
+              *) echo "::error::$COMMIT is $status of $last, the commit of the last successful Deploy cloud run; nothing was deployed. Re-run the newest Deploy cloud run instead; a newer merge deploys this commit's changes anyway."
                  exit 1 ;;
             esac
           fi
