@@ -35,6 +35,7 @@
   },
   "devDependencies": {
     "@theia/cli": "catalog:",
+    "@yukibana/ide": "catalog:",
     "esbuild": "catalog:"
   },
   "scripts": {

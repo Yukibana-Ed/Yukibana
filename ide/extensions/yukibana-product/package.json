@@ -13,6 +13,7 @@
     "@theia/core": "catalog:"
   },
   "devDependencies": {
+    "@yukibana/ide": "catalog:",
     "rimraf": "catalog:",
     "typescript": "catalog:"
   },

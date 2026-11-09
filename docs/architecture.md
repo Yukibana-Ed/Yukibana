@@ -123,7 +123,7 @@ Multiple parts of the IDE can be configured at build-time:
   - defined in [`ide/package.json`](../ide/package.json)
     thanks to `theiaPlugins` and `theiaPluginsExcludeIds`
 
-  - downloaded in the `ide/plugins` folder by `pnpm download:plugins`
+  - downloaded in the `ide/plugins` folder by `pnpm -C ide download:plugins`
 
 - Builtin Theia Plugins:
   - added as node dependencies to [`ide/browser/package.json`](../ide/browser/package.json)

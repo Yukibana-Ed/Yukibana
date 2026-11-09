@@ -16,6 +16,9 @@
     "@playwright/test": "catalog:",
     "@theia/playwright": "catalog:"
   },
+  "devDependencies": {
+    "@yukibana/ide": "catalog:"
+  },
   "scripts": {
     "lint": "oxlint",
     "typecheck": "tsc --noEmit"

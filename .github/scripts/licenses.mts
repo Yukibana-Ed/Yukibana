@@ -7,7 +7,7 @@
 // package counts, development tools too: the Worker's bundle is built from devDependencies, and a list split by use
 // would need to be maintained by hand.
 //
-//   pnpm install && pnpm download:plugins && node .github/scripts/licenses.mts
+//   pnpm install && pnpm -C ide download:plugins && node .github/scripts/licenses.mts
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -81,7 +81,7 @@ export interface ReviewedPlugin {
 }
 
 /**
- * The plugins the IDE bundles, as `pnpm download:plugins` resolves ide/package.json's `theiaPlugins`: the extension
+ * The plugins the IDE bundles, as `pnpm -C ide download:plugins` resolves ide/package.json's `theiaPlugins`: the extension
  * packs pull in their members, which is why there are more here than there.
  */
 export const PLUGINS: readonly ReviewedPlugin[] = [
@@ -130,7 +130,7 @@ function usable(name: string, license: string): boolean {
     return ALLOWED.has(license) || EXCEPTIONS.some(e => matches(e.pattern, name) && e.license === license);
 }
 
-/** A plugin as `pnpm download:plugins` unpacked it. */
+/** A plugin as `pnpm -C ide download:plugins` unpacked it. */
 export interface DownloadedPlugin {
     /** Its directory under `ide/plugins`. */
     readonly id: string;
@@ -157,7 +157,7 @@ export function pluginProblems(downloaded: readonly DownloadedPlugin[], declared
     });
     // The download of a tarball of several plugins (vscode-builtin-extensions) unpacks under other names.
     const missing = declared.filter(id => id.includes('.') && !downloaded.some(p => p.id === id.toLowerCase()));
-    return [...problems, ...missing.map(id => `${id}: listed in ide/package.json but not in ide/plugins; run pnpm download:plugins`)];
+    return [...problems, ...missing.map(id => `${id}: listed in ide/package.json but not in ide/plugins; run pnpm -C ide download:plugins`)];
 }
 
 /** Returns every installed package with its license, from `pnpm licenses list`. */
@@ -190,7 +190,7 @@ function downloadedPlugins(): DownloadedPlugin[] {
     const dir = 'ide/plugins';
     const ids = existsSync(dir) ? readdirSync(dir) : [];
     if (ids.length === 0) {
-        throw new Error(`${dir} is empty: run pnpm download:plugins first`);
+        throw new Error(`${dir} is empty: run pnpm -C ide download:plugins first`);
     }
     return ids.map(id => {
         const manifest: unknown = JSON.parse(readFileSync(path.join(dir, id, 'extension', 'package.json'), 'utf8'));

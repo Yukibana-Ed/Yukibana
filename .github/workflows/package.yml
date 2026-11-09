@@ -86,7 +86,7 @@ jobs:
       - name: Cache Theia plugins
         uses: actions/cache@v6
         with:
-          # With the stamp that pnpm download:plugins compares the plugin list with.
+          # With the stamp that pnpm -C ide download:plugins compares the plugin list with.
           path: |
             ide/plugins
             node_modules/.plugins-download-inputs
@@ -122,7 +122,7 @@ jobs:
       - name: Build prod package
         shell: bash
         run: |
-          pnpm package
+          pnpm -C ide package
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

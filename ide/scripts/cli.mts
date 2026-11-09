@@ -2,14 +2,15 @@
  * SPDX-License-Identifier: MIT
  */
 
-// Entry point of the root `build`, `start`, `package`, `download:plugins` and `watch` scripts.
+// Entry point of the IDE's `build`, `start`, `package`, `download:plugins`, `watch` and `new:ext` scripts (ide/package.json),
+// which run from the repository root as `pnpm -C ide <script>`.
 //
-//   pnpm build [browser|electron] [--dev]      both apps by default, production unless --dev
-//   pnpm start [browser|electron] [--prod]     electron by default, builds in development mode
-//              [-- <theia start arguments>]
-//   pnpm package [--preview]                   packages the electron app into ide/electron/dist
-//   pnpm download:plugins                      downloads the plugins listed in ide/package.json
-//   pnpm watch                                 recompiles the extensions on every change
+//   pnpm -C ide build [browser|electron] [--dev]      both apps by default, production unless --dev
+//   pnpm -C ide start [browser|electron] [--prod]     electron by default, builds in development mode
+//                     [-- <theia start arguments>]
+//   pnpm -C ide package [--preview]                   packages the electron app into ide/electron/dist
+//   pnpm -C ide download:plugins                      downloads the plugins listed in ide/package.json
+//   pnpm -C ide watch                                 recompiles the extensions on every change
 //
 // The native modules (node-pty, keytar, drivelist, native-keymap) use Node-API, so the builds that pnpm installs
 // for Node.js also load in Electron, and are not rebuilt for it with `theia rebuild:electron`.
@@ -26,9 +27,9 @@ type App = 'browser' | 'electron';
 /** Every app. */
 const APPS: App[] = ['browser', 'electron'];
 
-/** The IDE's folder, `ide`. */
+/** The IDE's folder, `ide`, whose tsconfig.json builds the IDE's extensions and the packages they use. */
 const ide = path.resolve(import.meta.dirname, '..');
-/** Repository root, whose tsconfig.json builds the IDE's extensions and the packages they use. */
+/** Repository root, whose node_modules holds the stamp of the downloaded plugins. */
 const root = path.resolve(ide, '..');
 /** Theia CLI's script. */
 const theia = createRequire(import.meta.url).resolve('@theia/cli/bin/theia.js');
@@ -55,7 +56,7 @@ function exec(cwd: string, script: string, args: string[]): void {
  * Compiling is incremental; bundling takes a few seconds per app.
  */
 function build(apps: App[], dev: boolean): void {
-    exec(root, tsc, ['--build']);
+    exec(ide, tsc, ['--build']);
     for (const app of apps) {
         exec(appDir(app), theia, ['build', `--app-target=${app}`, ...(dev ? ['--mode', 'development'] : [])]);
     }
@@ -142,7 +143,7 @@ function notFoundOrEmpty(dirPath: string): boolean {
 
 /**
  * Returns the new extension's name, given in `positionals`, and its folder: ide/extensions/langs/<name> for a language
- * extension, ide/extensions/<name> otherwise, which is where each template's relative `extends` finds ide/configs.
+ * extension, ide/extensions/<name> otherwise.
  * Exits if no name is given or if the folder already exists and is not empty, unless `force`.
  */
 function parseNewExtension(positionals: string[], lang: boolean = false, force: boolean = false): [string, string] {
@@ -201,7 +202,7 @@ const commands: Record<string, { options: ParseArgsOptionsConfig; run: (args: Pa
     },
     watch: {
         options: {},
-        run: () => exec(root, tsc, ['--build', '--watch']),
+        run: () => exec(ide, tsc, ['--build', '--watch']),
     },
     'new:ext': {
         options: { lang: { type: 'boolean' }, force: { type: 'boolean', short: 'f' } },

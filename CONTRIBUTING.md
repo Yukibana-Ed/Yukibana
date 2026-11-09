@@ -36,30 +36,31 @@ On Windows, the Visual Studio Build Tools also need the
 
    ```bash
    pnpm setup:ide
-   pnpm start
+   pnpm -C ide start
    ```
 
-   The first `pnpm start` also downloads the bundled plugins, which takes a while.
+   The first start also downloads the bundled plugins, which takes a while.
 
 ## Commands
 
-All commands run from the repository root. The extensions compile incrementally,
-so only the ones that changed are recompiled.
+All commands run from the repository root. The root's scripts are the ones every package shares; the IDE's own are
+scripts of `ide/package.json`, run with `pnpm -C ide <script>`. The extensions compile incrementally, so only the ones
+that changed are recompiled.
 
 `pnpm lint`, `pnpm typecheck` and `pnpm test` cover every package, so they need every package installed
 (`pnpm install`). After `pnpm setup:ide`, run them for what it installed the same way, e.g.
 `pnpm --filter "{ide/**}..." test` (`"{cloud/**}..."` after `pnpm setup:cloud`, `@yukibana/cli...` after
 `pnpm setup:cli`).
 
-- `pnpm start [browser|electron]`: build in development mode, download the bundled
+- `pnpm -C ide start [browser|electron]`: build in development mode, download the bundled
   plugins if needed, and start the app (Electron by default).
   Use `--prod` for a production build, and pass extra arguments to `theia start`
-  after `--`, e.g. `pnpm start electron -- --log-config=../log-config.json` (`ide/log-config.json`)
-- `pnpm build [browser|electron]`: build the extensions and the apps (both by default)
+  after `--`, e.g. `pnpm -C ide start electron -- --log-config=../log-config.json` (`ide/log-config.json`)
+- `pnpm -C ide build [browser|electron]`: build the extensions and the apps (both by default)
   in production mode, or in development mode with `--dev`
-- `pnpm package`: build and package the Electron app into `ide/electron/dist`.
+- `pnpm -C ide package`: build and package the Electron app into `ide/electron/dist`.
   Use `--preview` for an unpacked directory
-- `pnpm download:plugins`: download the plugins listed in `theiaPlugins` (in `ide/package.json`) into `ide/plugins`,
+- `pnpm -C ide download:plugins`: download the plugins listed in `theiaPlugins` (in `ide/package.json`) into `ide/plugins`,
   again whenever that list changes (done automatically by `start` and `package`; delete `ide/plugins` to download them again)
 - `pnpm lint`, `pnpm typecheck`: run every package's `lint` (oxlint) or `typecheck` script, after `lint:root` or
   `typecheck:root` for the files no package owns; one package's with e.g. `pnpm --filter @yukibana/cli lint`.
@@ -72,16 +73,16 @@ so only the ones that changed are recompiled.
   or library comes from its compiled `lib`, so rebuild that one after changing it (`pnpm setup:ide`
   compiles them all). Filter by file name and test name, e.g.
   `pnpm test config-provider -t "should reload"`
-- `pnpm test:e2e`: build both apps in development mode and run the Playwright end-to-end
+- `pnpm -C ide test:e2e`: build both apps in development mode and run the Playwright end-to-end
   tests ([ide/e2e/e2e](ide/e2e/e2e)) in each of them. Pick one app with `--project=browser` or
-  `--project=electron`, and filter like `pnpm test`: `pnpm test:e2e scala -g "language"`.
+  `--project=electron`, and filter like `pnpm test`: `pnpm -C ide test:e2e scala -g "language"`.
   Playwright's own options work too, e.g. `--headed`, `--debug` or `--ui`. Before the
   first run, install Playwright's Chromium: `pnpm --filter @yukibana/ide-e2e exec playwright install chromium`
 - `pnpm test:coverage`: run the unit tests and report their coverage, in `coverage/index.html`
 - `pnpm clean`: remove what the extensions compiled and the apps bundled, e.g. after deleting
   or renaming source files, whose stale compiled files are otherwise left behind
 
-To recompile the extensions on every change, run `pnpm watch`, and to rebundle an app,
+To recompile the extensions on every change, run `pnpm -C ide watch`, and to rebundle an app,
 `pnpm --filter @yukibana/ide-browser watch` (or `@yukibana/ide-electron`).
 
 ## Architecture
@@ -91,6 +92,9 @@ The IDE is in [ide](ide), separated into 4 main parts:
 - the Electron app ([ide/electron](ide/electron))
 - custom extensions ([ide/extensions](ide/extensions))
 - helpers shared by the extensions ([ide/common](ide/common))
+
+`ide` itself (`@yukibana/ide`) holds the scripts that build them, the TypeScript and Vitest configuration they share
+(`ide/configs`) and the plugins they ship with, and every package under it declares it as a devDependency.
 
 Each part is its own package of the pnpm workspace, and the end-to-end tests ([ide/e2e](ide/e2e)) are one too.
 The commands above, run from the root, build and start them.
