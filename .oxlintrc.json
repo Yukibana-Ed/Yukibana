@@ -10,21 +10,34 @@
     "eqeqeq": ["error", "smart"],
     "guard-for-in": "error",
     "no-new-wrappers": "error",
-    "no-shadow": ["error", { "hoist": "all" }],
+    "no-shadow": [
+      "error",
+      {
+        "hoist": "all"
+      }
+    ],
     "no-throw-literal": "error",
     "no-unused-expressions": "error",
     "no-var": "error",
-    "no-void": ["error", { "allowAsStatement": true }],
+    "no-void": [
+      "error",
+      {
+        "allowAsStatement": true
+      }
+    ],
     "one-var": ["error", "never"],
-    "prefer-const": ["error", { "destructuring": "all" }],
+    "prefer-const": [
+      "error",
+      {
+        "destructuring": "all"
+      }
+    ],
     "typescript/consistent-type-definitions": "error",
     "typescript/no-explicit-any": "error",
     "unicorn/no-null": "error",
-
     "typescript/await-thenable": "warn",
     "typescript/no-deprecated": "warn",
     "typescript/return-await": "warn",
-
     "no-eval": "warn",
     "no-implied-eval": "warn",
     "react/no-danger": "warn",
@@ -39,5 +52,24 @@
     "**/dist/**",
     "ide/e2e/playwright-report/**",
     "ide/e2e/test-results/**"
+  ],
+  "overrides": [
+    {
+      "files": ["ide/**/src/browser/**", "ide/**/src/common/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@yukibana/client",
+                "allowTypeImports": true,
+                "message": "Browser code imports only types from @yukibana/client (`import type`): its root entry is Node-only. What a yukibana.json says is @yukibana/client/config."
+              }
+            ]
+          }
+        ]
+      }
+    }
   ]
 }

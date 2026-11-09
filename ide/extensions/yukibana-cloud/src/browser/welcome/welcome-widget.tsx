@@ -9,7 +9,7 @@ import { inject, injectable, named, postConstruct } from '@theia/core/shared/inv
 import { FileDialogService } from '@theia/filesystem/lib/browser';
 import { FileService } from '@theia/filesystem/lib/browser/file-service';
 import { WorkspaceCommands, WorkspaceService } from '@theia/workspace/lib/browser';
-import { Project } from '@yukibana/client';
+import type { Project } from '@yukibana/client';
 import * as React from 'react';
 import { localizeMarkdown } from '@yukibana/ide-common/lib/localize-markdown';
 import { CloudAccount, CloudService } from '../../common/cloud-protocol';
