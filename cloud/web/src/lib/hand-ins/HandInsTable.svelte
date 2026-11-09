@@ -5,6 +5,7 @@
   import { search, subtitle, type Base, type HandIn, type Release, type StudentHandIns } from '../hand-ins';
   import type { SubmissionId } from '../ids';
   import { downloadAll as saveAll, downloadOne, findings, type ToAssemble } from './assembled';
+  import { menuPosition } from './popover';
   import BaseNote from './BaseNote.svelte';
   import StandingChip from './StandingChip.svelte';
 
@@ -49,6 +50,22 @@
     for (const o of outcomes) settle(o);
     all = { state: 'done', saved: outcomes.filter((o) => o.ok).length, failed: outcomes.flatMap((o) => (o.ok ? [] : [o.name])) };
   }
+
+  // A row's menu is a popover (./popover): placed by its button when it
+  // opens, and closed when the page scrolls, since it would not follow.
+  function place(e: ToggleEvent & { currentTarget: HTMLElement }): void {
+    const menu = e.currentTarget;
+    const button = document.querySelector(`[popovertarget="${menu.id}"]`);
+    if (e.newState !== 'open' || button === null) return;
+    const { top, left } = menuPosition(button.getBoundingClientRect(), menu.offsetWidth, menu.offsetHeight, window.innerWidth, window.innerHeight);
+    menu.style.top = `${top}px`;
+    menu.style.left = `${left}px`;
+  }
+  $effect(() => {
+    const close = () => document.querySelectorAll<HTMLElement>('.menu-items:popover-open').forEach((m) => m.hidePopover());
+    window.addEventListener('scroll', close, { capture: true, passive: true });
+    return () => window.removeEventListener('scroll', close, { capture: true });
+  });
 
   async function download(l: StudentHandIns, s: HandIn): Promise<void> {
     assemblies.set(s.submissionId, { state: 'busy' });
@@ -121,10 +138,10 @@
                       <button type="button" class="download" disabled={busy} onclick={() => download(l, s)} title="With the release's read-only and hidden files, ready to grade">
                         {busy ? 'Assembling…' : 'Download'}
                       </button>
-                      <details class="menu">
-                        <summary aria-label="More ways to download">▾</summary>
-                        <div class="menu-items"><a href={raw} download>Download without assembly</a></div>
-                      </details>
+                      <button type="button" class="menu-toggle" popovertarget="menu-{s.submissionId}" aria-label="More ways to download">▾</button>
+                      <div class="menu-items" id="menu-{s.submissionId}" popover ontoggle={place}>
+                        <a href={raw} download onclick={(e) => e.currentTarget.closest<HTMLElement>('[popover]')?.hidePopover()}>Download without assembly</a>
+                      </div>
                     </div>
                   {/if}
                 </div>
