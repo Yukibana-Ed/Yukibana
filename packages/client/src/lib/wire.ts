@@ -13,51 +13,77 @@ import * as z from 'zod';
 import { _default as withDefault } from 'zod';
 import { fieldOf, nameOf } from './issues.js';
 
-/** A person's role in an edition. */
+/** A person's role in an edition. Staff are `assistant` and `owner`; only an
+ *  `owner` changes the roster. */
 export type EditionRole = 'student' | 'assistant' | 'owner';
 
 /** The person the access token is for. */
 export interface Me {
+    /** Their user id, the token's `sub`. */
     readonly userId: string;
+    /** The address in the verified token; null when it has none. */
     readonly email: string | null;
+    /** Their name, which they may change; null when they have given none or
+     *  have no profile row yet. */
     readonly fullName: string | null;
+    /** Their GitHub login, lowercased; null when their sign-in gave none or
+     *  they have no profile row yet. */
     readonly githubLogin: string | null;
-    /** `user`, `teacher` or `admin`. */
+    /** `user`, `teacher` or `admin`. A string, not a union, so that a role
+     *  added later decodes. */
     readonly platformRole: string;
 }
 
 /** An edition the caller is enrolled in. */
 export interface Edition {
+    /** The edition's id. */
     readonly editionId: string;
+    /** The course's code, like `CS-101`, shared by every edition of the course. */
     readonly courseCode: string;
+    /** The course name this edition runs under; other editions of the same
+     *  course may have another. */
     readonly courseTitle: string;
+    /** The edition's label for people, like `2026 autumn`. */
     readonly label: string;
+    /** `true` iff an owner has archived the edition. */
     readonly archived: boolean;
     /** The caller's role in it. */
     readonly role: EditionRole;
 }
 
-/** A project the caller may see, with what it means for them. */
+/** A project the caller may see, with what it means for them. Staff see
+ *  every project of their editions; a student only those whose window is
+ *  open now. */
 export interface Project {
+    /** The project's id. */
     readonly projectId: string;
+    /** The edition it belongs to. */
     readonly editionId: string;
+    /** The code of the edition's course. */
     readonly courseCode: string;
+    /** The edition's label. */
     readonly editionLabel: string;
+    /** The project's short name: lowercase letters, digits and `-`, unique in its edition. */
     readonly slug: string;
+    /** The project's title for people. */
     readonly title: string;
+    /** The toolchain the project is built with (`rust-cargo` or `scala-sbt`
+     *  today). A string, not a union, so that a kind added later decodes. */
     readonly kind: string;
-    /** Null: a draft, which only staff see. */
+    /** When it opens to students. Null: a draft, which only staff see. */
     readonly availableAfter: string | null;
     /** When work is due. Null: no deadline. Later submissions are accepted
      *  until `closesAt`, and read as late. */
     readonly deadline: string | null;
-    /** When the window closes and the project disappears for students. Null:
-     *  never. */
+    /** When the window closes: after it a student no longer sees the project
+     *  and cannot submit. Null: never. */
     readonly closesAt: string | null;
-    /** Whether the deadline has passed: a submission now would be late. */
+    /** `true` iff the deadline has passed: a submission now would be late.
+     *  Always `false` without a deadline. */
     readonly late: boolean;
+    /** The caller's role in the project's edition. */
     readonly role: EditionRole;
-    /** Whether a starter has been released and the caller may download it. */
+    /** `true` iff a starter has been released and the caller may download it. */
     readonly starterReady: boolean;
     /** The newest release whose starter the caller may download now: what an
      *  IDE compares with the folder's `releaseId` to know an update exists,
@@ -66,83 +92,120 @@ export interface Project {
      *  project has no release, when the caller may not download from it now,
      *  and from a registry older than this field. */
     readonly currentReleaseId: string | null;
-    /** Whether the caller may submit right now. Only ever true for a student. */
+    /** `true` iff the caller may submit right now: only ever true for a
+     *  student, between `availableAfter` and `closesAt`, before the deadline
+     *  or after. */
     readonly canSubmit: boolean;
-    /** How many submissions the caller has made to it. */
+    /** How many submissions the caller has made to it; only a student can submit. */
     readonly mySubmissions: number;
+    /** When the caller's newest submission to it arrived; null when they have none. */
     readonly myLastSubmittedAt: string | null;
 }
 
 /** The person a submission is by, as far as the caller may see them. */
 export interface Author {
+    /** The author's user id; always present, even when the rest is hidden. */
     readonly userId: string;
+    /** The author's name; null when they have none or the caller may not see their profile. */
     readonly fullName: string | null;
+    /** The author's GitHub login; null when they have none or the caller may not see their profile. */
     readonly githubLogin: string | null;
     /** The address they were enrolled with; null when the caller may not see
      *  it or the enrolment is gone. */
     readonly email: string | null;
 }
 
-/** A submission's record; the archive itself is downloaded separately. */
+/** A submission's record; the archive itself is downloaded separately
+ *  (`downloadSubmission`). Staff see everyone's, a student only their own. */
 export interface Submission {
+    /** The submission's id. */
     readonly submissionId: string;
+    /** The project it was submitted to. */
     readonly projectId: string;
+    /** When it arrived, as the registry's database stamped it. */
     readonly submittedAt: string;
+    /** The archive's size in bytes, as stored. */
     readonly byteSize: number;
+    /** Hex SHA-256 of the archive, as the registry computed it on arrival. */
     readonly sha256: string;
+    /** Who submitted it. */
     readonly author: Author;
-    /** Whether this is the author's newest submission to the project: the
+    /** `true` iff this is the author's newest submission to the project: the
      *  one that counts. */
     readonly latest: boolean;
-    /** Whether it arrived after the deadline, as the deadline is now. */
+    /** `true` iff it arrived after the deadline, as the deadline is now. */
     readonly late: boolean;
     /** The release it started from, always one of its project's; null when
-     *  unknown (older submissions, hand-made archives, a claim that named no
-     *  release of the project, or a registry from before releases had ids). */
+     *  unknown (older submissions, hand-made archives, one uploaded through
+     *  the project page, a claim that named no release of the project, or a
+     *  registry from before releases had ids). The student's claim: it
+     *  decides nothing about who may do what. */
     readonly baseReleaseId: string | null;
 }
 
-/** A release's record, as staff see it. */
+/** A release's record, as staff see it; a student is listed none. */
 export interface Release {
+    /** The release's id. */
     readonly releaseId: string;
+    /** The label for people it was published with (a tag, a branch); may be ''. */
     readonly label: string;
+    /** The commit its archives were built from, as the publisher said; null when it said none. */
     readonly commit: string | null;
+    /** The starter archive's size in bytes. */
     readonly starterSize: number;
+    /** The teacher archive's size in bytes. */
     readonly teacherSize: number;
+    /** When it was published. */
     readonly uploadedAt: string;
+    /** Login or name of whoever uploaded it (or whose token did); null when
+     *  they have neither or the caller may no longer see their profile. */
     readonly uploadedBy: string | null;
+    /** `true` iff it was published with a project token rather than by a person signed in. */
     readonly viaToken: boolean;
 }
 
-/** An enrolment in an edition. */
+/** An enrolment in an edition. Staff see every one; a student only their own. */
 export interface Member {
+    /** The enrolled address, lowercased. */
     readonly email: string;
+    /** The role it is enrolled with. */
     readonly role: EditionRole;
+    /** `manual`, or the roster feed that owns the row. */
     readonly source: string;
     /** Null until the address has logged in. */
     readonly userId: string | null;
+    /** The person's name; null before they log in or when they have none. */
     readonly fullName: string | null;
+    /** The person's GitHub login; null before they log in or when they have none. */
     readonly githubLogin: string | null;
 }
 
 /** The registry's receipt for a submission it stored. */
 export interface Accepted {
+    /** The new submission's id. */
     readonly submissionId: string;
+    /** The archive's size in bytes, as the registry stored it. */
     readonly byteSize: number;
+    /** Hex SHA-256 of the archive, as the registry computed it. */
     readonly sha256: string;
 }
 
 /** The registry's receipt for a release it stored: each archive's size in bytes and SHA-256. */
 export interface Published {
+    /** The new release's id: the one `publishRelease` was given, or the registry's choice when it was given none. */
     readonly releaseId: string;
+    /** The starter archive's size in bytes and hex SHA-256, as stored. */
     readonly starter: { readonly size: number; readonly sha256: string };
+    /** The teacher archive's size in bytes and hex SHA-256, as stored. */
     readonly teacher: { readonly size: number; readonly sha256: string };
 }
 
 /** The public half of the registry's Auth configuration: what a browser
  *  login needs, and nothing secret. */
 export interface AuthConfig {
+    /** The Auth server's URL. */
     readonly supabaseUrl: string;
+    /** The Auth server's publishable (anonymous) key. */
     readonly publishableKey: string;
     /** The registry's OAuth client on that Auth server, through which a
      *  loopback login goes by way of the website (`/auth/connect`). Null from

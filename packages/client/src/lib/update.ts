@@ -79,46 +79,84 @@ export type ChooseReason =
     /** The teacher deleted it (or made it hidden); the student changed it. */
     | 'deletedByTeacher';
 
-/** One path's fate.
+/** One path's fate: `write` the newest release's version, `delete` the
+ *  folder's file, offer a three-way `merge`, or ask the person to `choose`.
+ *  A host applies `write` and `delete` without asking the person what the
+ *  result should be (where `editedByStudent` is set, it warns first and
+ *  keeps the old copy); it applies nothing for `merge` and `choose` until
+ *  the person has settled them.
  *
- *  `path`: the path, relative to the folder's root with forward slashes.
- *  `kind`: what a host does there: `write` the newest release's version
- *  (`theirs`), `delete` the folder's file, offer a three-way `merge` of the
- *  folder's text with the two releases', or ask the person to `choose`, for `reason`.
- *  `protected`: read-only in either release, or `yukibana.json`.
- *  `editedByStudent`: the folder's copy differs from the base release's, so
- *  writing or deleting it replaces something the student did; a host warns
- *  before, and keeps the old copy. `newlyProtected`: protected in the newest
- *  release and editable in the base, so what the student did there was
- *  their work until now. Both are only ever true on a protected path.
- *
- *  `base` and `theirs` on `merge` and `choose` are the two releases'
- *  versions, null where that release has no file. */
+ *  Invariant: `editedByStudent` and `newlyProtected` are only ever true
+ *  where `protected` is; an unprotected path the student changed is a
+ *  `merge` or a `choose`, never a `write` or `delete`. */
 export type Change =
     | {
+          /** What a host does: write `theirs` at `path`, replacing whatever is there. */
           readonly kind: 'write';
+          /** The path, relative to the folder's root with forward slashes. */
           readonly path: string;
+          /** The newest release's version, to write. */
           readonly theirs: Version;
+          /** `true` iff the path is read-only in either release, or is `yukibana.json`. */
           readonly protected: boolean;
+          /** `true` iff the folder has something at the path that differs from
+           *  the base release's file (or the base has none), so writing
+           *  replaces something the student did: a host warns before, and
+           *  keeps the old copy. */
           readonly editedByStudent: boolean;
+          /** `true` iff the path is read-only in the newest release and
+           *  editable in the base, and is not `yukibana.json`: what the student
+           *  did there was their work until now. */
           readonly newlyProtected: boolean;
       }
     | {
+          /** What a host does: delete what the folder has at `path`. */
           readonly kind: 'delete';
+          /** The path, relative to the folder's root with forward slashes. */
           readonly path: string;
+          /** `true` iff the path is read-only in either release, or is `yukibana.json`. */
           readonly protected: boolean;
+          /** `true` iff what the folder has at the path differs from the base
+           *  release's file (or the base has none), so deleting it loses something the student
+           *  did: a host warns before, and keeps the old copy. */
           readonly editedByStudent: boolean;
+          /** `true` iff the path is read-only in the newest release and
+           *  editable in the base, and is not `yukibana.json`: what the student
+           *  did there was their work until now. */
           readonly newlyProtected: boolean;
       }
-    | { readonly kind: 'merge'; readonly path: string; readonly base: Version | null; readonly theirs: Version }
-    | { readonly kind: 'choose'; readonly path: string; readonly reason: ChooseReason; readonly base: Version | null; readonly theirs: Version | null };
+    | {
+          /** What a host does: keep the student's text file and offer a three-way merge. */
+          readonly kind: 'merge';
+          /** The path, relative to the folder's root with forward slashes. */
+          readonly path: string;
+          /** The base release's version, the merge's common ancestor. `planUpdate`
+           *  makes a `merge` only where the base has a file, so it never gives
+           *  null here; the type allows it for a host that builds its own. */
+          readonly base: Version | null;
+          /** The newest release's version. */
+          readonly theirs: Version;
+      }
+    | {
+          /** What a host does: keep the student's state and offer the newest release's. */
+          readonly kind: 'choose';
+          /** The path, relative to the folder's root with forward slashes. */
+          readonly path: string;
+          /** Why no line merge can join the two. */
+          readonly reason: ChooseReason;
+          /** The base release's version; null where the base has no file (`bothAdded`). */
+          readonly base: Version | null;
+          /** The newest release's version; null where it has no file (`deletedByTeacher`). */
+          readonly theirs: Version | null;
+      };
 
 /** What updating a student's folder to the newest starter would change, path by path. */
 export interface UpdatePlan {
     /** The release the folder is updated to, as the newest starter's config
      *  says; null for a starter built without one. */
     readonly to: string | null;
-    /** The release the folder started from, as the base starter's config says. */
+    /** The release the folder started from, as the base starter's config
+     *  says; null for a starter built without one. */
     readonly from: string | null;
     /** The newest release's config. */
     readonly config: Config;
@@ -147,9 +185,9 @@ export type Planned =
           readonly problem: string;
       };
 
-/** The paths of `folderPaths` (every file in the folder, relative) whose
- *  contents `planUpdate` needs, together with every path either starter
- *  has. A folder file that neither starter has matters only when it is
+/** Returns, sorted, the paths of `folderPaths` (every file in the folder,
+ *  relative) whose contents `planUpdate` needs, together with every path
+ *  either starter has. A folder file that neither starter has matters only when it is
  *  protected: an update deletes it, as the assembly would ignore or flag it. */
 export function wantedPaths(base: readonly Entry[], newest: readonly Entry[], folderPaths: Iterable<string>): string[] {
     const configs = bothConfigs(base, newest);
@@ -161,10 +199,16 @@ export function wantedPaths(base: readonly Entry[], newest: readonly Entry[], fo
     return [...wanted].toSorted();
 }
 
-/** Classifies every path of either starter, and every protected path of
- *  the folder. `base` and `newest` are the two releases' starters as read
- *  (`readArchive`), wrapped in a folder or not; `folder` is the student's
- *  folder at least at `wantedPaths`. */
+/** Returns a plan that classifies every path of either starter, and every
+ *  protected path of the folder; or, when either starter has no
+ *  `yukibana.json` or one that does not parse, the sentence that says so.
+ *  `base` and `newest` are the two releases' starters as read
+ *  (`readArchive`), wrapped in a folder or not.
+ *
+ *  - Requires: `folder` holds at least the paths `wantedPaths` returns for
+ *    the folder. Not checked, because the plan cannot tell a path left out
+ *    from a file the student deleted: a wanted path left out reads as
+ *    deleted, and a protected file left out stays in the folder. */
 export function planUpdate(base: readonly Entry[], newest: readonly Entry[], folder: Folder): Planned {
     const configs = bothConfigs(base, newest);
     if (!configs.ok) return configs;
@@ -183,7 +227,7 @@ export function planUpdate(base: readonly Entry[], newest: readonly Entry[], fol
     return { ok: true, plan: { from: configs.base.releaseId, to: configs.newest.releaseId, config: configs.newest, changes } };
 }
 
-/** Whether the plan changes nothing but `yukibana.json`, which the student
+/** `true` iff the plan changes nothing but `yukibana.json`, which the student
  *  never edits: the newest release differs from the base only in what the
  *  student does not receive (hidden tests, the teacher archive) or in the
  *  config itself. A host can then move the stamp without asking. */
