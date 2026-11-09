@@ -30,7 +30,7 @@ export interface Incident {
     /** The request (`GET /editions/…`) or the page (`/editions/…`), without its
      *  query: a query can carry a login code or a token. */
     readonly where: string;
-    /** The route's id (`/editions/[id]`), or null when no route matched. */
+    /** The route's id (`/editions/[edition]`), or null when no route matched. */
     readonly route: string | null;
     /** The error's class, and for a browser incident its message as well. */
     readonly error: string;
@@ -41,13 +41,21 @@ export interface Incident {
 
 /** What the hooks know about an error when they make an incident of it. */
 export interface Occurrence {
+    /** The incident's id, a fresh uuid the hook made; copied as it is. */
     readonly id: string;
+    /** When the hook heard of the error. */
     readonly at: Date;
+    /** Which hook: the Worker's (`server`) or the page's (`browser`). It
+     *  decides whether the error's message is kept. */
     readonly side: Incident['side'];
+    /** The deploy, copied as it is (see `Incident.version`). */
     readonly version: string;
     /** The request's method, or null in the browser, which only navigates. */
     readonly method: string | null;
+    /** The request's or the page's address; only its path is kept, never
+     *  its query or fragment. */
     readonly url: URL;
+    /** The matched route's id, or null when none matched. */
     readonly route: string | null;
 }
 
@@ -71,8 +79,9 @@ export function incidentOf(thrown: unknown, occurrence: Occurrence): Incident {
     };
 }
 
-/** Returns the frame lines of `stack`, each trimmed: V8's `at f (file:1:2)`
- *  and Firefox's and Safari's `f@file:1:2`. Everything else is dropped, and
+/** Returns the frame lines of `stack`, each trimmed, joined by `\n`, in
+ *  their order; '' for undefined or a stack with none. A frame line is
+ *  V8's `at f (file:1:2)` or Firefox's and Safari's `f@file:1:2`. Everything else is dropped, and
  *  that is the point: V8 puts the message first, and a message may run over
  *  several lines, so a stack is never shown as it is. */
 export function framesOf(stack: string | undefined): string {
@@ -97,7 +106,7 @@ export function incidentText(incident: Incident): string {
     return incident.stack === '' ? lines.join('\n') : `${lines.join('\n')}\n\n${incident.stack}`;
 }
 
-/** The sentence an unexpected server error answers with: the same for a page
+/** Returns the sentence an unexpected server error answers with: the same for a page
  *  and for the API, so that the CLI and the IDE, which show only `message`,
  *  show the incident's id too. */
 export function serverMessage(id: string): string {

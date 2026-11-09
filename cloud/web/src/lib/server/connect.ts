@@ -16,18 +16,41 @@ import type { Supabase } from '#lib/server/session.ts';
 import { report } from '#lib/report.ts';
 import { CONNECT_COOKIE_PREFIX, connectCookie, deliveryUrl, relayOf } from '#lib/connect.ts';
 
-/** The calls this needs, so a test can pass a client of its own. */
+/** The two calls of Supabase Auth's OAuth server client this needs, so a
+ *  test can pass a client of its own. */
 export type ConsentAuth = Pick<Supabase['auth']['oauth'], 'getAuthorizationDetails' | 'approveAuthorization'>;
 
 /** What an authorization must be for this site to approve it: for the
- *  registry's own client, coming back to its one redirect URI, asking for
- *  nothing but `email`. */
+ *  registry's own client, coming back to its one redirect URI. (That it
+ *  asks for nothing but `email` is checked by `approve` itself, not
+ *  configured.) */
 export interface Expected {
+    /** The registry's OAuth client id, `Config.oauthClientId`. */
     readonly clientId: string;
+    /** The client's one redirect URI, `returnUrlOf(siteOrigin(…))`, as a full
+     *  address. */
     readonly returnUrl: string;
 }
 
-export type Approved = { readonly ok: true; readonly redirect: URL } | { readonly ok: false; readonly status: number; readonly message: string };
+/** What `approve` found: where Auth would send the browser, or why not. */
+export type Approved =
+    | {
+          /** Approved. */
+          readonly ok: true;
+          /** Auth's redirect, checked to be at `Expected.returnUrl`'s origin
+           *  and path; its query is Auth's and not checked here (a `code` or
+           *  an `error`, and the `state`: `relay` reads it). */
+          readonly redirect: URL;
+      }
+    | {
+          /** Not approved. */
+          readonly ok: false;
+          /** 400 for a request to start again, 502 for an answer of Auth's
+           *  this site cannot take. */
+          readonly status: number;
+          /** A sentence for the person; the cause is in the Worker log. */
+          readonly message: string;
+      };
 
 const AGAIN = 'Start the login again from your IDE or terminal.';
 
@@ -83,7 +106,11 @@ function refused(why: string): Approved {
 /** What a route does: send the browser somewhere, or show an error; and
  *  either way, which connect cookies to delete. */
 export interface Decision {
+    /** Where the browser goes (a 303 to `redirect`, the loopback), or the
+     *  error page's status and sentence. */
     readonly to: { readonly redirect: URL } | { readonly status: number; readonly message: string };
+    /** The names of the connect cookies to delete, each one this browser
+     *  sent; empty to touch none. */
     readonly spend: readonly string[];
 }
 
@@ -91,7 +118,9 @@ const fail = (status: number, message: string, spend: readonly string[]): Decisi
 
 /** A cookie as the browser sent it. */
 export interface HeldCookie {
+    /** Its name, prefix included. */
     readonly name: string;
+    /** Its value: for a connect cookie, an authorization's id. */
     readonly value: string;
 }
 
@@ -157,7 +186,11 @@ function relay(answer: URLSearchParams, opts: { readonly accept: readonly string
 /** What "Continue" does: send the browser somewhere, or show an error; and
  *  the connect cookie to set, if any. */
 export interface Started {
+    /** Where the browser goes (the consent route, or the loopback with an
+     *  error), or a 502 and the sentence the Worker logged. */
     readonly to: { readonly redirect: URL } | { readonly status: number; readonly message: string };
+    /** The connect cookie to set with `CONNECT_COOKIE_OPTIONS`, or null to
+     *  set none. Set only together with a redirect to the consent route. */
     readonly cookie: HeldCookie | null;
 }
 
@@ -217,7 +250,8 @@ export async function start(input: { readonly authorize: URL; readonly site: str
     return failed(`Auth's OAuth server sent an authorization request to ${where}, not to ${consentAt.origin}${consentAt.pathname}: is its site_url ${input.site}?`);
 }
 
-/** A fresh nonce for the connect cookie: 16 random bytes, base64url. */
+/** Returns a fresh nonce for the connect cookie: 16 random bytes, as 22
+ *  base64url characters without padding, which `relayOf` accepts. */
 export function nonce(): string {
     const bytes = crypto.getRandomValues(new Uint8Array(16));
     return btoa(String.fromCharCode(...bytes))
@@ -227,13 +261,20 @@ export function nonce(): string {
 }
 
 /** The connect cookie's attributes: what `__Host-` demands (Secure, path
- *  `/`, no domain), HttpOnly, and Lax so that it rides along on the
- *  top-level navigation back from Auth, which is a cross-site GET. */
+ *  `/`, no domain), HttpOnly, five minutes (`maxAge` in seconds), and Lax.
+ *  Lax was chosen so that it rode along on the top-level navigation back
+ *  from Auth, a cross-site GET, when the browser went to Auth itself. Since
+ *  `start` asks Auth from the server, the request that needs it is the 303
+ *  from this site's own "Continue" to the consent route, a same-site
+ *  navigation, which Lax covers too. */
 export const CONNECT_COOKIE_OPTIONS = { path: '/', httpOnly: true, secure: true, sameSite: 'lax', maxAge: 300 } as const;
 
-/** Where the site is: `SITE_URL` when set, which must be Auth's
- *  `site_url`, else the origin the request came to. */
+/** Returns the site's origin (no path, no trailing slash): `SITE_URL`'s
+ *  when set, which must be Auth's `site_url`, else the origin the request
+ *  came to. Throws a TypeError if `siteUrl` is not an absolute address,
+ *  which `configOf` does not check. */
 export const siteOrigin = (siteUrl: string | null, requested: URL): string => (siteUrl === null ? requested.origin : new URL(siteUrl).origin);
 
-/** The OAuth client's one redirect URI, on the site's origin. */
+/** Returns the OAuth client's one redirect URI, on `origin`, which is an
+ *  origin as `siteOrigin` returns it (no trailing slash). */
 export const returnUrlOf = (origin: string): string => `${origin}/auth/connect/return`;

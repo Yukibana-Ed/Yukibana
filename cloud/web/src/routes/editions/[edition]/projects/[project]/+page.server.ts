@@ -1,7 +1,7 @@
 import { error, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { uuidOf, type EditionId, type ProjectId, type TokenId } from '#lib/ids.ts';
-import { asUser, statusOf } from '#lib/server/db.ts';
+import { asUser, refusalOf } from '#lib/server/db.ts';
 import { text } from '#lib/server/form.ts';
 import { requireClaims, withContext } from '#lib/server/context.ts';
 import { acceptSubmission } from '#lib/server/submissions.ts';
@@ -72,6 +72,14 @@ function ids(params: { edition: string; project: string }): { edition: EditionId
     return { edition, project };
 }
 
+/** A project as the caller sees it: the project with the database's
+ *  answers to "may this person edit it" and "may they submit now", every
+ *  submission they may read (their own for a student, everyone's for
+ *  staff), newest first, the newest 20 releases for staff, and the tokens
+ *  for an owner (never their secrets, which are not stored). A 404 for a
+ *  project the caller cannot see, for one that is not in the edition the
+ *  address names, and for parameters that are not uuids; the login page
+ *  for nobody. */
 export const load: PageServerLoad = async event => {
     const claims = requireClaims(event);
     const { edition, project } = ids(event.params);
@@ -117,7 +125,13 @@ export const load: PageServerLoad = async event => {
     );
 };
 
-const failing = (e: unknown) => fail(statusOf(e).status, { error: statusOf(e).message });
+/** A `fail` for a failure of an action's database work: the database's
+ *  status and sentence for a refusal, a 500 with a fixed sentence for
+ *  anything else (`refusalOf`, which reports it). */
+const failing = (e: unknown) => {
+    const { status, message } = refusalOf('projects', e);
+    return fail(status, { error: message });
+};
 const httpFailing = (e: unknown) => {
     if (typeof e === 'object' && e !== null && 'status' in e && 'body' in e) {
         const err = e as { status: number; body: { message: string } };
@@ -147,8 +161,23 @@ function timesOf(form: FormData): { ok: true; availableAfter: Date | null; deadl
     return { ok: true, availableAfter: availableAfter.at, deadline: deadline.at, closesAt: closesAt.at };
 }
 
+/** The project page's forms. Every action requires a signed-in caller and
+ *  parameters that are uuids (else a 404), and leaves the decision of who
+ *  may to the database. A refusal is a `fail` whose `error` is a sentence
+ *  for the person; a failure that is not one is a 500 with a fixed
+ *  sentence, reported and not shown (`refusalOf`).
+ *
+ *  Of the actions, only `update` checks that the project is in the edition the address
+ *  names. `submit`, `createToken` and `revokeToken` check only that the
+ *  `edition` parameter is a uuid and act on the project (or token) by its
+ *  own id, so under another edition's address they do what they would do
+ *  under the right one; `load` answers that address with a 404. Nothing is
+ *  widened by it: the database decides by the project, not the address. */
 export const actions: Actions = {
-    /** The page's upload form. The API route does the same for an IDE. */
+    /** The page's upload form: the `archive` file, through
+     *  `acceptSubmission`, with no base release. Answers `{ submitted }`
+     *  with what was recorded, or a `fail` with the status
+     *  `acceptSubmission` threw. The API route does the same for an IDE. */
     submit: async event => {
         const claims = requireClaims(event);
         const { project } = ids(event.params);
@@ -163,30 +192,41 @@ export const actions: Actions = {
             return httpFailing(e);
         }
     },
+    /** The Settings form: the title and the three times (`timesOf`). Under
+     *  the project policy, which lets only those who may edit the edition's
+     *  projects change one. A project the policy hides from the caller, or
+     *  that is not in this edition, is a 403 that says nothing changed: an
+     *  update that matched no row used to answer `{ ok: true }`. Answers
+     *  `{ ok: true }`. */
     update: async event => {
         const claims = requireClaims(event);
-        const { project } = ids(event.params);
+        const { edition, project } = ids(event.params);
         const form = await event.request.formData();
         const title = text(form, 'title');
         if (title === '') return fail(400, { error: 'A project needs a title.' });
         const times = timesOf(form);
         if (!times.ok) return fail(400, { error: times.why });
         const { availableAfter, deadline, closesAt } = times;
+        let updated: number;
         try {
-            await withContext(ctx =>
-                asUser(
-                    ctx.sql,
-                    claims,
-                    tx => tx`
+            updated = await withContext(ctx =>
+                asUser(ctx.sql, claims, async tx => {
+                    const rows = await tx`
           update project set title = ${title}, available_after = ${availableAfter}, deadline = ${deadline}, closes_at = ${closesAt}
-          where project_id = ${project}`,
-                ),
+          where project_id = ${project} and edition_id = ${edition}
+          returning project_id`;
+                    return rows.length;
+                }),
             );
         } catch (e) {
             return failing(e);
         }
+        if (updated === 0) return fail(403, { error: 'You may not change this project; nothing was saved.' });
         return { ok: true };
     },
+    /** A new project token labelled `label` (`ci` when empty), through
+     *  `app.create_project_token`, owners only. Answers `{ token }` with the
+     *  label and the secret, which is shown this once and stored nowhere. */
     createToken: async event => {
         const claims = requireClaims(event);
         const { project } = ids(event.params);
@@ -205,6 +245,10 @@ export const actions: Actions = {
             return failing(e);
         }
     },
+    /** Revokes the token `token_id` through `app.revoke_project_token`,
+     *  which takes it from an owner of the token's own project. That need
+     *  not be the project in the address: the function decides by the
+     *  token. An id that is not a uuid is a 400. Answers `{ ok: true }`. */
     revokeToken: async event => {
         const claims = requireClaims(event);
         ids(event.params);

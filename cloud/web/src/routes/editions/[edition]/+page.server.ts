@@ -2,7 +2,7 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { uuidOf, type EditionId, type ProjectId } from '#lib/ids.ts';
 import { KINDS, type Kind } from '#lib/kinds.ts';
-import { asUser, clashOf, statusOf } from '#lib/server/db.ts';
+import { asUser, clashOf, refusalOf, statusOf } from '#lib/server/db.ts';
 import { text } from '#lib/server/form.ts';
 import { requireClaims, withContext } from '#lib/server/context.ts';
 import { studentProjects } from '#lib/server/student.ts';
@@ -36,7 +36,11 @@ const editionOf = (param: string): EditionId => {
 };
 
 /** An edition as the caller sees it: the projects the policies let them see
- *  (published ones for a student, all for staff), and for staff the roster. */
+ *  (for a student those whose window is open now, all for staff) in the order students see
+ *  them, for a student where they stand with each (`mine`), and for staff
+ *  the roster. A 404 for an edition the caller cannot see, whether or not
+ *  it exists, and for a parameter that is not a uuid; the login page for
+ *  nobody. */
 export const load: PageServerLoad = async event => {
     const claims = requireClaims(event);
     const edition = editionOf(event.params.edition);
@@ -73,7 +77,13 @@ export const load: PageServerLoad = async event => {
     );
 };
 
-const failing = (e: unknown) => fail(statusOf(e).status, { error: statusOf(e).message });
+/** A `fail` for a failure of an action's database work: the database's
+ *  status and sentence for a refusal, a 500 with a fixed sentence for
+ *  anything else (`refusalOf`, which reports it). */
+const failing = (e: unknown) => {
+    const { status, message } = refusalOf('editions', e);
+    return fail(status, { error: message });
+};
 
 /** The two names a person types here that another row may already have,
  *  each refused in words about what they typed rather than the index's. */
@@ -88,11 +98,21 @@ const clashing = (e: unknown, label: string, code: string) => {
     }
 };
 
+/** The edition page's forms. Every action requires a signed-in caller
+ *  and an `edition` parameter that is a uuid (else a 404), and leaves the
+ *  decision of who may to the database function or policy it calls. A
+ *  refusal is a `fail` whose `error` is a sentence: 400 for a form
+ *  that is not filled in right, 409 for a name already taken, otherwise the
+ *  database's status and sentence for what it refused (`statusOf`), and a
+ *  500 with a fixed sentence, the failure reported and not shown, for
+ *  anything else (`refusalOf`). */
 export const actions: Actions = {
     /** A drop in the project list: `project` now sits after `after` and before
      *  `before` (either empty at an end of the list). The page posts this as
      *  the drop happens; app.move_project decides whether the caller may and
-     *  moves one row. */
+     *  moves one row. Answers `{ moved: project }`, the id lowercased. A
+     *  `project` that is not a uuid, or an `after` or `before` that is
+     *  neither empty nor a uuid, is the same 400, "Not a project.". */
     move: async event => {
         const claims = requireClaims(event);
         editionOf(event.params.edition);
@@ -112,6 +132,11 @@ export const actions: Actions = {
         }
         return { moved: project };
     },
+    /** Enrols `email` with `role` (`student` when empty; `assistant` and
+     *  `owner` too; anything else a 400) through `app.enrol`, owners only. An
+     *  address without an `@` is a 400; the function lowercases it. Answers
+     *  `{ ok: true }`, also for an address already enrolled, which stays as
+     *  it was, role included: changing a role is `setRole`. */
     enrol: async event => {
         const claims = requireClaims(event);
         const edition = editionOf(event.params.edition);
@@ -127,6 +152,10 @@ export const actions: Actions = {
         }
         return { ok: true };
     },
+    /** Changes the role of the enrolment of `email` to `role` through
+     *  `app.set_edition_role`, owners only; an edition keeps at least one
+     *  owner (a 409), and an address not enrolled is a 404. Answers
+     *  `{ ok: true }`. */
     setRole: async event => {
         const claims = requireClaims(event);
         const edition = editionOf(event.params.edition);
@@ -141,6 +170,9 @@ export const actions: Actions = {
         }
         return { ok: true };
     },
+    /** Removes the enrolment of `email` through `app.unenrol`, owners only.
+     *  Removing the edition's last owner is a 409. Answers `{ ok: true }`,
+     *  also for an address that is not enrolled, which changes nothing. */
     unenrol: async event => {
         const claims = requireClaims(event);
         const edition = editionOf(event.params.edition);
@@ -153,6 +185,12 @@ export const actions: Actions = {
         }
         return { ok: true };
     },
+    /** A new project in this edition, from `slug` (lowercased; letters,
+     *  digits and dashes, starting with a letter or digit, at most 64),
+     *  `title` and `kind` (one of `KINDS`), inserted under the project
+     *  policy, which takes it only from those who may edit the edition's
+     *  projects. A slug the edition has is a 409. Answers with a 303 to the
+     *  new project's page. */
     createProject: async event => {
         const claims = requireClaims(event);
         const edition = editionOf(event.params.edition);
@@ -182,6 +220,9 @@ export const actions: Actions = {
         }
         redirect(303, `/editions/${edition}/projects/${id}`);
     },
+    /** A copy of this edition labelled `label`, through
+     *  `app.duplicate_edition`, owners only. A label the course has is a
+     *  409. Answers with a 303 to the new edition. */
     duplicate: async event => {
         const claims = requireClaims(event);
         const edition = editionOf(event.params.edition);
@@ -230,6 +271,9 @@ export const actions: Actions = {
         }
         return { ok: true };
     },
+    /** Archives the edition when the form's `archived` is `true`, and
+     *  restores it otherwise, through `app.archive_edition`, owners only.
+     *  Answers `{ ok: true }`. */
     archive: async event => {
         const claims = requireClaims(event);
         const edition = editionOf(event.params.edition);

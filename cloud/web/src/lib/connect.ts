@@ -40,7 +40,10 @@
  *  that origin from `/api/auth/config`, and `/auth/connect` moves to it.
  */
 
-/** A request to connect, as the CLI sent it to `/auth/connect`. */
+/** A request to connect, as the CLI sent it to `/auth/connect`.
+ *
+ *  Invariant: made only by `connectRequestOf`, so `port` is 1 to 65535,
+ *  `challenge` is 43 base64url characters and `state` 16 to 128 of them. */
 export interface ConnectRequest {
     /** The loopback listener's port: the only part of its address that varies. */
     readonly port: number;
@@ -50,20 +53,28 @@ export interface ConnectRequest {
     readonly state: string;
 }
 
-/** The only loopback address the browser is ever sent to: `127.0.0.1`, the
+/** Returns the only loopback address the browser is ever sent to: `127.0.0.1`, the
  *  port given, `/callback`. The same rule as the Auth allow list's
  *  `http://127.0.0.1:*\/callback`, and the address `loginWithLoopback`
- *  listens on. `localhost` is not accepted: it can resolve elsewhere. */
-export const loopback = (port: number): URL => new URL(`http://127.0.0.1:${port}/callback`);
+ *  listens on. `localhost` is not accepted: it can resolve elsewhere.
+ *
+ *  - Requires: `port` is a whole number from 1 to 65535 (as every
+ *    `ConnectRequest` and `Relay` port is); throws a RangeError otherwise,
+ *    rather than a TypeError from `URL` or an address on another port. */
+export const loopback = (port: number): URL => {
+    if (!Number.isInteger(port) || port < 1 || port > 65535) throw new RangeError(`loopback: ${port} is not a port`);
+    return new URL(`http://127.0.0.1:${port}/callback`);
+};
 
 const PORT = /^[1-9]\d{0,4}$/;
 const CHALLENGE = /^[A-Za-z0-9_-]{43}$/;
 const STATE = /^[A-Za-z0-9_-]{16,128}$/;
 const NONCE = /^[A-Za-z0-9_-]{16,64}$/;
 
-/** The port of `redirect` if it is exactly a loopback callback address, or
- *  null for anything else: another host, `https`, user info, a query, a
- *  fragment, a path that is not `/callback`. */
+/** Returns the port of `redirect` if it is exactly a loopback callback
+ *  address with a port from 1 to 65535 written without leading zeros, or
+ *  null for anything else: another host, `https`, user info, no port, a
+ *  query, a fragment, a path that is not `/callback`. */
 export function loopbackPort(redirect: string): number | null {
     const m = /^http:\/\/127\.0\.0\.1:([0-9]+)\/callback$/.exec(redirect);
     if (m === null || m[1] === undefined || !PORT.test(m[1])) return null;
@@ -71,10 +82,13 @@ export function loopbackPort(redirect: string): number | null {
     return port <= 65535 ? port : null;
 }
 
-/** A connect request from `/auth/connect`'s query, or null with nothing
- *  half-accepted. The challenge must be S256's 43 base64url characters
- *  (RFC 7636); a `plain` challenge would be the verifier itself, sent
- *  through the browser. */
+/** Returns the connect request in `/auth/connect`'s query, or null with
+ *  nothing half-accepted. `redirect_uri` must be a `loopbackPort` address
+ *  and `state` 16 to 128 base64url characters. The challenge must be
+ *  S256's 43 base64url characters (RFC 7636), and `code_challenge_method`,
+ *  when present, S256 in any case; a `plain` challenge would be the
+ *  verifier itself, sent through the browser. Parameters other than these
+ *  four are ignored. */
 export function connectRequestOf(query: URLSearchParams): ConnectRequest | null {
     const port = loopbackPort(query.get('redirect_uri') ?? '');
     const challenge = query.get('code_challenge') ?? '';
@@ -84,8 +98,9 @@ export function connectRequestOf(query: URLSearchParams): ConnectRequest | null 
     return { port, challenge, state };
 }
 
-/** The query `/auth/connect` was opened with, for a link back to it (after
- *  a login, or a switch of account). */
+/** Returns the query, without its `?`, that `/auth/connect` takes for
+ *  `req`, for a link back to it (after a login, or a switch of account):
+ *  `connectRequestOf` of it gives `req` again. */
 export function connectQuery(req: ConnectRequest): string {
     const q = new URLSearchParams({ redirect_uri: loopback(req.port).toString(), code_challenge: req.challenge, code_challenge_method: 'S256', state: req.state });
     return q.toString();
@@ -98,11 +113,18 @@ export function connectQuery(req: ConnectRequest): string {
  *  the one in the cookie, so a page elsewhere that starts an authorization
  *  on its own gets nothing delivered. */
 export interface Relay {
+    /** The loopback listener's port, 1 to 65535. */
     readonly port: number;
+    /** The CLI's own state, 16 to 128 base64url characters. */
     readonly state: string;
+    /** The nonce that names this browser's connect cookie (`connectCookie`),
+     *  16 to 64 base64url characters. */
     readonly nonce: string;
 }
 
+/** Returns `r` as the `state` sent through Auth: port, state and nonce
+ *  joined by dots, which base64url never contains, so `relayOf` of it is
+ *  `r` again. Auth carries it untouched. */
 export const relayState = (r: Relay): string => `${r.port}.${r.state}.${r.nonce}`;
 
 /** The cookie that remembers, for five minutes, that the person in this
@@ -114,15 +136,21 @@ export const relayState = (r: Relay): string => `${r.port}.${r.state}.${r.nonce}
  *  authorization "Continue" made, the only one the consent route will ask
  *  Auth about. HttpOnly, so no page can read either. */
 export const CONNECT_COOKIE_PREFIX = '__Host-yukibana-connect-';
+/** Returns the name of the connect cookie for the login with `nonce`:
+ *  `CONNECT_COOKIE_PREFIX` followed by the nonce. */
 export const connectCookie = (nonce: string): string => `${CONNECT_COOKIE_PREFIX}${nonce}`;
 
-/** Four characters the CLI prints and the website shows, so the person can
+/** Returns the four characters the CLI prints and the website shows, so the person can
  *  see that the page asking them is the login they started. A courtesy,
  *  not a check: the state and the verifier are the checks. The CLI makes
  *  the same from the same state (`loginCode` in packages/client/src/lib/pkce.ts). */
 export const loginCode = (state: string): string => state.slice(0, 4).toUpperCase();
 
-/** The relay a `state` names, or null if it is not one this module made. */
+/** Returns the relay a `state` names, or null for null and for anything
+ *  `relayState` could not have made: not three dot-separated parts, a port
+ *  `loopbackPort` refuses, or a state or nonce of the wrong length or
+ *  alphabet. Says nothing about whether this browser holds the nonce's
+ *  cookie; the routes check that. */
 export function relayOf(state: string | null): Relay | null {
     const parts = (state ?? '').split('.');
     if (parts.length !== 3) return null;
@@ -132,7 +160,7 @@ export function relayOf(state: string | null): Relay | null {
     return { port, state: s, nonce: n };
 }
 
-/** What the website asks for once the person has confirmed: Auth's OAuth
+/** Returns what the website asks for once the person has confirmed: Auth's OAuth
  *  2.1 authorization endpoint, for the registry's client, coming back to
  *  `returnUrl`. The Worker requests it, not the browser (`start` in
  *  #lib/server/connect). `scope` is Auth's default, `email`: the registry needs
@@ -149,9 +177,11 @@ export function authorizeUrl(supabaseUrl: string, clientId: string, returnUrl: s
     return url;
 }
 
-/** The loopback address with what Auth answered: a `code`, or an `error`
- *  and its description, and the CLI's own state. Nothing else is carried
- *  over: whatever else was on the address stays here. */
+/** Returns the loopback address with what Auth answered: a non-empty
+ *  `code`, or else an `error` and its description (`server_error` and a
+ *  sentence of this site's when Auth gave none), and the CLI's own state.
+ *  Nothing else is carried over: whatever else was on the address stays
+ *  here. Whether a code may be relayed at all is the caller's decision. */
 export function deliveryUrl(relay: Relay, answer: URLSearchParams): URL {
     const url = loopback(relay.port);
     const code = answer.get('code');
@@ -165,7 +195,8 @@ export function deliveryUrl(relay: Relay, answer: URLSearchParams): URL {
     return url;
 }
 
-/** The loopback address for a person who said no on the website. */
+/** Returns the loopback address for a person who said no on the website:
+ *  `access_denied`, a sentence saying so, and the CLI's own state. */
 export function declinedUrl(req: ConnectRequest): URL {
     const url = loopback(req.port);
     url.searchParams.set('error', 'access_denied');

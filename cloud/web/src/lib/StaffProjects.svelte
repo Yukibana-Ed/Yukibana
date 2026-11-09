@@ -4,14 +4,37 @@
   /** One project as staff see it in an edition's list: a row of the edition
    *  page's load, field names the database's. */
   export interface StaffProject {
+    /** The project, and the row's key: the list holds each id once. */
     readonly project_id: ProjectId;
+    /** Its title, the row's link text. */
     readonly title: string;
+    /** Its kind, one of `KINDS` (#lib/kinds), as text, shown as a chip. */
     readonly kind: string;
+    /** When students may first see and submit to it; null for a draft,
+     *  which is shown as one. */
     readonly available_after: Date | null;
+    /** Its deadline, or null for none. */
     readonly deadline: Date | null;
+    /** When submissions stop, or null for never. */
     readonly closes_at: Date | null;
+    /** How many releases it has, ever. */
     readonly releases: number;
+    /** `true` iff the project has at least one release: `app.current_starter`
+     *  asked as staff, who see a starter whatever the window. It says
+     *  nothing about whether students can download one now. */
     readonly ready: boolean;
+  }
+
+  /** What the edition page passes in. */
+  export interface StaffProjectsProps {
+    /** The projects, in the order the server has them: `position`, then
+     *  creation. Each new value replaces whatever order the screen had. */
+    rows: readonly StaffProject[];
+    /** The edition the rows are in, for their links. */
+    editionId: EditionId;
+    /** `true` iff the database would accept a move (`app.may_edit_projects`):
+     *  only then are the handles drawn and moves sent. */
+    reorder: boolean;
   }
 </script>
 
@@ -37,8 +60,13 @@
    *
    *  Changes others make arrive live (see live.svelte.ts), but not during a
    *  drag or while a move is unsaved: the list would jump under the pointer,
-   *  or briefly show the server's older order. */
-  let { rows, editionId, reorder }: { rows: readonly StaffProject[]; editionId: EditionId; reorder: boolean } = $props();
+   *  or briefly show the server's older order.
+   *
+   *  - Requires: the page it is on is the edition page, whose `move`
+   *    action every move is posted to (`?tab=projects&/move`, relative to
+   *    the current address). Not checked: anywhere else the post fails and
+   *    each move is undone with a toast. */
+  let { rows, editionId, reorder }: StaffProjectsProps = $props();
 
   const byId = $derived(new Map(rows.map((p) => [p.project_id, p] as const)));
   // Follows `rows` whenever the page reloads, and is overridden by a move in

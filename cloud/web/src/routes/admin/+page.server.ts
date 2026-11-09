@@ -1,10 +1,14 @@
 import { error, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { asUser, statusOf } from '#lib/server/db.ts';
+import { asUser, refusalOf } from '#lib/server/db.ts';
 import { text } from '#lib/server/form.ts';
 import { requireClaims, withContext } from '#lib/server/context.ts';
 
-/** Platform roles. The one thing an admin does here is make teachers. */
+/** Platform roles. The one thing an admin does here is make teachers.
+ *  Returns everyone whose platform role is not `user`, and the newest 50
+ *  rows of the audit log with each `subject` as JSON text. A 403 for
+ *  anyone but an admin, decided by `app.is_admin`; the login page for
+ *  nobody. */
 export const load: PageServerLoad = async event => {
     const claims = requireClaims(event);
     return withContext(ctx =>
@@ -20,7 +24,16 @@ export const load: PageServerLoad = async event => {
     );
 };
 
+/** The admin page's one form. */
 export const actions: Actions = {
+    /** Gives the account with address `email` the platform role `role`
+     *  (`user`, `teacher` or `admin`; anything else is a 400) through
+     *  `app.set_platform_role_by_email`, which checks that the caller is an
+     *  admin and audits. Answers `{ ok: true }`, or a `fail` with the
+     *  database's status and sentence for a refusal (a 403 for a caller who
+     *  is not an admin, a 404 for an address no account has logged in with
+     *  yet), or a 500 with a fixed sentence for anything else, reported and
+     *  not shown (`refusalOf`). */
     setRole: async event => {
         const claims = requireClaims(event);
         const form = await event.request.formData();
@@ -30,7 +43,8 @@ export const actions: Actions = {
         try {
             await withContext(ctx => asUser(ctx.sql, claims, tx => tx`select app.set_platform_role_by_email(${email}, ${role}::app.platform_role)`));
         } catch (e) {
-            return fail(statusOf(e).status, { error: statusOf(e).message });
+            const { status, message } = refusalOf('admin', e);
+            return fail(status, { error: message });
         }
         return { ok: true };
     },
