@@ -208,3 +208,22 @@ export function search(lines: readonly StudentHandIns[], query: string): Student
         .toSorted((a, b) => b.s - a.s || a.i - b.i)
         .map(x => x.l);
 }
+
+/** The drafts of the Submissions table's download cell and of where an
+ *  assembly's findings show, while one is chosen. `?ui=` names one;
+ *  anything else is the first. */
+export const VARIANTS = [
+    { id: 'split', label: 'A · Split button, note strip' },
+    { id: 'kebab', label: 'B · ⋯ menu, plain lines' },
+    { id: 'stacked', label: 'C · Link below, ⚠ popover' },
+    { id: 'segmented', label: 'D · Two buttons, folding chip' },
+] as const;
+
+/** One of `VARIANTS`' ids. */
+export type Variant = (typeof VARIANTS)[number]['id'];
+
+/** The variant `url` asks for, or the first. */
+export function variantOf(url: { readonly searchParams: { get(name: string): string | null } }): Variant {
+    const asked = url.searchParams.get('ui');
+    return VARIANTS.find(v => v.id === asked)?.id ?? VARIANTS[0].id;
+}

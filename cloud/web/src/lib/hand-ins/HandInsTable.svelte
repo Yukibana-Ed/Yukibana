@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { SvelteMap } from 'svelte/reactivity';
+  import { SvelteMap, SvelteSet } from 'svelte/reactivity';
   import { when } from '../format';
   import { viewer } from '../viewer.svelte';
-  import { search, subtitle, type HandIn, type StudentHandIns } from '../hand-ins';
+  import { search, subtitle, type HandIn, type StudentHandIns, type Variant } from '../hand-ins';
   import type { ReleaseId, SubmissionId } from '../ids';
   import { assemblyFolder, downloadAllAssembled, downloadAssembled, findings, type ToAssemble } from './assembled';
   import BaseNote from './BaseNote.svelte';
@@ -21,8 +21,14 @@
    *  the browser, and says under the row what the assembly undid
    *  (./assembled). "As sent" is the archive untouched. Download all does
    *  the same for every student's latest submission, whatever the search
-   *  shows, into one archive. */
-  let { lines, latest, newest, slug }: { lines: readonly StudentHandIns[]; latest: number; newest: ReleaseId | null; slug: string } = $props();
+   *  shows, into one archive.
+   *
+   *  `ui` is one of four drafts of where the plain download and the
+   *  assembly's findings go (`VARIANTS`), while one is chosen. */
+  let { lines, latest, newest, slug, ui }: { lines: readonly StudentHandIns[]; latest: number; newest: ReleaseId | null; slug: string; ui: Variant } = $props();
+  // Which rows have their findings open, in the variant that folds them.
+  const open = new SvelteSet<SubmissionId>();
+  const toggle = (id: SubmissionId) => (open.has(id) ? open.delete(id) : open.add(id));
 
   type Fetching = { readonly state: 'busy' } | { readonly state: 'done'; readonly findings: readonly string[] } | { readonly state: 'failed'; readonly why: string };
   // Each submission's assembly this visit, by id; absent for none yet.
@@ -119,31 +125,85 @@
             <td>
               {#if s !== null}
                 {@const a = assemblies.get(s.submissionId)}
-                <div class="actions">
-                  {#if newest !== null}
-                    <button type="button" class="download" disabled={a?.state === 'busy'} onclick={() => download(l, s)} title="The student's work with the release's read-only and hidden files, ready to grade">
-                      {a?.state === 'busy' ? 'Assembling…' : 'Download'}
-                    </button>
-                    <a class="small muted" href="/api/submissions/{s.submissionId}" download>as sent</a>
-                  {:else}
-                    <a class="button" href="/api/submissions/{s.submissionId}" download>Download</a>
-                  {/if}
-                </div>
+                {@const busy = a?.state === 'busy'}
+                {@const raw = `/api/submissions/${s.submissionId}`}
+                {#if newest === null}
+                  <div class="actions"><a class="button" href={raw} download>Download</a></div>
+                {:else if ui === 'split'}
+                  <div class="actions">
+                    <div class="split-button">
+                      <button type="button" class="download" disabled={busy} onclick={() => download(l, s)}>{busy ? 'Assembling…' : 'Download'}</button>
+                      <details class="menu">
+                        <summary aria-label="More ways to download">▾</summary>
+                        <div class="menu-items"><a href={raw} download>Download without assembly</a></div>
+                      </details>
+                    </div>
+                  </div>
+                {:else if ui === 'kebab'}
+                  <div class="actions">
+                    <button type="button" class="download" disabled={busy} onclick={() => download(l, s)}>{busy ? 'Assembling…' : 'Download'}</button>
+                    <details class="menu">
+                      <summary class="kebab" aria-label="More ways to download">⋯</summary>
+                      <div class="menu-items"><a href={raw} download>Download without assembly</a></div>
+                    </details>
+                  </div>
+                {:else if ui === 'stacked'}
+                  <div class="stacked">
+                    <div class="actions">
+                      {#if a?.state === 'done' && a.findings.length > 0}
+                        <details class="popover">
+                          <summary class="badge" title="What the assembly changed">⚠ {a.findings.length}</summary>
+                          <div class="popover-body"><ul>{#each a.findings as f (f)}<li>{f}</li>{/each}</ul></div>
+                        </details>
+                      {:else if a?.state === 'failed'}
+                        <details class="popover">
+                          <summary class="badge bad" title="Why it failed">✕</summary>
+                          <div class="popover-body"><p>{a.why}</p></div>
+                        </details>
+                      {/if}
+                      <button type="button" class="download" disabled={busy} onclick={() => download(l, s)}>{busy ? 'Assembling…' : 'Download'}</button>
+                    </div>
+                    <a class="small muted" href={raw} download>without assembly</a>
+                  </div>
+                {:else}
+                  <div class="segmented" role="group" aria-label="Download">
+                    <button type="button" disabled={busy} onclick={() => download(l, s)} title="With the release's read-only and hidden files, ready to grade">{busy ? 'Assembling…' : 'Assembled'}</button>
+                    <a href={raw} download title="The archive exactly as the student sent it">Raw</a>
+                  </div>
+                {/if}
               {/if}
             </td>
           </tr>
-          {#if s !== null}
+          {#if s !== null && ui !== 'stacked'}
             {@const a = assemblies.get(s.submissionId)}
             {#if a?.state === 'failed'}
-              <tr class="assembly"><td colspan="5"><p class="error">{a.why} “as sent” still downloads the archive untouched.</p></td></tr>
+              <tr class="assembly"><td colspan="5"><p class="error">{a.why} Downloading without assembly still works.</p></td></tr>
             {:else if a?.state === 'done' && a.findings.length > 0}
-              <tr class="assembly">
-                <td colspan="5">
-                  <ul class="findings">
-                    {#each a.findings as f (f)}<li>{f}</li>{/each}
-                  </ul>
-                </td>
-              </tr>
+              {#if ui === 'split'}
+                <tr class="assembly">
+                  <td colspan="5">
+                    <div class="note-strip">
+                      <strong>The assembly changed {a.findings.length === 1 ? 'one thing' : `${a.findings.length} things`}</strong>
+                      <ul>{#each a.findings as f (f)}<li>{f}</li>{/each}</ul>
+                    </div>
+                  </td>
+                </tr>
+              {:else if ui === 'kebab'}
+                <tr class="assembly">
+                  <td colspan="5">
+                    <ul class="plain-findings">{#each a.findings as f (f)}<li>{f}</li>{/each}</ul>
+                  </td>
+                </tr>
+              {:else}
+                <tr class="assembly">
+                  <td colspan="5">
+                    <button type="button" class="chip warn toggle" aria-expanded={open.has(s.submissionId)} onclick={() => toggle(s.submissionId)}>
+                      ⚠ The assembly changed {a.findings.length === 1 ? 'one thing' : `${a.findings.length} things`} {open.has(s.submissionId) ? '▴' : '▾'}
+                    </button>
+                    {#if open.has(s.submissionId)}<ul class="findings">{#each a.findings as f (f)}<li>{f}</li>{/each}</ul>{/if}
+                  </td>
+                </tr>
+              {/if}
             {/if}
           {/if}
         {:else}
