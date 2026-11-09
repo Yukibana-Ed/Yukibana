@@ -34,7 +34,7 @@ export interface Found {
 
 /** Returns every placeholder left in these files, given as their path and text, in file then line order. */
 export function placeholdersIn(files: readonly { readonly file: string; readonly text: string }[]): Found[] {
-    const names = Object.keys(PLACEHOLDERS) as Placeholder[];
+    const names = Object.keys(PLACEHOLDERS).filter((name): name is Placeholder => name in PLACEHOLDERS);
     return files.flatMap(({ file, text }) => text.split('\n').flatMap((content, i) => names.filter(name => content.includes(name)).map(name => ({ name, file, line: i + 1 }))));
 }
 

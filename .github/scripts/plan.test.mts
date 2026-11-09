@@ -19,7 +19,7 @@ const names = [
 describe('what runs', () => {
     test('a run without a base runs everything but a preview', () => {
         expect(decide({ kind: 'unknown', reason: 'a run by hand' }, names)).toEqual({
-            packages: [...names].sort(),
+            packages: names.toSorted(),
             cloud: true,
             ide: true,
             devcontainer: true,
@@ -31,7 +31,7 @@ describe('what runs', () => {
 
     test('a lockfile change checks every package and their licenses', () => {
         const plan = decide({ kind: 'shared', affected: [], files: ['pnpm-lock.yaml'] }, names);
-        expect(plan).toMatchObject({ packages: [...names].sort(), cloud: true, ide: true, licenses: true, devcontainer: true, preview: true, deploy: true });
+        expect(plan).toMatchObject({ packages: names.toSorted(), cloud: true, ide: true, licenses: true, devcontainer: true, preview: true, deploy: true });
     });
 
     test('a change to the CLI alone starts neither the cloud stack nor the IDE end-to-end tests', () => {
@@ -57,7 +57,7 @@ describe('what runs', () => {
 
     test('a change to CI alone checks every package and deploys nothing', () => {
         const plan = decide({ kind: 'shared', affected: [], files: ['.github/workflows/ci.yml', 'oxfmt.config.mts'] }, names);
-        expect(plan).toMatchObject({ packages: [...names].sort(), cloud: true, devcontainer: false, deploy: false });
+        expect(plan).toMatchObject({ packages: names.toSorted(), cloud: true, devcontainer: false, deploy: false });
     });
 
     test('a change to CI together with the Worker deploys', () => {

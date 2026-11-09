@@ -1,0 +1,34 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  // The rules of the TypeScript packages outside the IDE (the cloud, the CLI, the client, CI's scripts): every
+  // correctness, suspicious and perf rule, and the type-aware ones on promises and on `any`. A package's .oxlintrc.json
+  // extends it and adds only its own exceptions and ignored paths.
+  "plugins": ["typescript", "unicorn", "oxc", "promise", "import"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "error",
+    "pedantic": "off",
+    "restriction": "off",
+    "style": "off"
+  },
+  "rules": {
+    "typescript/no-floating-promises": "error",
+    "typescript/no-misused-promises": "error",
+    "typescript/await-thenable": "error",
+    "typescript/no-unnecessary-type-assertion": "error",
+    "typescript/no-unsafe-argument": "error",
+    "typescript/no-unsafe-call": "error",
+    "typescript/no-unsafe-member-access": "error",
+    "typescript/no-unsafe-return": "error",
+    "eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+
+    "typescript/no-unnecessary-type-parameters": "off",
+    "eslint/no-await-in-loop": "off",
+    "unicorn/no-null": "off",
+    "unicorn/consistent-function-scoping": "off",
+    "promise/always-return": "off",
+    "import/no-unassigned-import": "off"
+  },
+  "ignorePatterns": ["node_modules/**"]
+}

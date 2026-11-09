@@ -6,7 +6,7 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "lint": "oxlint",
+    "lint": "oxlint --type-aware --deny-warnings",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

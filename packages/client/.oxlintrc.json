@@ -1,35 +1,11 @@
 {
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["typescript", "unicorn", "oxc", "promise", "import"],
-  "categories": {
-    "correctness": "error",
-    "suspicious": "error",
-    "perf": "error",
-    "pedantic": "off",
-    "restriction": "off",
-    "style": "off"
-  },
+  "$schema": "../../node_modules/oxlint/configuration_schema.json",
+  "extends": ["../../oxlint.strict.json"],
   "rules": {
-    "typescript/no-floating-promises": "error",
-    "typescript/no-misused-promises": "error",
-    "typescript/await-thenable": "error",
-    "typescript/no-unnecessary-type-assertion": "error",
-    "typescript/no-unsafe-argument": "error",
-    "typescript/no-unsafe-call": "error",
-    "typescript/no-unsafe-member-access": "error",
-    "typescript/no-unsafe-return": "error",
-    "eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
-
     /* Off for now: an error's `code`, a parsed JSON object's fields and a
        Node buffer's ArrayBuffer are cast, not narrowed (src/store.ts,
        session.ts, extract.ts, and `JSON.parse(...) as X` in the tests). */
-    "typescript/no-unsafe-type-assertion": "off",
-    "typescript/no-unnecessary-type-parameters": "off",
-    "eslint/no-await-in-loop": "off",
-    "unicorn/no-null": "off",
-    "unicorn/consistent-function-scoping": "off",
-    "promise/always-return": "off",
-    "import/no-unassigned-import": "off"
+    "typescript/no-unsafe-type-assertion": "off"
   },
   "ignorePatterns": ["lib/**", "node_modules/**"]
 }
