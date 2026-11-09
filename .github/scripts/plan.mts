@@ -40,11 +40,14 @@ export type Change =
 /** What one CI run does. */
 export interface Plan {
     /**
-     * The names of the packages whose `lint`, `typecheck`, `test` and `build` scripts run, sorted.
+     * The names of the packages whose `lint`, `typecheck`, `test` and `build` scripts run, sorted; `build` runs for all of
+     * them except `@yukibana/ide`, whose apps the end-to-end job builds (`pnpm -C ide test:e2e`).
      */
     readonly packages: readonly string[];
-    /** `true` iff the cloud stack runs: the migrations from empty, pgTAP and the Worker's integration tests; a package in
-     *  `CLOUD_STACK_PACKAGES` is affected. */
+    /**
+     * `true` iff the cloud stack runs: the migrations from empty, pgTAP and the Worker's integration tests; a package in
+     * `CLOUD_STACK_PACKAGES` is affected.
+     */
     readonly cloud: boolean;
     /** `true` iff the IDE's end-to-end tests run, on every OS. */
     readonly ide: boolean;
@@ -52,8 +55,10 @@ export interface Plan {
     readonly devcontainer: boolean;
     /** `true` iff the licenses of the npm dependencies and of the IDE's bundled plugins are checked. */
     readonly licenses: boolean;
-    /** `true` iff a pull request's Worker may be uploaded as a preview: the Worker is affected. A change to `cloud/db` does
-     *  not rule one out; its preview runs without the change's migrations, and its comment says so. */
+    /**
+     * `true` iff a pull request's Worker may be uploaded as a preview: the Worker is affected. A change to `cloud/db` does
+     * not rule one out; its preview runs without the change's migrations, and its comment says so.
+     */
     readonly preview: boolean;
     /**
      * `true` iff Deploy cloud deploys: what it deploys may have changed, because a package in `CLOUD_PACKAGES` is affected
