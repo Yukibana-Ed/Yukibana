@@ -1,16 +1,15 @@
-# Every check, for pull requests, the merge queue and pushes to main. The plan job decides from pnpm's package graph
-# what a change affects (.github/scripts/plan.mts), and every other job runs only when its package is affected. So the
-# triggers have no paths filters: the workflow always runs, and ci-ok, the one required check, always reports.
+# Every check, for pull requests. The plan job decides from pnpm's package graph what a change
+# affects (.github/scripts/plan.mts), and every other job runs only when its package is affected. So the triggers have
+# no paths filters: the workflow always runs, and ci-ok, the one required check, always reports.
 # .github/actions/setup's `node@24.x` runs pnpm and the plan; every script pnpm runs uses the exact release of devEngines.
+#
+# Not on pushes to main, and there is no merge queue. A pull request merges only up to date with main (the ruleset),
+# and a pull request's run tests it merged onto main, so the merge lands the tree its run tested; a run on the push
+# would test it a second time.
 name: CI
 
 on:
   pull_request:
-  # The merge queue tests the commit that lands, with main as it will be.
-  merge_group:
-  # Main's own runs keep its caches warm, which pull requests restore from.
-  push:
-    branches: [main]
   # By hand: everything runs.
   workflow_dispatch:
 
@@ -51,8 +50,8 @@ jobs:
         id: plan
         run: node .github/scripts/plan.mts
         env:
-          # The pull request's base, the merge queue's, or what the push replaced; none by hand.
-          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+          # The pull request's base; none by hand.
+          BASE: ${{ github.event.pull_request.base.sha }}
 
   # Always, the formatting and the release-age exclusions; and every affected package's lint, typecheck, unit tests and
   # build.

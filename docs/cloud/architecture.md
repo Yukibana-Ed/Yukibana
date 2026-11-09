@@ -69,8 +69,8 @@ Object keys are `starters/<project>/<uuid>.tar.gz`,
 
 | Element | When | Does |
 | --- | --- | --- |
-| **CI** (`ci.yml`) | pull requests, the merge queue, pushes to `main` | for the packages a change affects: lint, typecheck, unit tests, a build; the whole stack from empty migrations, pgTAP, integration tests; the devcontainer. |
-| **Deploy cloud** (`deploy-cloud.yml`) | CI passing for a push to `main` that affects the cloud, or by hand | migrations, `cloud/db/ops/bootstrap.sql`, Supabase settings, then the Worker. |
+| **CI** (`ci.yml`) | pull requests | for the packages a change affects: lint, typecheck, unit tests, a build; the whole stack from empty migrations, pgTAP, integration tests; the devcontainer. |
+| **Deploy cloud** (`deploy-cloud.yml`) | a push to `main` that affects the cloud (only a tested, up-to-date pull request can make one); never by hand | migrations, `cloud/db/ops/bootstrap.sql`, Supabase settings, then the Worker. |
 | **Preview** (`preview.yml`) | a pull request's CI, once a maintainer approves | uploads the pull request's Worker as a preview version. |
 | **Drift** (`drift.yml`) | nightly | fails if production differs from the migrations. |
 
