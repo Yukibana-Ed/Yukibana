@@ -1,0 +1,59 @@
+# The caches pull requests restore, saved from main. A pull request's run can restore a cache saved on its own branch or
+# on main, but not one the merge queue saved (those belong to its gh-readonly-queue branches), and CI does not run on
+# main (ci.yml says why). So this does the part of a run that fills them: the pnpm store of every package, and the
+# Theia plugins, on each runner OS that CI uses. A cache whose key is already saved is restored and not saved again, so
+# a push that changes neither the lockfile nor ide/package.json costs little. It tests nothing and gates nothing.
+name: Warm caches
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# A newer push saves the same or newer caches.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  warm:
+    name: Warm caches (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # Each OS that a CI job runs on: the caches' keys name runner.os, so one Linux runner covers both Ubuntus.
+        os: [ubuntu-24.04, windows-2022, macos-15]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install pnpm and Node.js
+        uses: ./.github/actions/setup
+
+      # Every package, so the store holds what any job's filtered install fetches; no install scripts, since only the
+      # store is saved.
+      - name: Install dependencies
+        shell: bash
+        run: pnpm install --frozen-lockfile --ignore-scripts --fetch-timeout 100000
+
+      - name: Cache Theia plugins
+        uses: actions/cache@v6
+        with:
+          # The same paths and key as ci.yml's.
+          path: |
+            ide/plugins
+            node_modules/.plugins-download-inputs
+          key: plugins-v2-${{ runner.os }}-${{ hashFiles('ide/package.json') }}
+
+      - name: Download the plugins
+        shell: bash
+        run: pnpm -C ide download:plugins
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

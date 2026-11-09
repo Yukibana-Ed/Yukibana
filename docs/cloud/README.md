@@ -153,8 +153,8 @@ repository.
 ## Deploying
 
 [deploy.md](deploy.md) is the pipeline, how a change ships and rolls back,
-and the setup runbook. In short, once CI has passed for a push to `main`,
-`deploy-cloud.yml` applies the migrations, runs `cloud/db/ops/bootstrap.sql`
+and the setup runbook. In short, when a merge lands on `main`, once the merge
+queue's CI run for that commit has passed, `deploy-cloud.yml` applies the migrations, runs `cloud/db/ops/bootstrap.sql`
 (role passwords and the first admin, from secrets), pushes the Supabase
 settings, and then deploys the Worker. A nightly job (`drift.yml`) fails if
 production differs from the migrations, which is how "the dashboard is

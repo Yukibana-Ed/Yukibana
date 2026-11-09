@@ -1,16 +1,17 @@
-# Every check, for pull requests, the merge queue and pushes to main. The plan job decides from pnpm's package graph
-# what a change affects (.github/scripts/plan.mts), and every other job runs only when its package is affected. So the
-# triggers have no paths filters: the workflow always runs, and ci-ok, the one required check, always reports.
+# Every check, for pull requests and the merge queue. The plan job decides from pnpm's package graph what a change
+# affects (.github/scripts/plan.mts), and every other job runs only when its package is affected. So the triggers have
+# no paths filters: the workflow always runs, and ci-ok, the one required check, always reports.
 # .github/actions/setup's `node@24.x` runs pnpm and the plan; every script pnpm runs uses the exact release of devEngines.
+#
+# Not on pushes to main. Main moves only through the merge queue, which fast-forwards it to the very commit its run
+# tested, so a run on the push would test the same tree a second time; Deploy cloud deploys on the queue's result
+# instead. warm-caches.yml saves, from main, the caches pull requests restore.
 name: CI
 
 on:
   pull_request:
   # The merge queue tests the commit that lands, with main as it will be.
   merge_group:
-  # Main's own runs keep its caches warm, which pull requests restore from.
-  push:
-    branches: [main]
   # By hand: everything runs.
   workflow_dispatch:
 
@@ -51,8 +52,8 @@ jobs:
         id: plan
         run: node .github/scripts/plan.mts
         env:
-          # The pull request's base, the merge queue's, or what the push replaced; none by hand.
-          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+          # The pull request's base or the merge queue's; none by hand.
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
 
   # Always, the formatting and the release-age exclusions; and every affected package's lint, typecheck, unit tests and
   # build.

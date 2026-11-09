@@ -7,7 +7,7 @@
 //
 //   BASE=<sha> node .github/scripts/plan.mts     # in CI, which also sets GITHUB_OUTPUT
 //
-// BASE is the commit the run compares with: the pull request's base, the merge queue's base, the commit a push replaced,
+// BASE is the commit the run compares with: the pull request's base, the merge queue's base,
 // or (deploy-cloud.yml) the last commit deployed. Without one (a run by hand, a new branch), everything runs.
 // ci.yml reads every output but `deploy`; deploy-cloud.yml reads only `deploy`.
 //
