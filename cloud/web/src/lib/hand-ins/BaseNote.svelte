@@ -1,9 +1,10 @@
 <script lang="ts">
   import { outdated, versionName, type HandIn } from '../hand-ins';
   /** What a submission was built on, said only when it matters: a warning
-   *  with the version when it is not the newest release, a quiet word
+   *  with the version when it is not the newest release, a quiet "latest"
    *  otherwise. The bubble names only the version it was built on; the newest
-   *  (`latest`) is in its tooltip, not its text. `quiet` leaves out
+   *  (`latest`) is in its tooltip, not its text, as is the exact version
+   *  behind "latest". `quiet` leaves out
    *  the word for an up-to-date one, for a list where only the exceptions
    *  should catch the eye. */
   let { handIn, latest, quiet = false }: { handIn: HandIn; latest: number; quiet?: boolean } = $props();
@@ -16,5 +17,5 @@
     ⚠ on {versionName(handIn.base)}
   </span>
 {:else if !quiet}
-  <span class="muted small">latest starter (v{handIn.base.version})</span>
+  <span class="muted small" title="Built on {versionName(handIn.base)}, the newest release.">latest</span>
 {/if}
