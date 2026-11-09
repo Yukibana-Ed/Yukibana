@@ -117,6 +117,11 @@ command runs in `cloud/db` with `pnpm --filter @yukibana/cloud-db exec supabase 
 The cloud's devcontainer is not where editors look for one (`.devcontainer/` at the root), so start it from the root
 with `devcontainer up --workspace-folder . --config cloud/dev/.devcontainer/devcontainer.json`.
 
+## License headers
+
+A source file needs no license header, SPDX or otherwise: the repository's license applies to every file. The SPDX
+headers some files already carry stay as they are, and a new file needs none.
+
 ## Dependencies
 
 Every dependency's version is in the catalog of [pnpm-workspace.yaml](pnpm-workspace.yaml); a `package.json` names it as
