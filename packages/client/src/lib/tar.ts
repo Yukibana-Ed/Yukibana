@@ -22,6 +22,7 @@
  */
 
 import { packTar, unpackTar, type TarEntry, type TarHeader } from 'modern-tar';
+import { gunzip } from './gzip.js';
 
 /** What an archive entry is: a regular file, a directory or a symlink. Nothing else is kept. */
 export type EntryType = 'file' | 'dir' | 'symlink';
@@ -103,4 +104,11 @@ export function writeTar(entries: readonly Entry[]): Promise<Uint8Array<ArrayBuf
             return e.type === 'file' ? { header, body: e.data } : { header };
         }),
     );
+}
+
+/** Returns the entries of `bytes`, a `.tar.gz`, the one format every
+ *  archive is in. */
+export async function readArchive(bytes: Uint8Array): Promise<Entry[]> {
+    if (bytes[0] !== 0x1f || bytes[1] !== 0x8b) throw new Error('not a .tar.gz');
+    return readTar(await gunzip(bytes));
 }

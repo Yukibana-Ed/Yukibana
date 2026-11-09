@@ -152,7 +152,7 @@
       {#if lines.length === 0}
         <p class="empty">Nobody is enrolled as a student yet.</p>
       {:else}
-        <HandInsTable {lines} newest={data.newest} slug={p.slug} />
+        <HandInsTable {lines} releases={data.allReleases} slug={p.slug} />
       {/if}
     </section>
   {:else}

@@ -18,9 +18,12 @@ import {
     writeEntries,
     folderNames,
     stampOf,
+    assembleSubmission,
+    behind,
+    nameOf,
+    type Wanted,
+    wantedRelease,
 } from '@yukibana/client';
-import { CONFIG_FILE, parseConfig } from '@yukibana/client/config';
-import { behind, chooseReleases, nameOf, type Wanted, wantedRelease } from '../lib/grading.js';
 import { select } from './browse.js';
 import { clientFor, fail, projectOf, studentsOf, type Invocation } from './common.js';
 import { save } from './work.js';
@@ -153,39 +156,28 @@ export async function download(inv: Invocation): Promise<void> {
             if (o.archive === true) {
                 await save(target, archive);
             } else {
-                let entries = submissionRoot(await readArchive(archive));
+                let entries: readonly Entry[];
                 if (o.assemble === true) {
-                    const choice = chooseReleases(releases, wanted, s.baseReleaseId, claimedRelease(entries));
-                    for (const n of choice.notes) console.error(`warning: ${folder}: ${n}`);
-                    const grade = choice.grade;
-                    const teacher = await teacherOf(grade);
-                    let baseTeacher = teacher;
-                    if (choice.base !== null && choice.base !== grade) {
-                        try {
-                            baseTeacher = await teacherOf(choice.base);
-                        } catch (e) {
-                            console.error(
-                                `warning: ${folder}: ${e instanceof Error ? e.message : String(e)}; what the student changed is measured against ${nameOf(grade)} instead`,
-                            );
-                        }
-                    }
-                    const made = assemble(entries, teacher, baseTeacher);
+                    const made = await assembleSubmission(archive, releases, wanted, s.baseReleaseId, teacherOf);
+                    for (const n of made.notes) console.error(`warning: ${folder}: ${n}`);
                     if (!made.ok) {
                         problems.push(`${folder}: ${made.problem}`);
                         continue;
                     }
-                    entries = [...made.assembly.entries];
+                    entries = made.assembly.entries;
                     tampering = made.assembly.tampering;
                     unrestored = made.assembly.unrestored;
                     overridden = made.assembly.overridden;
-                    base = choice.base?.releaseId ?? null;
-                    assembledWith = grade.releaseId;
-                    if (choice.base === null) bases.unknown++;
-                    else if (choice.base === releases[0]) bases.same++;
+                    base = made.base?.releaseId ?? null;
+                    assembledWith = made.grade.releaseId;
+                    if (made.base === null) bases.unknown++;
+                    else if (made.base === releases[0]) bases.same++;
                     else bases.older++;
-                    if (choice.base === null) started = '  (started from an unknown release)';
-                    else if (choice.base !== grade) started = `  (started from ${nameOf(choice.base)})`;
+                    if (made.base === null) started = '  (started from an unknown release)';
+                    else if (made.base !== made.grade) started = `  (started from ${nameOf(made.base)})`;
                     for (const r of made.assembly.refused) console.error(`warning: ${folder}: dropped ${r}, a symlink out of the project`);
+                } else {
+                    entries = submissionRoot(await readArchive(archive));
                 }
                 for (const r of await writeEntries(target, entries)) console.error(`warning: ${folder}: not unpacked: ${r}`);
             }
@@ -254,15 +246,6 @@ export async function assembleCommand(inv: Invocation): Promise<void> {
         for (const p of t.added) console.log(`added:    ${p}`);
         console.log("(each replaced by the teacher's version)");
     }
-}
-
-/** The release a submission's own yukibana.json says it started from, or
- *  null when it says none or the file is not there or not valid. */
-function claimedRelease(entries: readonly Entry[]): string | null {
-    const cfg = entries.find(e => e.path === CONFIG_FILE && e.type === 'file');
-    if (cfg === undefined) return null;
-    const parsed = parseConfig(new TextDecoder().decode(cfg.data));
-    return parsed.ok ? parsed.config.releaseId : null;
 }
 
 async function entriesOf(path: string): Promise<Entry[]> {

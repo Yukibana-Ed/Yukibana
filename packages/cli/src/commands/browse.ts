@@ -1,7 +1,6 @@
 /** Reading the registry as yourself, and the roster writes an owner has. */
 
-import type { EditionRole, Project, Submission } from '@yukibana/client';
-import { behind } from '../lib/grading.js';
+import { behind, type EditionRole, type Project, type Submission } from '@yukibana/client';
 import { bytes, clientFor, fail, print, projectOf, studentsOf, when, type Invocation } from './common.js';
 
 /** `editions`: lists the editions the person is enrolled in, with their role. */

@@ -1,19 +1,24 @@
-/** Downloading submissions assembled with their release, in the browser.
+/** Downloading submissions assembled for grading, in the browser.
  *
- *  A teacher grades a submission put back together with the release's
- *  teacher archive: the student's files, with the read-only and hidden
- *  ones taken from the teacher's (`@yukibana/client/assembly`, the same
- *  assembly `yukibana download --assemble` makes). It happens here, in the
- *  teacher's browser, and not in the Worker: the cloud transforms nothing,
- *  and a Workers free plan allows about 10 ms of CPU per request, where
- *  unpacking and repacking a project takes far more. The Worker only pipes
- *  the archives through (`?inline`), because a page cannot read a
- *  cross-origin redirect's answer from a bucket without CORS.
+ *  The assembly is `assembleSubmission` from `@yukibana/client/assembly`,
+ *  the very step `yukibana download --assemble` takes: the same choice of
+ *  release (the one the registry recorded, else the one the archive's
+ *  yukibana.json names, else the newest) and the same files. What is here
+ *  is only the browser's half: fetching, packing the result into one file,
+ *  and the words a teacher reads. The CLI's half (disk, terminal) is in
+ *  `packages/cli/src/commands/collect.ts`; the two loops look alike because
+ *  they do the same thing to different I/O, and sharing them would mean
+ *  abstracting the I/O, which is all they are.
  *
- *  Browser only: it fetches, and saves a file through a link.
+ *  It happens in the teacher's browser, not the Worker: the cloud
+ *  transforms nothing, and a Workers free plan allows about 10 ms of CPU
+ *  per request. The Worker only pipes the archives through (`?inline`),
+ *  because a page cannot read a cross-origin redirect's answer from a
+ *  bucket without CORS.
  */
 
 import type { Assembly, Entry } from '@yukibana/client/assembly';
+import type { Release } from '../hand-ins';
 import type { ReleaseId, SubmissionId } from '../ids';
 
 /** What a teacher should know about an assembly: `Assembly` without its
@@ -23,9 +28,8 @@ export type AssemblyReport = Pick<Assembly, 'tampering' | 'unrestored' | 'overri
 /** One submission to assemble, and whose it is. */
 export interface ToAssemble {
     readonly submission: SubmissionId;
-    /** The release to assemble with: the one the student started from, or
-     *  the newest when that is unknown. A release of the submission's project. */
-    readonly release: ReleaseId;
+    /** The release the registry recorded it as started from, or null. */
+    readonly recorded: ReleaseId | null;
     readonly submittedAt: Date;
     /** Unique among a batch; with the three below, what the student's
      *  folder is named after (`folderNames`). */
@@ -35,10 +39,10 @@ export interface ToAssemble {
     readonly email: string | null;
 }
 
-/** What became of one submission: its report, or why there is none, in a
- *  sentence for the teacher. */
+/** What became of one submission: its report and notes, or why there is
+ *  none, in a sentence for the teacher. */
 export type Outcome =
-    | { readonly submission: SubmissionId; readonly ok: true; readonly report: AssemblyReport }
+    | { readonly submission: SubmissionId; readonly ok: true; readonly report: AssemblyReport; readonly notes: readonly string[] }
     | { readonly submission: SubmissionId; readonly ok: false; readonly name: string; readonly why: string };
 
 /** How many submissions are fetched and assembled at once: enough to keep
@@ -46,12 +50,14 @@ export type Outcome =
  *  memory at the same moment. */
 const AT_ONCE = 4;
 
-/** Assembles `it` and saves it as `<slug>-<login>-<time>.tar.gz`, which
- *  unpacks into a folder of that name: the name a plain download of it has. */
-export async function downloadOne(slug: string, it: ToAssemble): Promise<Outcome> {
+/** Assembles `it` with one of `releases` (the project's, newest first)
+ *  and saves it as `<slug>-<login>-<time>.tar.gz`, unpacking into a folder
+ *  of that name. */
+export async function downloadOne(slug: string, releases: readonly Release[], it: ToAssemble): Promise<Outcome> {
     const lib = await library();
     const folder = lib.safeSegment(`${slug}-${it.githubLogin ?? 'student'}-${lib.stampOf(new Date(it.submittedAt).toISOString())}`);
     const [outcome] = await assembleAndSave(
+        releases,
         [it],
         () => folder,
         `${folder}.tar.gz`,
@@ -63,11 +69,11 @@ export async function downloadOne(slug: string, it: ToAssemble): Promise<Outcome
 /** Assembles every one of `items` and saves them as one
  *  `<slug>-submissions.tar.gz`, a folder per student named as `yukibana
  *  download` names them. `progress` hears how many are done after each. */
-export async function downloadAll(slug: string, items: readonly ToAssemble[], progress: (done: number) => void): Promise<Outcome[]> {
+export async function downloadAll(slug: string, releases: readonly Release[], items: readonly ToAssemble[], progress: (done: number) => void): Promise<Outcome[]> {
     const lib = await library();
     const folders = lib.folderNames(items.map(i => ({ userId: i.key, fullName: i.name, githubLogin: i.githubLogin, email: i.email })));
     const root = `${slug}-submissions`;
-    return assembleAndSave(items, it => `${root}/${folders.get(it.key) ?? lib.safeSegment(it.key)}`, `${root}.tar.gz`, progress);
+    return assembleAndSave(releases, items, it => `${root}/${folders.get(it.key) ?? lib.safeSegment(it.key)}`, `${root}.tar.gz`, progress);
 }
 
 // Loaded on first use, so the library is in neither every page's bundle
@@ -75,16 +81,24 @@ export async function downloadAll(slug: string, items: readonly ToAssemble[], pr
 const library = () => import('@yukibana/client/assembly');
 
 /** Fetches and assembles each of `items` into the folder `folderOf` names,
- *  and saves them all as `filename`. Each teacher archive is fetched once
- *  however many students started from it. A submission that cannot be
+ *  and saves them all as `filename`. Each teacher archive is fetched and
+ *  read once however many students need it. A submission that cannot be
  *  fetched or assembled is left out and its outcome says why; nothing is
- *  saved when none could be. */
-async function assembleAndSave(items: readonly ToAssemble[], folderOf: (it: ToAssemble) => string, filename: string, progress: (done: number) => void): Promise<Outcome[]> {
+ *  saved when none could be.
+ *
+ *  - Requires: `releases` is not empty. */
+async function assembleAndSave(
+    releases: readonly Release[],
+    items: readonly ToAssemble[],
+    folderOf: (it: ToAssemble) => string,
+    filename: string,
+    progress: (done: number) => void,
+): Promise<Outcome[]> {
     const lib = await library();
-    const teachers = new Map<ReleaseId, Promise<Uint8Array>>();
-    const teacherOf = (r: ReleaseId): Promise<Uint8Array> => {
-        const got = teachers.get(r) ?? bytesOf(`/api/releases/${r}/teacher?inline`, 'The teacher archive');
-        teachers.set(r, got);
+    const teachers = new Map<string, Promise<Entry[]>>();
+    const teacherOf = (r: Release): Promise<Entry[]> => {
+        const got = teachers.get(r.releaseId) ?? bytesOf(`/api/releases/${r.releaseId}/teacher?inline`, 'The teacher archive').then(lib.readArchive);
+        teachers.set(r.releaseId, got);
         return got;
     };
     const outcomes: Outcome[] = [];
@@ -93,12 +107,12 @@ async function assembleAndSave(items: readonly ToAssemble[], folderOf: (it: ToAs
     const work = async (): Promise<void> => {
         for (let it = queue.shift(); it !== undefined; it = queue.shift()) {
             try {
-                const [sent, teacher] = await Promise.all([bytesOf(`/api/submissions/${it.submission}?inline`, 'The submission'), teacherOf(it.release)]);
-                const made = await lib.assembleInto(folderOf(it), sent, teacher);
+                const sent = await bytesOf(`/api/submissions/${it.submission}?inline`, 'The submission');
+                const made = await lib.assembleSubmission(sent, releases, 'own', it.recorded, teacherOf);
                 if (!made.ok) throw new Error(`It could not be assembled: ${made.problem}.`);
-                entries.push(...made.entries);
-                const { tampering, unrestored, overridden, refused } = made.assembled.assembly;
-                outcomes.push({ submission: it.submission, ok: true, report: { tampering, unrestored, overridden, refused } });
+                entries.push(...inFolder(folderOf(it), made.assembly.entries));
+                const { tampering, unrestored, overridden, refused } = made.assembly;
+                outcomes.push({ submission: it.submission, ok: true, report: { tampering, unrestored, overridden, refused }, notes: made.notes });
             } catch (e) {
                 outcomes.push({ submission: it.submission, ok: false, name: it.name, why: e instanceof Error ? e.message : String(e) });
             }
@@ -108,6 +122,15 @@ async function assembleAndSave(items: readonly ToAssemble[], folderOf: (it: ToAs
     await Promise.all(Array.from({ length: Math.min(AT_ONCE, items.length) }, work));
     if (entries.length > 0) save(await lib.gzip(await lib.writeTar(entries)), filename);
     return outcomes;
+}
+
+/** `entries` under `folder`, the folder first, so one archive can hold
+ *  several students' projects without mixing their files. */
+function inFolder(folder: string, entries: readonly Entry[]): Entry[] {
+    return [
+        { path: folder, type: 'dir', mode: 0o755, mtime: Math.floor(Date.now() / 1000), data: new Uint8Array(0) },
+        ...entries.map(e => ({ ...e, path: `${folder}/${e.path}` })),
+    ];
 }
 
 async function bytesOf(url: string, what: string): Promise<Uint8Array> {
@@ -133,9 +156,11 @@ function save(bytes: Uint8Array<ArrayBuffer>, filename: string): void {
     setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
-/** What `r` should tell a teacher, one short line per kind of finding, in
- *  the order they matter; empty when the student touched nothing protected. */
-export function findings(r: AssemblyReport): string[] {
+/** What `r` and `notes` should tell a teacher, one short line each, in the
+ *  order they matter; empty when there is nothing to say. The CLI words the
+ *  same report for a terminal (`describe` in collect.ts): the wording is
+ *  each medium's own, the facts are `assemble`'s. */
+export function findings(r: AssemblyReport, notes: readonly string[] = []): string[] {
     const list = (paths: readonly string[]) => paths.join(', ');
     const unrestored = new Set(r.unrestored);
     const restored = (paths: readonly string[]) => paths.filter(p => !unrestored.has(p));
@@ -147,5 +172,5 @@ export function findings(r: AssemblyReport): string[] {
     if (r.unrestored.length > 0) out.push(`Kept the student's ${list(r.unrestored)} (no longer protected)`);
     if (r.overridden.length > 0) out.push(`Replaced ${list(r.overridden)} with the release's`);
     if (r.refused.length > 0) out.push(`Removed symlinks ${list(r.refused)}`);
-    return out;
+    return [...out, ...notes];
 }

@@ -51,11 +51,15 @@ export interface HandIn {
     readonly githubLogin: string | null;
 }
 
-/** The release a submission was built on. */
-export interface Base {
+/** A release of the project, as the page knows every one of them. */
+export interface Release {
     readonly releaseId: ReleaseId;
     /** The release's label, or '' when it was published without one. */
     readonly label: string;
+}
+
+/** The release a submission was built on, and where it stands. */
+export interface Base extends Release {
     /** Its place among the project's releases, counting from 1 for the
      *  first: what the page calls its version, since a label is optional
      *  and two releases may carry the same one. */

@@ -22,3 +22,11 @@ test('an assembly says what it restored, what it dropped and what it had to keep
         'Removed symlinks link',
     ]);
 });
+
+test('what the release choice noted follows what the assembly changed', () => {
+    const report: AssemblyReport = { ...nothing, tampering: { modified: ['tests/a.rs'], deleted: [], added: [] } };
+    expect(findings(report, ['its yukibana.json names release x, which is not a release of this project'])).toEqual([
+        'Restored tests/a.rs',
+        'its yukibana.json names release x, which is not a release of this project',
+    ]);
+});

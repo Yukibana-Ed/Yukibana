@@ -9,9 +9,15 @@
  *  nothing on its own: a release counts only when it is one of the
  *  project's.
  *
- *  Pure: lists and ids in, a decision out. `download --assemble` does the
- *  fetching.
+ *  Pure but for the one fetch it is handed: lists, ids and bytes in, a
+ *  decision and an assembly out. `yukibana download --assemble` and the
+ *  registry's staff page do the fetching and say what came of it, each in
+ *  its own words.
  */
+
+import { assemble, submissionRoot, type Assembly } from './assemble.js';
+import { readArchive, type Entry } from './tar.js';
+import { CONFIG_FILE, parseConfig } from './yukibana.js';
 
 /** A release as the decision needs it: the project's list, newest first. */
 export interface ReleaseRef {
@@ -95,4 +101,78 @@ export function behind(releases: readonly ReleaseRef[], base: string | null): st
     const from = releases[at];
     if (from === undefined) return `started from ${base}, which is not a release of this project`;
     return `started from ${nameOf(from)}, ${at === 1 ? 'one release' : `${at} releases`} behind the newest, ${nameOf(newest)}`;
+}
+
+/** The release a submission's own yukibana.json names, or null when it has
+ *  none or names nothing readable. The student's claim: `chooseReleases`
+ *  counts it only when it is one of the project's releases. */
+export function claimedRelease(entries: readonly Entry[]): string | null {
+    const cfg = entries.find(e => e.path === CONFIG_FILE && e.type === 'file');
+    if (cfg === undefined) return null;
+    const parsed = parseConfig(new TextDecoder().decode(cfg.data));
+    return parsed.ok ? parsed.config.releaseId : null;
+}
+
+/** A submission assembled for grading, or why it could not be, with the
+ *  releases `chooseReleases` picked and what it noted, either way. */
+export type Graded<R extends ReleaseRef> =
+    | {
+          /** `true` iff the submission could be assembled. */
+          readonly ok: true;
+          /** The assembled project and what the student did to protected files. */
+          readonly assembly: Assembly;
+          /** The release the assembly took its protected files from. */
+          readonly grade: R;
+          /** The release the student started from, which their changes were
+           *  measured against; null when unknown. */
+          readonly base: R | null;
+          /** Sentences a teacher should read: a claim that does not hold up,
+           *  or a base release that could not be fetched. */
+          readonly notes: readonly string[];
+      }
+    | {
+          /** `true` iff the submission could be assembled. */
+          readonly ok: false;
+          /** Why it could not, in a sentence. */
+          readonly problem: string;
+          readonly notes: readonly string[];
+      };
+
+/** `archive`, a submission as sent, assembled with the releases
+ *  `chooseReleases` picks for it among `releases` (the project's, newest
+ *  first): read, its claim and the registry's record (`recorded`) weighed,
+ *  the grading release's teacher archive overlaid, and the student's
+ *  changes measured against the release they started from. `teacherOf`
+ *  fetches a release's teacher archive, as entries; it is asked at most
+ *  twice. This is the whole of `yukibana download --assemble` and the
+ *  registry's Download for one submission; the callers do the I/O and the
+ *  words around it.
+ *
+ *  Throws what reading `archive` or fetching the grading release throws. A
+ *  base release that cannot be fetched is a note, and the changes are then
+ *  measured against the grading release.
+ *
+ *  - Requires: `releases` is not empty. */
+export async function assembleSubmission<R extends ReleaseRef>(
+    archive: Uint8Array,
+    releases: readonly R[],
+    wanted: Wanted,
+    recorded: string | null,
+    teacherOf: (r: R) => Promise<readonly Entry[]>,
+): Promise<Graded<R>> {
+    const entries = submissionRoot(await readArchive(archive));
+    const { grade, base, notes } = chooseReleases(releases, wanted, recorded, claimedRelease(entries));
+    const teacher = await teacherOf(grade);
+    let against = teacher;
+    const said = [...notes];
+    if (base !== null && base !== grade) {
+        try {
+            against = await teacherOf(base);
+        } catch (e) {
+            said.push(`${e instanceof Error ? e.message : String(e)}; what the student changed is measured against ${nameOf(grade)} instead`);
+        }
+    }
+    const made = assemble(entries, teacher, against);
+    if (!made.ok) return { ok: false, problem: made.problem, notes: said };
+    return { ok: true, assembly: made.assembly, grade, base, notes: said };
 }

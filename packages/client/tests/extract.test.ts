@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { lstat, mkdir, mkdtemp, readdir, readFile, readlink, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { readArchive, unpackStarter, writeEntries } from '../src/extract.js';
+import { unpackStarter, writeEntries } from '../src/extract.js';
+import { readArchive } from '../src/lib/tar.js';
 import { gzip } from '../src/lib/gzip.js';
 import { writeTar, type Entry } from '../src/lib/tar.js';
 
