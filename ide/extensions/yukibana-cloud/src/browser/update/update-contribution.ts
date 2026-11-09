@@ -35,7 +35,9 @@ function updateMergeEditor(widget: Widget | undefined): MergeEditor | undefined 
 /** The view, its commands, the status bar item, and the merge editor's Done button. */
 @injectable()
 export class UpdateContribution extends AbstractViewContribution<UpdateWidget> implements FrontendApplicationContribution, TabBarToolbarContribution {
+    /** The state of updates, and the actions the commands run. */
     @inject(AssignmentUpdates) protected readonly updates!: AssignmentUpdates;
+    /** The status bar the update item is shown in. */
     @inject(StatusBar) protected readonly statusBar!: StatusBar;
 
     /** Creates the contribution of the view, in the left side panel. */
@@ -61,7 +63,14 @@ export class UpdateContribution extends AbstractViewContribution<UpdateWidget> i
         this.updates.onShow(() => this.openView({ activate: true, reveal: true }));
     }
 
-    /** Registers the view's command and the commands of {@link UpdateCommands} with `commands`. */
+    /**
+     * Registers the view's command and the commands of {@link UpdateCommands} with `commands`.
+     *
+     * Undo is enabled only while there is a last update, and reports its own failure. Done merging does nothing unless
+     * the widget it is given, or else the current one, is a merge editor an update opened; with places left unlooked at
+     * it asks first. Unlike Undo it does not report its own failure: when saving the result or settling the row fails,
+     * the command rejects and the command registry is left to say so.
+     */
     override registerCommands(commands: CommandRegistry): void {
         super.registerCommands(commands);
         // Also the view's toolbar buttons: shown on the view, and in the palette (called without a widget)

@@ -13,6 +13,10 @@ import { CreateLauncherCommandContribution } from './create-launcher-contributio
 import { DesktopFileService } from './desktopfile-service';
 import { LauncherService } from './launcher-service';
 
+/**
+ * The launcher extension's frontend: {@link CreateLauncherCommandContribution} as a startup and command contribution,
+ * and the two services it talks to the backend through, each a singleton.
+ */
 export default new ContainerModule(bind => {
     bind(CreateLauncherCommandContribution).toSelf().inSingletonScope();
     bind(FrontendApplicationContribution).toService(CreateLauncherCommandContribution);

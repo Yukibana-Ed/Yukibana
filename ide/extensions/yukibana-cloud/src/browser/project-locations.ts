@@ -10,12 +10,19 @@ import type { Project } from '@yukibana/client';
 import { CONFIG_FILENAME, projectIdOf } from './welcome/welcome-model';
 
 /**
- * What a folder is, for putting a project there: missing or empty, so a starter can be unpacked into it; already a copy
- * of the project, to open; or neither.
+ * What a folder is, for putting a project there: `free`, missing or empty, so a starter can be unpacked into it;
+ * `this-project`, already a copy of the project, to open; `other-files`, a folder that holds something else; or
+ * `not-a-folder`, a file or a link that is not to a copy of the project.
  */
 export type FolderState = 'free' | 'this-project' | 'other-files' | 'not-a-folder';
 
-/** Returns why `name` cannot name a project's folder, or `undefined` if it can, on every operating system. */
+/**
+ * Returns why `name` cannot name a project's folder, or `undefined` if it passes: it must not be empty, start or end
+ * with a space, be `.` or `..`, or hold a character that some operating system forbids in a name (`/ \ < > : " | ? *`
+ * and control characters).
+ *
+ * It does not catch Windows' reserved names (`CON`, `NUL`…) or a trailing dot.
+ */
 export function folderNameProblem(name: string): string | undefined {
     if (name.trim() === '') {
         return nls.localize('yukibana/cloud/openProject/nameEmpty', 'Enter a name for the folder');
@@ -41,11 +48,17 @@ export function fsPathOf(uri: URI): string {
 /** Where projects are on this computer, and where a new one goes. */
 @injectable()
 export class ProjectLocations {
+    /** The files, through the backend. */
     @inject(FileService) protected readonly files!: FileService;
+    /** Where the recently opened workspaces come from. */
     @inject(WorkspaceService) protected readonly workspaces!: WorkspaceService;
+    /** Where the home folder comes from. */
     @inject(EnvVariablesServer) protected readonly env!: EnvVariablesServer;
 
-    /** Returns the registry project the `yukibana.json` of `folder` names, if any. */
+    /**
+     * Returns the id of the registry project the `yukibana.json` of `folder` names, or `undefined` when there is no such
+     * file, it cannot be read, or it names none. Never rejects.
+     */
     async projectIdAt(folder: URI): Promise<string | undefined> {
         try {
             return projectIdOf((await this.files.read(folder.resolve(CONFIG_FILENAME))).value);
@@ -59,6 +72,10 @@ export class ProjectLocations {
      *
      * A link counts as `not-a-folder` unless it leads to a copy of the project, since a starter is never unpacked through
      * one.
+     *
+     * A folder that cannot be looked at reads as `free`: Theia's file service answers "does not exist" when a stat fails
+     * (e.g. no permission on the parent) and no children when a listing fails, without saying why. Rejects only when no
+     * file system provider serves `folder`'s scheme, or when `folder` disappears between those two looks.
      */
     async stateOf(folder: URI, projectId: string): Promise<FolderState> {
         if (!(await this.files.exists(folder))) {
@@ -82,7 +99,10 @@ export class ProjectLocations {
      * any; otherwise the first of a folder named after its slug, `<slug>-1`, `<slug>-2`… that is free or a copy of it,
      * next to the most recently opened workspace, or in the home folder when there is none.
      *
-     * Reads the `yukibana.json` of every recent workspace, so it takes time linear in their number.
+     * Reads the `yukibana.json` of every recent workspace, so it takes time linear in their number. Does not end while
+     * every candidate name is taken. A folder that cannot be looked at reads as free (see
+     * {@link ProjectLocations.stateOf}), so the folder suggested may turn out unreadable when the starter is unpacked;
+     * rejects only as `stateOf` does.
      */
     async defaultDestination(project: Project): Promise<URI> {
         const recent = (await this.workspaces.recentWorkspaces()).map(uri => new URI(uri));

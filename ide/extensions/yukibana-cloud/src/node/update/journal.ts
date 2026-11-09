@@ -9,7 +9,23 @@ import { messageOf } from '../../common/errors';
 import { fullPath, hashOf, place, placeSymlink, removeFile, sha256, writeAtomically, writeJson } from './folder';
 
 /** What a path an update touched held before it. */
-export type Before = { readonly type: 'absent' } | { readonly type: 'file'; readonly mode: number } | { readonly type: 'symlink'; readonly target: string };
+export type Before =
+    | {
+          /** `absent`: nothing was there; a rollback removes what is there now. */
+          readonly type: 'absent';
+      }
+    | {
+          /** `file`: a regular file, whose contents are backed up under `before/` at the same path. */
+          readonly type: 'file';
+          /** The file's permission bits (`mode & 0o777`), which a rollback restores. */
+          readonly mode: number;
+      }
+    | {
+          /** `symlink`: a symbolic link, which is not followed or backed up beyond its target. */
+          readonly type: 'symlink';
+          /** The link's target, as `readlink` returned it, relative or absolute. */
+          readonly target: string;
+      };
 
 /**
  * The record of the last update of one folder.
@@ -23,13 +39,26 @@ export type Before = { readonly type: 'absent' } | { readonly type: 'file'; read
 export interface Manifest {
     /** The format; a record of another one is not read (version 1 had no `decided`). */
     readonly version: 2;
+    /** `applying` while the update writes, `done` once it has written everything it decided; see above. */
     state: 'applying' | 'done';
+    /** The release the folder was on before the update, in lower case. */
     readonly from: string;
+    /** The release the update brought the folder to, in lower case. */
     readonly to: string;
     /** When the update was applied, ISO 8601. */
     readonly at: string;
+    /**
+     * Every path of the plan, `yukibana.json` included: what it held before the update, and the {@link hashOf} of what
+     * the update or a resolution left there (`undefined`: no file).
+     */
     readonly files: Record<string, { readonly before: Before; after: string | undefined }>;
+    /**
+     * The rows the update wrote or deleted without asking, from the plan made when it was applied: what
+     * `LastUpdate.decided` shows afterwards. They can differ from the `available` rows a check showed earlier, when
+     * files changed in between.
+     */
     readonly decided: readonly DecidedRow[];
+    /** The rows still left to the student; a resolution removes its row. */
     pending: readonly PendingRow[];
 }
 
@@ -40,9 +69,11 @@ export interface Manifest {
  * A journal is the only copy of what an update replaced, so nothing removes it but a finished rollback.
  */
 export class Journal {
-    /** Creates the journal of the folder at `root`, kept in `dir`. */
+    /** Creates the journal of the folder at `root`, kept in `dir`; nothing is read or written until a method is called. */
     constructor(
+        /** The folder the journal is of, an absolute path. */
         readonly root: string,
+        /** The folder the record and backups are kept in; `<dir>.next` is used while {@link Journal.begin} runs. */
         protected readonly dir: string,
     ) {}
 
@@ -70,9 +101,14 @@ export class Journal {
      * Backs up every one of `files` and replaces the record with `manifest`, whose `files` it fills in.
      *
      * The old record stays until every backup is written, so a failure here leaves the previous update undoable.
-     * - Requires: `manifest.state` is `applying`, and `manifest.files` is empty.
+     * - Requires: `manifest.state` is `applying`, and `manifest.files` is empty. Enforced: otherwise throws, having
+     *   written nothing.
      */
     async begin(manifest: Manifest, files: readonly string[]): Promise<void> {
+        // A record not `applying` would not be rolled back if the IDE stopped now; one with files would back up twice
+        if (manifest.state !== 'applying' || Object.keys(manifest.files).length > 0) {
+            throw new Error('A journal begins only with a manifest that is applying and names no files yet.');
+        }
         const next = `${this.dir}.next`;
         await fs.promises.rm(next, { recursive: true, force: true });
         for (const file of files) {
@@ -83,7 +119,10 @@ export class Journal {
         await fs.promises.rename(next, this.dir);
     }
 
-    /** Returns the text `file` held before the last update, or `''` when it held no file. */
+    /**
+     * Returns the text `file` held before the last update, decoded as UTF-8, or `''` when it held no file or there is
+     * no record. Rejects when the record names a backup that cannot be read.
+     */
     async before(file: string): Promise<string> {
         const manifest = await this.manifest();
         if (manifest?.files[file]?.before.type !== 'file') {

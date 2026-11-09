@@ -17,6 +17,14 @@ import { OpenWorkspaces, OpenWorkspacesServerImpl } from './open-workspaces';
 import { UpdateService, updateServicePath } from '../common/update-protocol';
 import { UpdateServiceImpl } from './update/update-service';
 
+/**
+ * The cloud extension's backend: the IDE's one session, the registry client, and the services the windows reach over
+ * RPC.
+ *
+ * {@link CloudAuthImpl} and {@link OpenWorkspacesServerImpl} are made per connection, because each calls its own window
+ * back, and are disposed when it closes; {@link CloudServiceImpl} and {@link UpdateServiceImpl} are one for all
+ * windows. Also contributes the French strings and the cloud account as the telemetry identity.
+ */
 export default new ContainerModule((bind, unbind, isBound, rebind) => {
     bind(CloudSessionManager).toSelf().inSingletonScope();
 

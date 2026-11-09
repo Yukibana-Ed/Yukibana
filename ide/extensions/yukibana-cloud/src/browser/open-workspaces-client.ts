@@ -14,6 +14,10 @@ export class OpenWorkspacesClientImpl implements OpenWorkspacesClient {
     /** Window this frontend runs in. */
     @inject(WindowService) protected readonly windows!: WindowService;
 
+    /**
+     * Asks for this window to come to the front, and settles at once, without knowing whether it came: in Electron it
+     * does, and a page in a browser cannot raise its own tab, so there nothing happens.
+     */
     async focus(): Promise<void> {
         // A page cannot raise its own browser tab; the welcome screen only asks in Electron
         this.windows.focus();

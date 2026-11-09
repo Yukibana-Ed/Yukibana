@@ -143,9 +143,27 @@ function mkdir(dirPath: string): void {
         if (e.code !== 'EEXIST') {
             throw e;
         }
+        // EEXIST is also what a regular file there gives; using it would fail later, inside writeFileSync, as ENOTDIR.
+        if (!fs.statSync(dirPath).isDirectory()) {
+            throw new Error(`${dirPath} exists and is not a directory`);
+        }
     }
 }
 
+/**
+ * Writes a new, empty Theia extension package into `rootPath`: `src/`, a `package.json` named
+ * `@yukibana/ide-<name>-ext` (`@yukibana/ide-<name>-lang-ext`, keyworded `language`, when `lang`) and a `tsconfig.json`
+ * extending the IDE's base config. It registers nothing: the package's `theiaExtensions` and the workspace's references
+ * are left for the author.
+ *
+ * - Requires: the parent of `rootPath` exists. Not created: `fs.mkdirSync` throws `ENOENT` otherwise.
+ * - Requires: `rootPath`, and `src/` inside it, are each a directory or do not exist. Enforced: something else there
+ *   (a regular file) throws an `Error` naming the path, before anything is written into it.
+ *
+ * A `rootPath` or `src/` directory that already exists is used as it is, and the two files are overwritten without asking;
+ * refusing an existing extension is the caller's job (`new:ext` in `cli.mts` refuses a non-empty directory unless
+ * `--force`).
+ */
 export function initExtension(name: string, rootPath: string, lang: boolean): void {
     mkdir(rootPath);
     const template = lang ? LANG_EXTENSION_TEMPLATE : EXTENSION_TEMPLATE;

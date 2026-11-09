@@ -26,6 +26,15 @@ import { YukibanaRemoteFileSystemProvider } from './yukibana-remote-file-system-
 import { YukibanaToolbarDefaults } from './yukibana-toolbar-contributions';
 import { YukibanaTypingTracker } from './yukibana-typing-tracker';
 
+/**
+ * The Yukibana extension's frontend: the config and the read-only policy, the assignment pane, and what replaces
+ * Theia's own services to follow the config (layout, problems, AI activation, file writes, plugin views, messages,
+ * language providers, the toolbar), plus the telemetry of typing.
+ *
+ * - Requires: loaded after the Theia modules whose bindings it rebinds (`ProblemManager`, `ProblemContribution`,
+ *   `AIIdeActivationServiceImpl`, `RemoteFileSystemProvider`, `ShellLayoutRestorer`, `PluginViewRegistry`); rebinding
+ *   one that is not bound throws when the container loads this module.
+ */
 export default new ContainerModule((bind, unbind, isBound, rebind) => {
     bindConfig(bind);
 

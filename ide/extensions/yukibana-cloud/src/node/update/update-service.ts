@@ -47,6 +47,9 @@ const UNWALKED = ['.git', ...NEVER_SUBMITTED];
 /** The most files a walk lists; a source folder is far smaller. */
 const MAX_FILES = 50_000;
 
+/** The shape of a release id, a UUID in any case; anything else is refused before it names a cached file. */
+const RELEASE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * The backend of assignment updates: the registry, the student's folder, and the journal of the last update.
  *
@@ -55,8 +58,11 @@ const MAX_FILES = 50_000;
  */
 @injectable()
 export class UpdateServiceImpl implements UpdateService {
+    /** The registry, asked for projects and release starters as whoever the IDE's session is for. */
     @inject(CloudClient) protected readonly client!: CloudClient;
+    /** Where the IDE's configuration folder is, under which {@link UpdateServiceImpl.storeRoot} lies. */
     @inject(EnvVariablesServer) protected readonly env!: EnvVariablesServer;
+    /** Where updates, rollbacks and their failures are written down. */
     @inject(ILogger) @named('yukibana:Update') protected readonly logger!: ILogger;
 
     /** The starters read so far, by release id in lower case. A release never changes, so neither does an entry. */
@@ -64,10 +70,17 @@ export class UpdateServiceImpl implements UpdateService {
     /** The last operation on each folder, by its path, settled or not. */
     protected readonly queues = new Map<string, Promise<unknown>>();
 
+    /**
+     * Returns the state of `workspace`; see {@link UpdateService.check}.
+     *
+     * A failure to reach the registry or plan the release is the state's `problem`. Rejects when moving the stamp of a
+     * release that changes nothing else fails, or the IDE's configuration folder cannot be found.
+     */
     check(workspace: string): Promise<UpdateState> {
         return this.serially(workspace, root => this.checkNow(root));
     }
 
+    /** Updates `workspace` to `to`, in any case; see {@link UpdateService.update}. */
     update(workspace: string, to: string, confirmed: readonly string[]): Promise<UpdateResult> {
         return this.serially(workspace, async root => {
             try {
@@ -84,6 +97,7 @@ export class UpdateServiceImpl implements UpdateService {
         });
     }
 
+    /** Settles the pending row at `file`; see {@link UpdateService.resolve}. */
     resolve(workspace: string, file: string, resolution: Resolution): Promise<UpdateState> {
         return this.serially(workspace, async root => {
             const journal = await this.journalOf(root);
@@ -106,6 +120,7 @@ export class UpdateServiceImpl implements UpdateService {
         });
     }
 
+    /** Undoes the last update of `workspace`; see {@link UpdateService.undo}. */
     undo(workspace: string, force: boolean): Promise<UndoResult> {
         return this.serially(workspace, async root => {
             try {
@@ -127,7 +142,15 @@ export class UpdateServiceImpl implements UpdateService {
         });
     }
 
+    /**
+     * Returns the text of `file` in version `side`; see {@link UpdateService.read}. Not queued behind other operations.
+     *
+     * Throws for a `release` that is not a UUID: it comes over RPC unchecked, and names a file in the cache.
+     */
     async read(workspace: string, side: UpdateSide, file: string): Promise<string> {
+        if (side.kind === 'release' && !RELEASE_ID.test(side.release)) {
+            throw new Error(`${side.release} is not a release id.`);
+        }
         if (!isInside(file)) {
             return '';
         }

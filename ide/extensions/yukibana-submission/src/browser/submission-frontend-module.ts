@@ -11,6 +11,11 @@ import { SubmissionTarget } from '../common/submission-target';
 import { FileSubmissionTarget } from './file-submission-target';
 import { SubmitCommandContribution } from './submission-frontend-contribution';
 
+/**
+ * The submission extension's frontend: the submit command, {@link SubmissionService} as an RPC proxy to the backend,
+ * the {@link SubmissionTarget} contribution point, and {@link FileSubmissionTarget} as one target. Other extensions add
+ * targets by binding them to `SubmissionTarget`.
+ */
 export default new ContainerModule(bind => {
     bind(CommandContribution).to(SubmitCommandContribution);
     bind(SubmissionService)

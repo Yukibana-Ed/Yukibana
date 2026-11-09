@@ -12,6 +12,7 @@ import { ContainerModule } from '@theia/core/shared/inversify';
 import { YukibanaDesktopFileServiceEndpoint } from './desktopfile-endpoint';
 import { YukibanaLauncherServiceEndpoint } from './launcher-endpoint';
 
+/** The launcher extension's backend: the `/launcher` and `/desktopfile` REST endpoints, each a singleton contribution. */
 export default new ContainerModule(bind => {
     bind(YukibanaLauncherServiceEndpoint).toSelf().inSingletonScope();
     bind(BackendApplicationContribution).toService(YukibanaLauncherServiceEndpoint);

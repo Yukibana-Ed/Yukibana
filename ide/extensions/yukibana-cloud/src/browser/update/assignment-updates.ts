@@ -53,35 +53,55 @@ interface Checked {
  * so "Later" never loses it.
  *
  * The actions on rows (compare, merge, resolve) are offered only for what the state shows, and each says in a
- * `Requires:` which part of the state it needs; calling one without it throws.
+ * `Requires:` which part of the state it needs; calling one without it rejects.
  */
 @injectable()
 export class AssignmentUpdates implements FrontendApplicationContribution, UpdateCheck {
+    /** The backend that checks, updates, undoes and reads versions. */
     @inject(UpdateService) protected readonly service!: UpdateService;
+    /** Where the workspace folder comes from. */
     @inject(WorkspaceService) protected readonly workspaces!: WorkspaceService;
+    /** Where the student is told what happened. */
     @inject(MessageService) protected readonly messages!: MessageService;
+    /** Where the release last announced for each folder is remembered, across reloads. */
     @inject(StorageService) protected readonly storage!: StorageService;
+    /** What opens versions, diffs and the merge editor. */
     @inject(OpenerService) protected readonly openers!: OpenerService;
+    /** The open editors, saved before the backend touches their files. */
     @inject(EditorManager) protected readonly editors!: EditorManager;
+    /** Where failed checks and actions are written down. */
     @inject(ILogger) @named('yukibana:Update') protected readonly logger!: ILogger;
 
+    /** The emitter of {@link AssignmentUpdates.onDidChange}; only `set` fires it. */
     protected readonly onDidChangeEmitter = new Emitter<UpdateState>();
-    /** Fires with the new state whenever it changes. */
+    /**
+     * Fires with the state after every check that answered or found no workspace, and after every action that set a new
+     * state, whether or not it differs from the one before: a periodic check that answers the same state fires too.
+     */
     readonly onDidChange = this.onDidChangeEmitter.event;
+    /** The emitter of {@link AssignmentUpdates.onShow}; only `show` fires it. */
     protected readonly onShowEmitter = new Emitter<void>();
     /** Fires when something asks to see the update view: a notification button, or an update left files to merge. */
     readonly onShow = this.onShowEmitter.event;
 
-    /** The last check's folder and answer; `undefined` while no workspace is open. */
+    /**
+     * The folder and answer of the last check that answered, or of the last action that set a state; `undefined` before
+     * the first answer and while no workspace is open. A failed check keeps it, so after the workspace changed it may be
+     * about a different folder than the current first root.
+     */
     protected checked: Checked | undefined;
-    /** When the last check started, in ms since the epoch; 0 before the first. */
+    /** When the last check of a folder started, in ms since the epoch; 0 before the first. */
     protected lastCheck = 0;
-    /** The timer of the next scheduled check. */
+    /** The timer of the next scheduled check; `undefined` before the first check ended. */
     protected timer: number | undefined;
     /** The check in progress, if one is. */
     protected running: Promise<UpdateState> | undefined;
 
-    /** The state of the workspace folder, as last checked. */
+    /**
+     * The state of the workspace folder, as last checked; {@link NO_UPDATE} before then and while no workspace is open.
+     * A failed check keeps the previous answer, which may be about the folder that was open before (see `checked`); the
+     * actions then act on that folder.
+     */
     get state(): UpdateState {
         return this.checked?.state ?? NO_UPDATE;
     }
@@ -118,7 +138,10 @@ export class AssignmentUpdates implements FrontendApplicationContribution, Updat
     /**
      * Applies the available update: saves the files it touches, asks before replacing edits to read-only files, writes.
      *
-     * - Requires: `state.available` is set.
+     * Writes nothing when the student cancels, or chooses to review their changes, which opens them instead. A refusal
+     * from the backend is shown, not thrown; a backend that cannot be reached rejects, and so does an open editor that
+     * cannot be saved, before anything is written.
+     * - Requires: `state.available` is set; otherwise rejects, writing nothing.
      */
     async update(): Promise<void> {
         const { root, available } = this.requireAvailable();
@@ -169,7 +192,9 @@ export class AssignmentUpdates implements FrontendApplicationContribution, Updat
     /**
      * Puts back what the last update wrote, asking first if the student changed any of it since.
      *
-     * - Requires: `state.last` is set.
+     * A refusal from the backend is shown, not thrown; a backend that cannot be reached rejects, and so does an open
+     * editor that cannot be saved, before anything is put back.
+     * - Requires: `state.last` is set; otherwise rejects, putting nothing back.
      */
     async undo(): Promise<void> {
         const { root, last } = this.requireLast();
@@ -201,9 +226,12 @@ export class AssignmentUpdates implements FrontendApplicationContribution, Updat
     }
 
     /**
-     * Settles the pending `row` of the last update with `resolution`.
+     * Settles the pending `row` of the last update with `resolution`; the backend leaves a row that is no longer pending
+     * as it is. Rejects when the backend cannot be reached, or when an open editor of the file cannot be saved first.
      *
-     * - Requires: `state.last` is set.
+     * - Requires: `state.last` is set; otherwise rejects.
+     * - Requires: `resolution` is `teacher` only when the teacher's release has a file at `row.path`; the backend
+     *   enforces it: otherwise rejects, changing nothing.
      */
     async resolve(row: PendingRow, resolution: Resolution): Promise<void> {
         const { root } = this.requireLast();
@@ -228,7 +256,7 @@ export class AssignmentUpdates implements FrontendApplicationContribution, Updat
     /**
      * Opens what the student changed in `row`'s file since the release they started from: what the update replaces.
      *
-     * - Requires: `state.available` is set.
+     * - Requires: `state.available` is set; otherwise rejects.
      */
     async reviewOwnChanges(row: DecidedRow): Promise<void> {
         const { root, available } = this.requireAvailable();
@@ -238,7 +266,7 @@ export class AssignmentUpdates implements FrontendApplicationContribution, Updat
     /**
      * Opens the student's file next to the teacher's new version, or the one of them that exists.
      *
-     * - Requires: `state.available` is set.
+     * - Requires: `state.available` is set; otherwise rejects.
      */
     async compareAvailable(row: UpdateRow): Promise<void> {
         const { root, available } = this.requireAvailable();
@@ -253,7 +281,7 @@ export class AssignmentUpdates implements FrontendApplicationContribution, Updat
     /**
      * Opens the file of the last update's pending `row` next to the teacher's version.
      *
-     * - Requires: `state.last` is set.
+     * - Requires: `state.last` is set; otherwise rejects.
      */
     async compareTeachers(row: PendingRow): Promise<void> {
         const { root, last } = this.requireLast();
@@ -264,7 +292,7 @@ export class AssignmentUpdates implements FrontendApplicationContribution, Updat
      * Opens the file of the last update's decided `row` as it was before the update next to the file now, or the old
      * version alone when the update deleted it.
      *
-     * - Requires: `state.last` is set.
+     * - Requires: `state.last` is set; otherwise rejects.
      */
     async compareUpdated(row: DecidedRow): Promise<void> {
         const { root } = this.requireLast();
@@ -278,7 +306,7 @@ export class AssignmentUpdates implements FrontendApplicationContribution, Updat
     /**
      * Opens the student's file as it was before the last update, read-only, to copy from.
      *
-     * - Requires: `state.last` is set.
+     * - Requires: `state.last` is set; otherwise rejects.
      */
     async openBefore(row: DecidedRow): Promise<void> {
         const { root } = this.requireLast();
@@ -291,7 +319,7 @@ export class AssignmentUpdates implements FrontendApplicationContribution, Updat
      * The result is the student's real file, as it is: their own lines stay until they take a change of the teacher's,
      * so closing, autosave or finishing with places left never removes what they wrote. "Your version" is a read-only
      * snapshot from the backup, not the live file, which would share the result's text model and change under them.
-     * - Requires: `state.last` is set.
+     * - Requires: `state.last` is set; otherwise rejects.
      */
     async merge(row: PendingRow): Promise<void> {
         const { root, last } = this.requireLast();
@@ -378,7 +406,7 @@ export class AssignmentUpdates implements FrontendApplicationContribution, Updat
         }
     }
 
-    /** Returns the folder and its available update. - Requires: `state.available` is set. */
+    /** Returns the folder and its available update. - Requires: `state.available` is set; otherwise throws. */
     protected requireAvailable(): { root: URI; available: AvailableUpdate } {
         const available = this.checked?.state.available;
         if (this.checked === undefined || available === undefined) {
@@ -387,7 +415,7 @@ export class AssignmentUpdates implements FrontendApplicationContribution, Updat
         return { root: this.checked.root, available };
     }
 
-    /** Returns the folder and its last update. - Requires: `state.last` is set. */
+    /** Returns the folder and its last update. - Requires: `state.last` is set; otherwise throws. */
     protected requireLast(): { root: URI; last: LastUpdate } {
         const last = this.checked?.state.last;
         if (this.checked === undefined || last === undefined) {

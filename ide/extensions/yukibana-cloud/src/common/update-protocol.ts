@@ -20,6 +20,7 @@ import type { ChooseReason } from '@yukibana/client';
  * student acts on.
  */
 export const updateServicePath = '/services/yukibana/update';
+/** The injection key of {@link UpdateService}: the backend's one instance, and the frontend's proxy to it. */
 export const UpdateService = Symbol('UpdateService');
 
 /** The URI scheme of the read-only versions the diff and merge editors show. See {@link UpdateUri}. */
@@ -47,16 +48,27 @@ export interface DecidedRow extends RowBase {
     readonly protected: boolean;
     /** Whether the student's copy differs from the release they started from, so that the update replaces their edit. */
     readonly editedByStudent: boolean;
-    /** Whether the path was editable in the release the folder started from. */
+    /**
+     * Whether the path is read-only in the new release but was editable in the one the folder started from, so that
+     * what the student did there was their work until now. Never true for `yukibana.json`.
+     */
     readonly newlyProtected: boolean;
 }
 
 /** A path both sides changed, where the student's version stays until they settle it. */
 export type PendingRow =
     /** An editable text file both changed: the merge editor joins them. */
-    | (RowBase & { readonly kind: 'merge' })
+    | (RowBase & {
+          /** `merge`: the student settles it in the merge editor, against the release the folder started from. */
+          readonly kind: 'merge';
+      })
     /** A change no line merge can join: the student keeps theirs or takes the teacher's. */
-    | (RowBase & { readonly kind: 'choose'; readonly reason: ChooseReason });
+    | (RowBase & {
+          /** `choose`: the student keeps their version or takes the teacher's (which may be no file). */
+          readonly kind: 'choose';
+          /** Why no line merge can join the two. */
+          readonly reason: ChooseReason;
+      });
 
 /** One path an update touches. */
 export type UpdateRow = DecidedRow | PendingRow;
@@ -124,20 +136,61 @@ export const NO_UPDATE: UpdateState = { rolledBack: false };
 /** What {@link UpdateService.update} did. */
 export type UpdateResult =
     /** The folder is on the release asked for. */
-    | { readonly kind: 'updated'; readonly state: UpdateState }
+    | {
+          /**
+           * `updated`: the folder is on the release asked for, either because this update wrote the decided rows and
+           * moved the stamp, or because it was already there.
+           */
+          readonly kind: 'updated';
+          /** The folder's state after the update, as {@link UpdateService.check} would return it. */
+          readonly state: UpdateState;
+      }
     /** Nothing was written: these read-only files hold the student's edits, which the update replaces. */
-    | { readonly kind: 'confirm'; readonly paths: readonly string[] }
-    /** Nothing is left written, for `reason`. */
-    | { readonly kind: 'failed'; readonly reason: string };
+    | {
+          /** `confirm`: nothing was written. */
+          readonly kind: 'confirm';
+          /** The read-only files whose edits the update would replace and that `confirmed` did not name, in plan order. */
+          readonly paths: readonly string[];
+      }
+    /** The update did not finish, or reading the folder's state afterwards failed, for `reason`. */
+    | {
+          /**
+           * `failed`: whatever an unfinished update wrote was put back (unless `reason` says that failed too). Rarely,
+           * the update was applied and saved and only reading the folder's state afterwards failed (moving a stamp, or
+           * finding the IDE's configuration folder): the update then stays applied, and can be undone.
+           */
+          readonly kind: 'failed';
+          /** Why, in a sentence for the student. */
+          readonly reason: string;
+      };
 
 /** What {@link UpdateService.undo} did. */
 export type UndoResult =
     /** The folder is as it was before the last update. */
-    | { readonly kind: 'undone'; readonly state: UpdateState }
+    | {
+          /** `undone`: every file is put back and the record of the update removed. */
+          readonly kind: 'undone';
+          /** The folder's state after the undo, as {@link UpdateService.check} would return it. */
+          readonly state: UpdateState;
+      }
     /** Nothing was restored: these files changed after the update, and restoring them loses that. */
-    | { readonly kind: 'confirm'; readonly paths: readonly string[] }
-    /** The undo did not finish, for `reason`. */
-    | { readonly kind: 'failed'; readonly reason: string };
+    | {
+          /** `confirm`: nothing was restored. */
+          readonly kind: 'confirm';
+          /** The paths changed since the update or resolution that last wrote them, sorted. */
+          readonly paths: readonly string[];
+      }
+    /** The undo did not finish, or reading the folder's state afterwards failed, for `reason`. */
+    | {
+          /**
+           * `failed`: there was no update to undo; or the files could not be compared with the update's record, and
+           * nothing was restored; or some files could not be put back, and the record stays; or every file was put back
+           * and the record removed, and only reading the folder's state afterwards failed.
+           */
+          readonly kind: 'failed';
+          /** Why, in a sentence for the student; names every path that could not be put back. */
+          readonly reason: string;
+      };
 
 /** What the student decided about a pending row. `teacher` and `delete` write; `keep` and `merged` only settle it. */
 export type Resolution = 'teacher' | 'delete' | 'keep' | 'merged';
@@ -145,13 +198,28 @@ export type Resolution = 'teacher' | 'delete' | 'keep' | 'merged';
 /** Which read-only version of a file a `yukibana-update:` URI names. */
 export type UpdateSide =
     /** The file as it was just before the last update, from its backup. */
-    | { readonly kind: 'before' }
+    | {
+          /** `before`: the backup the last update took. */
+          readonly kind: 'before';
+      }
     /** The file in a release's starter. */
-    | { readonly kind: 'release'; readonly release: string };
+    | {
+          /** `release`: a release's starter, as the registry serves it. */
+          readonly kind: 'release';
+          /**
+           * The release's id, a UUID (any case).
+           *
+           * Nothing over the RPC connection guarantees the shape: {@link UpdateService.read} rejects a `release` that is
+           * not a UUID, since the id names a file in the IDE's cache.
+           */
+          readonly release: string;
+      };
 
 /**
- * The backend's half of assignment updates. Every `workspace` is the `file:` URI of a workspace root, and every
- * call on one workspace runs after the previous one finished.
+ * The backend's half of assignment updates. Every `workspace` is the `file:` URI of a workspace root.
+ *
+ * Calls to {@link check}, {@link update}, {@link resolve} and {@link undo} on one workspace run one after another,
+ * each after the previous one settled. {@link read} is not queued and may run while one of them is under way.
  */
 export interface UpdateService {
     /**
@@ -164,27 +232,49 @@ export interface UpdateService {
     /**
      * Updates `workspace` to release `to`, replacing the student's edits to the read-only files in `confirmed`.
      *
-     * Answers `confirm`, writing nothing, while an edit to a read-only file is not in `confirmed`.
-     * - Requires: `to` is the release `check` offered.
+     * An interrupted earlier update is rolled back first, whatever the answer. Answers `confirm`, writing nothing of
+     * this update, while an edit to a read-only file is not in `confirmed`. Answers `updated`, writing nothing of this
+     * update, when the folder is already on `to`; the stamp may still move then, as {@link check} moves it. Never
+     * rejects: every failure is `failed`, after putting back what an unfinished update wrote. Rarely, `failed`
+     * follows an update that was applied, when reading the folder's state afterwards fails (see {@link UpdateResult}).
+     *
+     * `to` is meant to be the release `check` offered, but is not compared with it: any release whose starter the
+     * registry serves is planned and applied the same way, and the plan is made afresh, so a file saved since the
+     * check is what the update sees.
      */
     update(workspace: string, to: string, confirmed: readonly string[]): Promise<UpdateResult>;
 
     /**
      * Settles the pending row at `path` of the last update with `resolution`, and returns the new state.
      *
-     * A row that is no longer pending is left as it is.
-     * - Requires: `resolution` is `teacher` only for a row whose release has a file at `path`.
+     * When there is no such pending row (it was settled already, or there is no finished update), nothing is settled
+     * and the call does what {@link check} does: an interrupted update is rolled back first and the stamp may move.
+     * `teacher` writes the new release's file and `delete` removes the student's; both count as what the update left
+     * there, for undo.
+     * - Requires: `resolution` is `teacher` only for a row whose release has a file at `path`. Enforced: otherwise
+     *   rejects, changing nothing.
      */
     resolve(workspace: string, path: string, resolution: Resolution): Promise<UpdateState>;
 
     /**
      * Puts back every file the last update touched, and the old stamp.
      *
-     * Answers `confirm`, restoring nothing, when a file changed since the update and `force` is false.
+     * Answers `confirm`, restoring nothing, when a file changed since the update and `force` is false, and `failed`
+     * when there is no update to undo or anything else fails (see {@link UndoResult}). Never rejects.
      */
     undo(workspace: string, force: boolean): Promise<UndoResult>;
 
-    /** Returns the text of `path` in the version `side`, or `''` when that version has no file there. */
+    /**
+     * Returns the text of `path` in the version `side`, decoded as UTF-8, or `''` when that version has no file there
+     * or `path` is not inside the workspace.
+     *
+     * Not queued behind the other calls: it may run while one of them on `workspace` is under way, and then reads
+     * whatever is there at that moment.
+     *
+     * - Requires: a `release` side's `release` is a UUID. Enforced: otherwise rejects, reading nothing.
+     *
+     * Rejects when the release's starter cannot be had, or a backup the record names cannot be read.
+     */
     read(workspace: string, side: UpdateSide, path: string): Promise<string>;
 }
 
@@ -197,6 +287,7 @@ export namespace UpdateUri {
     export interface Parts {
         /** The `file:` URI of the workspace root. */
         readonly workspace: string;
+        /** Which version of the file. */
         readonly side: UpdateSide;
         /** The path, relative to `workspace`. */
         readonly path: string;
