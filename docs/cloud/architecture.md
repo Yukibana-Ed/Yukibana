@@ -177,11 +177,19 @@ them.
 **Downloading.** `GET /api/projects/<id>/starter`,
 `/api/releases/<id>/<archive>` or `/api/submissions/<id>` looks the row up
 as the caller, and redirects to a presigned URL for its key. No row, no URL.
+With `?inline`, the last two answer with the bytes instead, piped through
+the Worker unread (next to no CPU): a script on the site's own pages cannot
+read a cross-origin redirect's answer from a bucket that has no CORS.
 
 **Grading.** `yukibana download --assemble` fetches submissions and the
 newest teacher archive and, on the teacher's machine, puts back every
 read-only and hidden path from the teacher archive, reporting what a student
-had changed under them.
+had changed under them. The staff page's Download does the same in the
+teacher's browser, with `@yukibana/client/assembly` (the same function,
+from an entry with no Node module) over the two `?inline` downloads, and
+says under the row what it undid; the arrow beside it gives the archive as sent.
+Download all does it for every student's latest submission, into one
+archive with a folder per student, named as `yukibana download` names them.
 
 **Enrolling.** An owner calls `app.enrol` with an address. If an account
 has that confirmed address the row links now; otherwise at that person's
@@ -211,7 +219,7 @@ Each principle says what it decided above, and what it costs.
 **The cloud is a registry; it transforms nothing.** It holds identities,
 enrolment, released archives and submissions. Building a starter, hiding
 tests and assembling a submission for grading happen in the CLI, where the
-repository already is. *Why:* an earlier draft built starters in the Worker
+repository already is, or for an assembly in the teacher's browser. *Why:* an earlier draft built starters in the Worker
 from a GitHub App's webhooks, which needed a paid plan for the CPU, a
 webhook surface, and a copy of every teacher's repository. Moving the
 transformation out removed all three and lets a teacher without CI upload

@@ -562,6 +562,14 @@
         color: var(--bad);
     }
 
+    /* Something to look at, not something wrong: a submission built on an
+   * older starter. Amber, so it is never read as the red of "late". */
+    .chip.warn {
+        background: light-dark(#fff4e0, #33250c);
+        border-color: light-dark(#f0c36d, #6b4d14);
+        color: light-dark(#8a5300, #ffc66b);
+    }
+
     /* What a section says when it has nothing in it. Said once, here, so no
    * page invents its own way of being empty. */
     .empty {
@@ -761,5 +769,134 @@
     section.login .again button {
         width: auto;
         padding: 0.35rem 0.75rem;
+    }
+
+    /* The staff's Submissions tab (#lib/hand-ins/HandInsTable.svelte). */
+    .hand-ins {
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem 1rem;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.9rem;
+        }
+        input[type='search'] {
+            flex: 1 1 16rem;
+            max-width: 22rem;
+        }
+        .toolbar + :is(.ok, .error) {
+            margin-bottom: 0.9rem;
+        }
+        tr.missing td {
+            background: light-dark(#fafbfc, #121419);
+        }
+        select {
+            max-width: 19rem;
+            font-size: 0.88rem;
+        }
+        /* Download is the row's point, not a removal: the accent, not the
+         * red every other row button turns on hover. */
+        button.download {
+            padding: 0.35rem 0.75rem;
+            background: var(--accent);
+            color: light-dark(#fff, #0c0d11);
+            border-color: transparent;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+        button.download:hover {
+            background: color-mix(in oklab, var(--accent) 88%, black);
+            color: light-dark(#fff, #0c0d11);
+        }
+        button.download:disabled {
+            opacity: 0.7;
+            cursor: progress;
+        }
+        .actions {
+            align-items: center;
+            flex-wrap: nowrap;
+        }
+        /* The last cell holds the downloads: as narrow as they are, never
+         * wrapped, so nothing in it pokes out of the table. */
+        tr:not(.assembly) td:last-child {
+            width: 1%;
+            white-space: nowrap;
+        }
+        tr:has(+ tr.assembly) td {
+            border-bottom: 0;
+        }
+        tr.assembly td {
+            padding-top: 0;
+            text-align: start;
+        }
+        /* The button, and the plain download behind an arrow joined to it. */
+        .split-button {
+            display: inline-flex;
+            align-items: stretch;
+        }
+        .split-button button.download {
+            border-start-end-radius: 0;
+            border-end-end-radius: 0;
+        }
+        .split-button .menu > summary {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            padding: 0 0.5rem;
+            border-start-end-radius: var(--radius-sm);
+            border-end-end-radius: var(--radius-sm);
+            border-inline-start: 1px solid color-mix(in oklab, white 35%, var(--accent));
+            background: var(--accent);
+            color: light-dark(#fff, #0c0d11);
+            font-size: 0.8rem;
+        }
+        /* A menu behind a summary: no script, and a second click closes it. */
+        details.menu {
+            position: relative;
+        }
+        details.menu > summary {
+            list-style: none;
+            cursor: pointer;
+        }
+        details.menu > summary::-webkit-details-marker {
+            display: none;
+        }
+        .menu-items {
+            position: absolute;
+            inset-inline-end: 0;
+            top: calc(100% + 0.3rem);
+            z-index: 5;
+            border: 1px solid var(--line);
+            border-radius: var(--radius-sm);
+            background: var(--surface);
+            box-shadow: var(--shadow);
+            min-width: max-content;
+            padding: 0.3rem;
+        }
+        .menu-items a {
+            display: block;
+            padding: 0.4rem 0.6rem;
+            border-radius: 6px;
+            color: var(--ink);
+            font-size: 0.88rem;
+            text-decoration: none;
+        }
+        .menu-items a:hover {
+            background: var(--sunken);
+        }
+        /* What an assembly changed: a strip with an amber edge, quieter than a box. */
+        ul.note-strip {
+            margin: 0;
+            padding: 0.4rem 0.8rem;
+            list-style: none;
+            border-inline-start: 3px solid light-dark(#e0a43a, #c98a1e);
+            background: light-dark(#fffaf0, #241b0b);
+            font-size: 0.87rem;
+            color: light-dark(#6e4300, #f5c77a);
+        }
+        ul.note-strip li::before {
+            content: '⚠ ';
+        }
     }
 }

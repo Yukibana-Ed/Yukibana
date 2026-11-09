@@ -9,6 +9,7 @@
 
 import { error, isHttpError, redirect, type RequestEvent } from '@sveltejs/kit';
 import type { Claims } from '#lib/claims.ts';
+import type { ObjectKey } from '#lib/ids.ts';
 import type { Config } from './env';
 import { afterResponse, workerConfig } from './worker.ts';
 import { connect, Misconfigured, statusOf, type Sql } from './db';
@@ -82,6 +83,36 @@ export async function answering<T>(where: string, run: () => Promise<T>): Promis
         report(where, message);
         error(500, `The request failed on the server${code === '' ? '' : ` (SQLSTATE ${code})`}; the Worker log says why.`);
     }
+}
+
+/** An object in the bucket that a download hands out, and the name the
+ *  browser saves it as. */
+export interface BucketObject {
+    readonly key: ObjectKey;
+    /** A file name, without separators or quotes. */
+    readonly filename: string;
+}
+
+/** `o`'s bytes as the response, streamed through the Worker rather than
+ *  redirected to the bucket: for a script on this site's own pages, which
+ *  cannot read a cross-origin redirect's answer from a bucket without CORS.
+ *  The body is piped, never read, so it costs the Worker next to no CPU
+ *  however large it is. An object the database names and the bucket does
+ *  not have is the server's failure: reported, and a 500. */
+export async function fromBucket(ctx: Context, o: BucketObject): Promise<Response> {
+    const got = await ctx.bucket.open(o.key);
+    if (got === null) {
+        report('storage', `missing object ${o.key}`);
+        error(500, 'The archive is missing from storage; the Worker log says which.');
+    }
+    return new Response(got.body, {
+        headers: {
+            'content-type': 'application/gzip',
+            'content-length': String(got.size),
+            'content-disposition': `attachment; filename="${o.filename.replace(/["\\\r\n]/g, '_')}"`,
+            'cache-control': 'private, no-store',
+        },
+    });
 }
 
 /** Sends the caller to `url`, a presigned URL on the bucket, and nowhere

@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const src = fileURLToPath(new URL('../src', import.meta.url));
@@ -14,6 +14,8 @@ function files(dir: string, ext: string): string[] {
 }
 
 const routes = files(join(src, 'routes'), '.svelte');
+/** `f` from `src`, with forward slashes whatever the platform's separator. */
+const fromSrc = (f: string): string => `/${relative(src, f).split(sep).join('/')}`;
 
 // Some rules a type cannot state. They are greps because the rule is about
 // the shape of the tree, and a paragraph in cloud/CLAUDE.md is a rule nobody runs.
@@ -27,12 +29,12 @@ test('a page says what is on it and nothing about how it looks', () => {
     // page plain HTML. Six pages each with a <style> block is six sets of
     // numbers for a row to shift between.
     const withStyle = routes.filter(f => /<style[\s>]/.test(readFileSync(f, 'utf8')));
-    expect(withStyle.map(f => f.slice(src.length))).toEqual([]);
+    expect(withStyle.map(fromSrc)).toEqual([]);
 });
 
 test('the one stylesheet is pulled in once, by the layout every page is inside', () => {
     const importers = routes.filter(f => readFileSync(f, 'utf8').includes('app.css'));
-    expect(importers.map(f => f.slice(src.length))).toEqual(['/routes/+layout.svelte']);
+    expect(importers.map(fromSrc)).toEqual(['/routes/+layout.svelte']);
 });
 
 test('both colour schemes come from one set of values, not a second block to keep in step', () => {

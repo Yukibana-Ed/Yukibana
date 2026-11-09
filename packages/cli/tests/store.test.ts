@@ -16,13 +16,20 @@ const SESSION: Session = {
     email: null,
 };
 
-test('a login survives the terminal closing, in a file only its owner can read', async () => {
+test('a login survives the terminal closing, and logging out removes it', async () => {
     const path = join(await mkdtemp(join(tmpdir(), 'yukibana-store-')), 'nested', 'session.json');
     await fileStore(path).save(SESSION);
     assert.deepEqual(await fileStore(path).load(), SESSION);
-    assert.equal((await stat(path)).mode & 0o777, 0o600);
     await fileStore(path).clear();
     assert.equal(await fileStore(path).load(), null, 'logged out is no file');
+});
+
+// Mode bits are POSIX's. On Windows the file is private because the
+// profile folder it is in is, by its ACL; the mode is not consulted.
+test.skipIf(process.platform === 'win32')('the session file is one only its owner can read', async () => {
+    const path = join(await mkdtemp(join(tmpdir(), 'yukibana-store-')), 'nested', 'session.json');
+    await fileStore(path).save(SESSION);
+    assert.equal((await stat(path)).mode & 0o777, 0o600);
 });
 
 test('a damaged session file means logging in again, not a crash', async () => {
@@ -32,6 +39,6 @@ test('a damaged session file means logging in again, not a crash', async () => {
 });
 
 test('the session file is where YUKIBANA_CONFIG_DIR, then XDG_CONFIG_HOME, says', () => {
-    assert.equal(defaultSessionPath({ YUKIBANA_CONFIG_DIR: '/a', XDG_CONFIG_HOME: '/b' }), '/a/session.json');
-    assert.equal(defaultSessionPath({ XDG_CONFIG_HOME: '/b' }), '/b/yukibana/session.json');
+    assert.equal(defaultSessionPath({ YUKIBANA_CONFIG_DIR: '/a', XDG_CONFIG_HOME: '/b' }), join('/a', 'session.json'));
+    assert.equal(defaultSessionPath({ XDG_CONFIG_HOME: '/b' }), join('/b', 'yukibana', 'session.json'));
 });

@@ -1,6 +1,7 @@
 import { error, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { uuidOf, type EditionId, type ProjectId, type TokenId } from '#lib/ids.ts';
+import { trustId, uuidOf, type EditionId, type ProjectId, type ReleaseId, type SubmissionId, type TokenId, type UserId } from '#lib/ids.ts';
+import type { EnrolledStudent, HandIn, Release } from '#lib/hand-ins.ts';
 import { asUser, refusalOf } from '#lib/server/db.ts';
 import { text } from '#lib/server/form.ts';
 import { requireClaims, withContext } from '#lib/server/context.ts';
@@ -35,15 +36,35 @@ interface SubmissionRow {
     full_name: string | null;
     github_login: string | null;
     late: boolean;
-    /** The release the submission says it started from, for staff: its
-     *  label, or '' when it has none (`base_id` is shown either way). Null when it said
-     *  none, and always null for a student, who cannot read releases. */
-    base: string | null;
-    /** That release's id, whole: what `download --release` takes, and the
-     *  only name that tells two unlabelled releases apart. */
+    /** The release the registry recorded the submission as started from,
+     *  or null when it said none. */
     base_id: string | null;
-    /** Whether that release is the newest one. */
-    base_is_live: boolean;
+}
+
+interface StudentRow {
+    email: string;
+    user_id: string | null;
+    full_name: string | null;
+    github_login: string | null;
+}
+
+/** `r` as the page reads it (#lib/hand-ins), its base found among
+ *  `releases` (the project's, newest first; empty for a student, who cannot
+ *  read releases and so sees no base). */
+function handInOf(r: SubmissionRow, releases: readonly Release[]): HandIn {
+    const at = releases.findIndex(x => x.releaseId === r.base_id);
+    const found = releases[at];
+    return {
+        submissionId: trustId<SubmissionId>(r.submission_id),
+        authorId: trustId<UserId>(r.author_id),
+        submittedAt: r.submitted_at,
+        byteSize: r.byte_size,
+        sha256: r.sha256,
+        late: r.late,
+        base: found === undefined ? null : { ...found, version: releases.length - at, latest: at === 0 },
+        fullName: r.full_name,
+        githubLogin: r.github_login,
+    };
 }
 
 interface ReleaseRow {
@@ -75,7 +96,9 @@ function ids(params: { edition: string; project: string }): { edition: EditionId
 /** A project as the caller sees it: the project with the database's
  *  answers to "may this person edit it" and "may they submit now", every
  *  submission they may read (their own for a student, everyone's for
- *  staff), newest first, the newest 20 releases for staff, and the tokens
+ *  staff), newest first (#lib/hand-ins `HandIn`), for staff the edition's
+ *  students and every release by id (`allReleases`, newest first), the
+ *  newest 20 releases in full for staff, and the tokens
  *  for an owner (never their secrets, which are not stored). A 404 for a
  *  project the caller cannot see, for one that is not in the edition the
  *  address names, and for parameters that are not uuids; the login page
@@ -98,14 +121,11 @@ export const load: PageServerLoad = async event => {
             if (p === undefined) error(404, 'No such project.');
             const staff = p.role === 'owner' || p.role === 'assistant';
             const owner = p.role === 'owner';
-            const submissions = await tx<SubmissionRow[]>`
+            const rows = await tx<SubmissionRow[]>`
         select s.submission_id, s.submitted_at, s.byte_size, encode(s.sha256, 'hex') as sha256, s.author_id, u.full_name, u.github_login,
-               coalesce(s.submitted_at > ${p.deadline}::timestamptz, false) as late,
-               r.label as base, r.release_id as base_id,
-               coalesce(r.seq = (select max(seq) from project_release where project_id = ${project}), false) as base_is_live
+               coalesce(s.submitted_at > ${p.deadline}::timestamptz, false) as late, s.base_release_id as base_id
         from submission s
         left join app_user u on u.user_id = s.author_id
-        left join project_release r on r.release_id = s.base_release_id
         where s.project_id = ${project}
         order by s.submitted_at desc`;
             const releases = staff
@@ -120,7 +140,34 @@ export const load: PageServerLoad = async event => {
             select token_id, label, created_at, last_used_at, revoked_at from project_token
             where project_id = ${project} order by created_at desc`
                 : [];
-            return { project: p, staff, owner, submissions, releases, tokens, origin: event.url.origin };
+            // Every student of the edition, whether or not they have sent
+            // anything: the Submissions tab is about who still owes work.
+            // The enrolment policy shows staff their edition's rows.
+            const students = staff
+                ? (
+                      await tx<StudentRow[]>`
+            select en.email, en.user_id, u.full_name, u.github_login
+            from enrollment en left join app_user u on u.user_id = en.user_id
+            where en.edition_id = ${p.edition_id} and en.role = 'student'
+            order by en.email`
+                  ).map((r): EnrolledStudent => ({
+                      email: r.email,
+                      userId: r.user_id === null ? null : trustId<UserId>(r.user_id),
+                      fullName: r.full_name,
+                      githubLogin: r.github_login,
+                  }))
+                : [];
+            // Every release, newest first, by id and label: what a submission's
+            // version is counted in, and what an assembly in the browser chooses
+            // from (#lib/hand-ins/assembled). Empty for a student.
+            const all = staff
+                ? (
+                      await tx<{ release_id: string; label: string }[]>`
+            select release_id, label from project_release where project_id = ${project} order by seq desc`
+                  ).map((r): Release => ({ releaseId: trustId<ReleaseId>(r.release_id), label: r.label }))
+                : [];
+            const submissions = rows.map(r => handInOf(r, all));
+            return { project: p, staff, owner, submissions, students, allReleases: all, releases, tokens, origin: event.url.origin };
         }),
     );
 };

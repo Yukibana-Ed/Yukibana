@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { bundleOf, createSubmissionBundle } from '../src/bundle.js';
 import { readTree } from '../src/tree.js';
-import { readArchive } from '../src/extract.js';
+import { readArchive } from '../src/lib/tar.js';
 import type { Entry } from '../src/lib/tar.js';
 
 const text = (s: string) => new TextEncoder().encode(s);

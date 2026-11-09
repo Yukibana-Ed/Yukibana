@@ -1,4 +1,5 @@
-/** Folder names for people, for `yukibana download`.
+/** Folder names for people, for `yukibana download` and the registry's
+ *  Download all.
  *
  *  A teacher downloads every student's submission into one folder, one
  *  subfolder per student, named after the student so the folder reads like

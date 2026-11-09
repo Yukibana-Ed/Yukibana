@@ -10,15 +10,7 @@ import { lstat, mkdir, readdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve, sep } from 'node:path';
 import { submissionRoot } from './lib/assemble.js';
 import { escapes } from './lib/paths.js';
-import { readTar, type Entry } from './lib/tar.js';
-import { gunzip } from './lib/gzip.js';
-
-/** Returns the entries of `bytes`, a `.tar.gz`, the one format every
- *  archive is in. */
-export async function readArchive(bytes: Uint8Array): Promise<Entry[]> {
-    if (bytes[0] !== 0x1f || bytes[1] !== 0x8b) throw new Error('not a .tar.gz');
-    return readTar(await gunzip(bytes));
-}
+import { readArchive, type Entry } from './lib/tar.js';
 
 /** `true` iff `dir` is missing or empty: the only places this writes into. */
 export async function isEmptyDir(dir: string): Promise<boolean> {

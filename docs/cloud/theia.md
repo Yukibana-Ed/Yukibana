@@ -152,7 +152,11 @@ without `version` or `kind` is fine, so any folder opens), and
 `DEFAULT_SETTINGS` is what a folder without one gets. It is the same
 schema `parseConfig` checks a release with, so the IDE and the CLI read
 every field the same way.
-Browser code imports only that entry at runtime: the root,
+`@yukibana/client/assembly` is the other: `assembleSubmission` takes a
+submission as `.tar.gz` bytes, the project's releases and a way to fetch a
+teacher archive, and makes the assembly `yukibana download --assemble`
+makes, which is how the registry's staff page assembles a download.
+Browser code imports only those entries at runtime: the root,
 `@yukibana/client`, reads disks and opens sockets, so the frontend imports
 types from it and nothing else (`import type`, which the IDE's lint enforces
 for `src/browser` and `src/common`).

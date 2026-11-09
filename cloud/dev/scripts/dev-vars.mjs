@@ -6,6 +6,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { stackStatus } from './stack.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -14,7 +15,7 @@ if (existsSync(target)) {
     console.log('.dev.vars exists; leaving it alone');
     process.exit(0);
 }
-const status = JSON.parse(execFileSync('pnpm', ['--filter', '@yukibana/cloud-db', 'exec', 'supabase', 'status', '-o', 'json'], { encoding: 'utf8' }));
+const status = stackStatus();
 // The devcontainer and the stack's containers are siblings, so "localhost"
 // differs: the CLI already honours SUPABASE_SERVICES_HOSTNAME in its URLs,
 // and the bucket gets the same treatment.

@@ -2,8 +2,9 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { lstat, mkdir, mkdtemp, readdir, readFile, readlink, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { readArchive, unpackStarter, writeEntries } from '../src/extract.js';
+import { join, sep } from 'node:path';
+import { unpackStarter, writeEntries } from '../src/extract.js';
+import { readArchive } from '../src/lib/tar.js';
 import { gzip } from '../src/lib/gzip.js';
 import { writeTar, type Entry } from '../src/lib/tar.js';
 
@@ -19,7 +20,6 @@ test('unpacking a hostile submission writes nothing outside the folder and no li
     const root = join(parent, 'student');
     const refused = await writeEntries(root, [
         file('ok/a.txt', 'a'),
-        file('run.sh', '#!/bin/sh', 0o4755),
         file('../escape.txt', 'x'),
         file('/etc/abs.txt', 'x'),
         link('docs/readme', '../ok/a.txt'),
@@ -28,12 +28,19 @@ test('unpacking a hostile submission writes nothing outside the folder and no li
         file('dir/through.txt', 'x'),
     ]);
     assert.equal(await readFile(join(root, 'ok/a.txt'), 'utf8'), 'a');
-    assert.equal((await stat(join(root, 'run.sh'))).mode & 0o7777, 0o755, 'executable, never setuid');
-    assert.equal(await readlink(join(root, 'docs/readme')), '../ok/a.txt');
+    // Windows writes a link's target in its own separators.
+    assert.equal((await readlink(join(root, 'docs/readme'))).replaceAll(sep, '/'), '../ok/a.txt');
     await assert.rejects(lstat(join(parent, 'escape.txt')));
     await assert.rejects(lstat(join(root, 'leak')));
     assert.ok((await lstat(join(root, 'dir'))).isDirectory(), 'a file under a name is written before any link of that name, so no write passes through a link');
     assert.equal(refused.length, 4);
+});
+
+// Mode bits are POSIX's: Windows has no executable or setuid bit to keep or drop.
+test.skipIf(process.platform === 'win32')('an unpacked script stays executable, and is never setuid', async () => {
+    const root = join(await mkdtemp(join(tmpdir(), 'yukibana-extract-')), 'student');
+    await writeEntries(root, [file('run.sh', '#!/bin/sh', 0o4755)]);
+    assert.equal((await stat(join(root, 'run.sh'))).mode & 0o7777, 0o755);
 });
 
 test('only a .tar.gz is read; a .tar.zst is refused', async () => {
