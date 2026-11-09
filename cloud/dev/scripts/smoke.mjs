@@ -3,11 +3,15 @@
 // bucket. Deliberately no app schema dependency.
 //
 //   pnpm --filter @yukibana/cloud-dev smoke
-import { execFileSync } from 'node:child_process';
+import { stackStatus } from './stack.mjs';
 
-const s = JSON.parse(execFileSync('pnpm', ['--filter', '@yukibana/cloud-db', 'exec', 'supabase', 'status', '-o', 'json'], { encoding: 'utf8' }));
+const s = stackStatus();
 const url = process.env.SUPABASE_URL ?? s.API_URL;
 const key = process.env.SUPABASE_ANON_KEY ?? s.PUBLISHABLE_KEY ?? s.ANON_KEY;
+if (key === undefined) {
+    console.error('The stack reports no publishable key; set SUPABASE_ANON_KEY.');
+    process.exit(1);
+}
 const host = process.env.SUPABASE_SERVICES_HOSTNAME ?? '127.0.0.1';
 const bucket = process.env.S3_ENDPOINT ?? `http://${host}:9000`;
 console.log(`Checking ${url} and ${bucket}`);

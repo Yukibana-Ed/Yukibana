@@ -11,19 +11,14 @@
 // The client is public (no secret: a CLI cannot keep one), may use the
 // authorization code and refresh token grants, and has exactly one
 // redirect URI, the site's /auth/connect/return. Auth matches it exactly.
-import { execFileSync } from 'node:child_process';
+import { stackStatus } from './stack.mjs';
 
 const NAME = 'Yukibana IDE and CLI';
 
 let [authUrl, site] = process.argv.slice(2);
 let key = process.env.SUPABASE_SECRET_KEY;
 if (authUrl === undefined) {
-    const status = JSON.parse(
-        execFileSync('pnpm', ['--filter', '@yukibana/cloud-db', 'exec', 'supabase', 'status', '-o', 'json'], {
-            encoding: 'utf8',
-            shell: process.platform === 'win32',
-        }),
-    );
+    const status = stackStatus();
     authUrl = status.API_URL;
     key ??= status.SECRET_KEY ?? status.SERVICE_ROLE_KEY;
     // The local site_url in cloud/db/supabase/config.toml, where `pnpm --filter @yukibana/cloud-web dev` serves.

@@ -62,7 +62,9 @@ test('what is written is an archive the system tar accepts', async () => {
         ]),
     );
     writeFileSync(join(dir, 'out.tar.gz'), bytes);
-    const listing = execFileSync('tar', ['-tzf', join(dir, 'out.tar.gz')], { encoding: 'utf8' });
+    // A name relative to the archive's folder: the GNU tar Git for Windows
+    // ships reads `C:\...` as a host to reach over rsh, and bsdtar does not.
+    const listing = execFileSync('tar', ['-tzf', 'out.tar.gz'], { cwd: dir, encoding: 'utf8' });
     assert.deepEqual(listing.trim().split('\n'), ['proj/', 'proj/a.txt', long]);
 });
 
