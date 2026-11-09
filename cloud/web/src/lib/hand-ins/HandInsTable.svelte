@@ -1,6 +1,6 @@
 <script lang="ts">
   import { SvelteMap } from 'svelte/reactivity';
-  import { kb, when } from '../format';
+  import { when } from '../format';
   import { viewer } from '../viewer.svelte';
   import { search, subtitle, type HandIn, type StudentHandIns } from '../hand-ins';
   import type { ReleaseId, SubmissionId } from '../ids';
@@ -89,7 +89,7 @@
   <div class="scroll">
     <table>
       <thead>
-        <tr><th>Student</th><th>Status</th><th>Submission</th><th>Built on</th><th>Size</th><th></th></tr>
+        <tr><th>Student</th><th>Status</th><th>Submission</th><th>Built on</th><th></th></tr>
       </thead>
       <tbody>
         {#each found as l (l.key)}
@@ -116,7 +116,6 @@
               {#if s !== null && s !== l.latest && s.late}<span class="chip late">late</span>{/if}
             </td>
             <td>{#if s !== null}<BaseNote handIn={s} {latest} />{/if}</td>
-            <td>{#if s !== null}{kb(s.byteSize)}{/if}</td>
             <td>
               {#if s !== null}
                 {@const a = assemblies.get(s.submissionId)}
@@ -136,10 +135,10 @@
           {#if s !== null}
             {@const a = assemblies.get(s.submissionId)}
             {#if a?.state === 'failed'}
-              <tr class="assembly"><td colspan="6"><p class="error">{a.why} “as sent” still downloads the archive untouched.</p></td></tr>
+              <tr class="assembly"><td colspan="5"><p class="error">{a.why} “as sent” still downloads the archive untouched.</p></td></tr>
             {:else if a?.state === 'done' && a.findings.length > 0}
               <tr class="assembly">
-                <td colspan="6">
+                <td colspan="5">
                   <ul class="findings">
                     {#each a.findings as f (f)}<li>{f}</li>{/each}
                   </ul>
@@ -148,7 +147,7 @@
             {/if}
           {/if}
         {:else}
-          <tr><td colspan="6" class="muted">Nobody matches “{query}”.</td></tr>
+          <tr><td colspan="5" class="muted">Nobody matches “{query}”.</td></tr>
         {/each}
       </tbody>
     </table>
