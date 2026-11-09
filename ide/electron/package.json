@@ -59,7 +59,8 @@
     "@yukibana/ide": "catalog:",
     "electron": "42.8.1",
     "electron-builder": "catalog:",
-    "esbuild": "catalog:"
+    "esbuild": "catalog:",
+    "typescript": "catalog:"
   },
   "scripts": {
     "clean": "theia clean",

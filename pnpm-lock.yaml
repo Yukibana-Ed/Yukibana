@@ -661,6 +661,9 @@ importers:
       esbuild:
         specifier: 'catalog:'
         version: 0.28.2
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
 
   ide/common:
     dependencies:
@@ -687,9 +690,15 @@ importers:
         specifier: 'catalog:'
         version: 1.76.0
     devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.19.2
       '@yukibana/ide':
         specifier: 'catalog:'
         version: link:..
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
 
   ide/electron:
     dependencies:
@@ -820,6 +829,9 @@ importers:
       esbuild:
         specifier: 'catalog:'
         version: 0.28.2
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
 
   ide/extensions/langs/scala:
     dependencies:
