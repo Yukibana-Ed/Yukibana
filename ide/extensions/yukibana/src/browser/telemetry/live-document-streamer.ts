@@ -13,8 +13,10 @@ import { LiveTelemetryClientImpl } from '../live-telemetry-client';
 
 const throttle = <T extends unknown[]>(callback: (...args: T) => void, delay: number) => {
     let isWaiting = false;
+    let lastArgs: T;
 
     return (...args: T) => {
+        lastArgs = args;
         if (isWaiting) {
             return;
         }
@@ -23,6 +25,7 @@ const throttle = <T extends unknown[]>(callback: (...args: T) => void, delay: nu
         isWaiting = true;
 
         setTimeout(() => {
+            callback(...lastArgs);
             isWaiting = false;
         }, delay);
     };
