@@ -50,6 +50,7 @@ export class YukibanaLiveWebsocketTelemetrySink implements LiveTelemetrySink {
             this.logger.info(`WS message: ${e}`);
             const msg = JSON.parse(e.toString()) as LiveTelemetry.Envelope<LiveTelemetry.ServerToClientPayload>;
             this.onCommandEmitter.fire(msg.payload);
+            this.host.dispatch(msg.payload);
         });
     }
     protected close(): void {
