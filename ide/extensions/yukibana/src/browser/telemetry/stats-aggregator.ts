@@ -62,10 +62,20 @@ export class StatsAggregator implements FrontendApplicationContribution, Disposa
         const activeFile = this.editors.activeEditor?.editor.document.uri;
         let inserted = 0;
         let removed = 0;
+        const pastes: LiveTelemetry.PasteStats[] = [];
+        const commands: string[] = [];
         for (const edit of this.batch) {
             for (const change of edit.changes) {
                 inserted += change.inserted;
                 removed += change.removed;
+                if (change.origin === 'paste') {
+                    pastes.push({
+                        size: change.inserted,
+                        external: false,
+                    });
+                } else if (change.origin === 'command' && change.command !== undefined) {
+                    commands.push(change.command);
+                }
             }
         }
         this.telemetry.report({
@@ -74,8 +84,8 @@ export class StatsAggregator implements FrontendApplicationContribution, Disposa
             idleMs: this.blurDuration,
             charsInserted: inserted,
             charsDeleted: removed,
-            pastes: [],
-            commands: [],
+            pastes: pastes,
+            commands: commands,
             activeFile: activeFile,
             focused: this.focus.hasFocus,
         } satisfies LiveTelemetry.Stats);
