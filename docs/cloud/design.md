@@ -73,6 +73,16 @@ is not implicitly staff of anything: to see an edition they enrol in it,
 and it shows in the roster. The first admin is
 `app.bootstrap_admin`, run by an operator.
 
+**A teacher is made by address or by invite link.** By address needs an
+account that exists already. An invite link does not: an admin makes one in
+the Invites tab of the administration page, sends it, and whoever opens it,
+signs in (making an account on the way if they have none) and accepts it
+becomes a teacher. A link works once, for a plain user only (a teacher or an
+admin who opens it leaves it unused), and for two weeks. Like a project
+token it is a hash in the database and a secret shown once; a used or
+removed invite is deleted, and the audit log says what became of it, so the
+table is exactly the list of unused invites the admin sees and removes.
+
 **One `enrollment` table, not invitation plus membership.** A row with
 `user_id` null is an address staff enrolled that has not logged in yet. The
 trigger on `auth.users` fills it in when the address is confirmed. Roster

@@ -28,6 +28,9 @@ export type ReleaseId = string & { readonly [TABLE]: 'project_release' };
 /** A project token's id: `project_token.token_id`. Never the token's secret,
  *  which is not stored. */
 export type TokenId = string & { readonly [TABLE]: 'project_token' };
+/** A teacher invite's id: `teacher_invite.invite_id`. Never the invite's
+ *  secret, which is not stored and is only ever in the link. */
+export type InviteId = string & { readonly [TABLE]: 'teacher_invite' };
 /** A submission's id: `submission.submission_id`, also the name of its
  *  object (`submissionKey`). */
 export type SubmissionId = string & { readonly [TABLE]: 'submission' };
