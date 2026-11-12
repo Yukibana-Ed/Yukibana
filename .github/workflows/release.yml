@@ -14,12 +14,12 @@
 # Run by hand (workflow_dispatch, from any branch) it is a dry run: it packs, smoke-tests and builds everything at the
 # versions in git and publishes nothing, leaving the files as the run's artifacts.
 #
-# The `release` environment (Settings, Environments) holds what publishing needs:
-#   NPM_TOKEN   an npm granular access token that can publish @yukibana/client and @yukibana/cli. Needed for a package's
-#               first publish only: once both exist on npm, configure trusted publishing for them (this repository,
-#               workflow release.yml, environment release) and delete the secret; the job then publishes through
-#               GitHub's OIDC token, which is also what signs the provenance of every version either way.
-# The GitHub release uses the job's own token.
+# npm publishing uses trusted publishing (OIDC), with no token: @yukibana/client and @yukibana/cli each name this
+# repository, workflow release.yml and environment `release` as their trusted publisher on npmjs.com (Settings of each
+# package), and pnpm exchanges the job's GitHub OIDC token for a one-time publish token, which also signs each version's
+# provenance. Renaming this file, the environment or the repository breaks publishing until those settings follow. The
+# `release` environment (Settings, Environments) holds no secrets; it is where a required reviewer or a branch rule for
+# releases goes. The GitHub release uses the job's own token.
 name: Release
 run-name: ${{ github.event_name == 'workflow_dispatch' && format('Release dry run of {0}', github.ref_name) || format('Release {0}', github.sha) }}
 
@@ -229,7 +229,7 @@ jobs:
     permissions:
       # The GitHub release and its tag.
       contents: write
-      # npm's provenance, and trusted publishing once NPM_TOKEN is gone.
+      # npm's trusted publishing and provenance.
       id-token: write
     env:
       COMMIT: ${{ github.sha }}
@@ -258,17 +258,12 @@ jobs:
         if: needs.plan.outputs.npm == 'true'
         working-directory: ${{ runner.temp }}
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           CLIENT: ${{ needs.plan.outputs.client }}
           CLIENT_VERSION: ${{ needs.plan.outputs.client-version }}
           CLI: ${{ needs.plan.outputs.cli }}
           CLI_VERSION: ${{ needs.plan.outputs.cli-version }}
         run: |
           set -euo pipefail
-          if [ -n "$NPM_TOKEN" ]; then
-            # pnpm reads the variable when it publishes; the token itself is never written to disk.
-            echo '//registry.npmjs.org/:_authToken=${NPM_TOKEN}' > .npmrc
-          fi
           publish() { # name, version, tarball
             if [ "$(curl -s -o /dev/null -w '%{http_code}' "https://registry.npmjs.org/${1/\//%2f}/$2")" = 200 ]; then
               echo "$1 $2 is already on npm."
