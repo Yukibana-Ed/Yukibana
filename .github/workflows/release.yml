@@ -1,0 +1,297 @@
+# Releases what a push to main bumped: @yukibana/client and @yukibana/cli to npm, and the IDE's installers for Windows,
+# Linux and macOS (arm64 and x64) to a GitHub release tagged ide-v<version>. Releasing is a pull request that changes
+# the version in a package.json from 0.0.0-dev, or from the version last released, to a higher X.Y.Z; nothing else
+# releases, and nothing is ever published by hand. `.github/scripts/release-plan.mts` decides what each push releases
+# from git and from what is already out, so a push that bumps nothing releases nothing, and a run that failed halfway is
+# finished by re-running it or by the next push to main. Each package has its own version: bump the client with the CLI
+# when the CLI needs what changed in it (the plan refuses a CLI whose client version is not out).
+#
+# Only commits on main are released, and main moves only by merging a pull request whose CI passed (deploy-cloud.yml
+# says why that is enough), so the tests do not run again here. What runs here is what CI does not do: the npm tarballs
+# are packed, installed into an empty folder and run, and the installers are built on each OS. Nothing becomes public
+# until every build passed: the publish job needs them all, and publishes npm before the GitHub release.
+#
+# Run by hand (workflow_dispatch, from any branch) it is a dry run: it packs, smoke-tests and builds everything at the
+# versions in git and publishes nothing, leaving the files as the run's artifacts.
+#
+# The `release` environment (Settings, Environments) holds what publishing needs:
+#   NPM_TOKEN   an npm granular access token that can publish @yukibana/client and @yukibana/cli. Needed for a package's
+#               first publish only: once both exist on npm, configure trusted publishing for them (this repository,
+#               workflow release.yml, environment release) and delete the secret; the job then publishes through
+#               GitHub's OIDC token, which is also what signs the provenance of every version either way.
+# The GitHub release uses the job's own token.
+name: Release
+run-name: ${{ github.event_name == 'workflow_dispatch' && format('Release dry run of {0}', github.ref_name) || format('Release {0}', github.sha) }}
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One release at a time, and none cancelled halfway: a publish stopped between npm and GitHub would leave the next run
+# to finish it, which it does, but there is no reason to make it.
+concurrency:
+  group: release-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      npm: ${{ steps.plan.outputs.npm }}
+      client: ${{ steps.plan.outputs.client }}
+      client-version: ${{ steps.plan.outputs.client-version }}
+      cli: ${{ steps.plan.outputs.cli }}
+      cli-version: ${{ steps.plan.outputs.cli-version }}
+      ide: ${{ steps.plan.outputs.ide }}
+      ide-version: ${{ steps.plan.outputs.ide-version }}
+    steps:
+      # With the tags, which say which IDE versions are out.
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+
+      - name: Install pnpm and Node.js
+        uses: ./.github/actions/setup
+        with:
+          cache: false
+
+      - name: Plan
+        id: plan
+        run: node .github/scripts/release-plan.mts
+
+  npm:
+    name: Pack and smoke-test the npm packages
+    needs: plan
+    if: needs.plan.outputs.npm == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install pnpm and Node.js
+        uses: ./.github/actions/setup
+
+      # The CLI and what it uses; each package's prepare script compiles it into lib/.
+      - name: Install and build
+        run: pnpm --filter @yukibana/cli... install --frozen-lockfile --fetch-timeout 100000
+
+      # pnpm writes the versions that catalog: and workspace:* stand for into the packed manifests, so these tarballs are
+      # exactly what the registry gets.
+      - name: Pack
+        run: pnpm -r --filter @yukibana/client --filter @yukibana/cli pack --pack-destination "$RUNNER_TEMP/packs"
+
+      # Installed from the tarballs alone, outside the workspace, the way someone installs them from npm: no
+      # workspace:, no catalog:, nothing missing from `files`. The fixture is a course repository as git archive makes it.
+      - name: Smoke test
+        working-directory: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          mkdir smoke repo
+          tar -xzf "$GITHUB_WORKSPACE/packages/fixtures/repo.tar.gz" -C repo --strip-components=1
+          cd smoke
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund ../packs/*.tgz
+          for t in ../packs/*.tgz; do
+            if tar -xOzf "$t" package/package.json | grep -E '"(workspace|catalog):'; then
+              echo "::error::$t still has a workspace: or catalog: dependency in its manifest."
+              exit 1
+            fi
+          done
+          npx --no-install yukibana --help > /dev/null
+          npx --no-install yukibana check ../repo
+          npx --no-install yukibana build ../repo --out ../built
+          test -s ../built/starter.tar.gz && test -s ../built/teacher.tar.gz
+          node --input-type=module -e "import('@yukibana/client').then(m => { if (Object.keys(m).length === 0) process.exit(1); })"
+
+      - name: Upload the tarballs
+        uses: actions/upload-artifact@v7
+        with:
+          name: npm
+          path: ${{ runner.temp }}/packs/*.tgz
+          if-no-files-found: error
+          retention-days: 7
+
+  # Adapted from https://github.com/eclipse-theia/theia-ide/blob/74bd976ef60102bdbaf754817c88d00811465e72/.github/workflows/build.yml
+  ide:
+    name: Build the IDE (${{ matrix.artifact }})
+    needs: plan
+    if: needs.plan.outputs.ide == 'true' || github.event_name == 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-2022, artifact: windows }
+          - { os: ubuntu-22.04, artifact: linux }
+          - { os: macos-15, artifact: mac-arm64 }
+          - { os: macos-15-intel, artifact: mac-x64 }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install pnpm and Node.js
+        uses: ./.github/actions/setup
+
+      # The IDE and what it uses, as `pnpm setup:ide` installs it: not the cloud's Supabase CLI, squawk or workerd.
+      - name: Install dependencies
+        shell: bash
+        run: pnpm --filter "{ide/**}..." install --frozen-lockfile --fetch-timeout 100000
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cache Theia plugins
+        uses: actions/cache@v6
+        with:
+          # With the stamp that pnpm -C ide download:plugins compares the plugin list with.
+          path: |
+            ide/plugins
+            node_modules/.plugins-download-inputs
+          key: plugins-v2-${{ runner.os }}-${{ hashFiles('ide/package.json') }}
+
+      - name: Cache Electron / electron-builder downloads
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+            ~/Library/Caches/electron
+            ~/Library/Caches/electron-builder
+            ~/AppData/Local/electron/Cache
+            ~/AppData/Local/electron-builder/Cache
+          key: electron-${{ runner.os }}-${{ matrix.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            electron-${{ runner.os }}-${{ matrix.os }}-
+
+      - name: Update electron-builder.yml for macos-15
+        if: matrix.os == 'macos-15'
+        run: |
+          sed -i '' 's|https://yukibana.isc-vs.ch/download/latest/macos|https://yukibana.isc-vs.ch/download/latest/macos-arm|g' ide/electron/electron-builder.yml
+
+      # electron-builder takes the app's version from ide/electron/package.json, which is the version released.
+      - name: Build the installers
+        shell: bash
+        run: pnpm -C ide package
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # The installers only: the update feeds (latest*.yml) and blockmaps wait for the updater (issue #91).
+      - name: Upload the installers
+        uses: actions/upload-artifact@v7
+        with:
+          name: ide-${{ matrix.artifact }}
+          path: |
+            ide/electron/dist/*.exe
+            ide/electron/dist/*.dmg
+            ide/electron/dist/*.zip
+            ide/electron/dist/*.AppImage
+            ide/electron/dist/*.deb
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish
+    needs: [plan, npm, ide]
+    # On a push to main of this repository only (a fork has no release environment), once every build it needs passed;
+    # a build the plan did not need is skipped, which is not a failure.
+    if: >-
+      !cancelled() && github.event_name == 'push' && github.repository == 'Yukibana-Ed/Yukibana' &&
+      (needs.plan.outputs.npm == 'true' || needs.plan.outputs.ide == 'true') &&
+      !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment:
+      name: release
+    permissions:
+      # The GitHub release and its tag.
+      contents: write
+      # npm's provenance, and trusted publishing once NPM_TOKEN is gone.
+      id-token: write
+    env:
+      COMMIT: ${{ github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install pnpm and Node.js
+        uses: ./.github/actions/setup
+        with:
+          cache: false
+
+      - name: Download the tarballs
+        if: needs.plan.outputs.npm == 'true'
+        uses: actions/download-artifact@v8
+        with:
+          name: npm
+          path: ${{ runner.temp }}/packs
+
+      # The tarballs the smoke test installed, client first: the CLI's manifest names the client's version. A version
+      # already on the registry is left alone, so a re-run after a failure publishes only what is missing. Published from
+      # outside the workspace, whose devEngines would otherwise have to match this job's Node exactly.
+      - name: Publish to npm
+        if: needs.plan.outputs.npm == 'true'
+        working-directory: ${{ runner.temp }}
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          CLIENT: ${{ needs.plan.outputs.client }}
+          CLIENT_VERSION: ${{ needs.plan.outputs.client-version }}
+          CLI: ${{ needs.plan.outputs.cli }}
+          CLI_VERSION: ${{ needs.plan.outputs.cli-version }}
+        run: |
+          set -euo pipefail
+          if [ -n "$NPM_TOKEN" ]; then
+            # pnpm reads the variable when it publishes; the token itself is never written to disk.
+            echo '//registry.npmjs.org/:_authToken=${NPM_TOKEN}' > .npmrc
+          fi
+          publish() { # name, version, tarball
+            if [ "$(curl -s -o /dev/null -w '%{http_code}' "https://registry.npmjs.org/${1/\//%2f}/$2")" = 200 ]; then
+              echo "$1 $2 is already on npm."
+              return
+            fi
+            pnpm publish "$3" --access public --provenance --no-git-checks
+          }
+          if [ "$CLIENT" = true ]; then publish @yukibana/client "$CLIENT_VERSION" "packs/yukibana-client-$CLIENT_VERSION.tgz"; fi
+          if [ "$CLI" = true ]; then publish @yukibana/cli "$CLI_VERSION" "packs/yukibana-cli-$CLI_VERSION.tgz"; fi
+
+      - name: Download the installers
+        if: needs.plan.outputs.ide == 'true'
+        uses: actions/download-artifact@v8
+        with:
+          pattern: ide-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/installers
+
+      # A draft first, published once every installer is attached, so nobody downloads from a half-made release. The
+      # draft of an earlier run that failed is reused. Publishing it creates the tag ide-v<version> on this commit, which
+      # is what tells the next plan that this version is out.
+      - name: Publish the GitHub release
+        if: needs.plan.outputs.ide == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.plan.outputs.ide-version }}
+        run: |
+          set -euo pipefail
+          tag="ide-v$VERSION"
+          if ! gh release view "$tag" > /dev/null 2>&1; then
+            gh release create "$tag" --draft --target "$COMMIT" --title "Yukibana IDE $VERSION" --generate-notes
+          fi
+          gh release upload "$tag" --clobber "$RUNNER_TEMP"/installers/*
+          gh release edit "$tag" --draft=false --latest

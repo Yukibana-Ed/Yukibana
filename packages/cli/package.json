@@ -1,10 +1,21 @@
 {
-  "private": true,
   "name": "@yukibana/cli",
   "description": "Build, publish, submit, download and assemble Yukibana course projects from a terminal: the `yukibana` command, over @yukibana/client.",
   "version": "0.0.0-dev",
   "license": "MIT",
+  "homepage": "https://github.com/Yukibana-Ed/Yukibana#readme",
+  "bugs": {
+    "url": "https://github.com/Yukibana-Ed/Yukibana/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Yukibana-Ed/Yukibana.git",
+    "directory": "packages/cli"
+  },
   "type": "module",
+  "files": [
+    "lib"
+  ],
   "exports": {
     "./package.json": "./package.json"
   },
@@ -31,5 +42,8 @@
   "dependencies": {
     "@yukibana/client": "catalog:",
     "uuid": "catalog:"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

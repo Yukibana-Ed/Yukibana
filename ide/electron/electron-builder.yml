@@ -47,6 +47,8 @@ mac:
   target:
     - dmg
     - zip
+  # With the architecture: the arm64 and the x64 build are attached to the same GitHub release.
+  artifactName: ${productName}-${version}-${arch}.${ext}
   publish:
     provider: generic
     url: 'https://yukibana.isc-vs.ch/download/latest/macos'
@@ -77,13 +79,12 @@ nsis:
   uninstallerSidebar: resources/icons/InstallerSidebarImage/164-314Windows.bmp
   allowToChangeInstallationDirectory: true
   runAfterFinish: false
-  artifactName: ${productName}Setup.${ext}
+  # Every installer's name carries its version, so that the files attached to one GitHub release say which they are.
+  artifactName: ${productName}-Setup-${version}.${ext}
   license: LICENSE
-dmg:
-  artifactName: ${productName}.${ext}
 deb:
-  artifactName: ${productName}.${ext}
+  artifactName: ${productName}-${version}-${arch}.${ext}
 appImage:
-  artifactName: ${productName}.${ext}
+  artifactName: ${productName}-${version}-${arch}.${ext}
 
 afterPack: ./scripts/after-pack.js

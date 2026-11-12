@@ -166,6 +166,29 @@ the end-to-end tests. The devcontainer is built when `cloud/dev/`, what its inst
 [preview.yml](.github/workflows/preview.yml) uploads a pull request's Worker as a preview once a maintainer approves;
 [docs/cloud/deploy.md](docs/cloud/deploy.md) describes both.
 
+## Releasing
+
+A release is a pull request that bumps a version. [release.yml](.github/workflows/release.yml) runs on every push to
+`main` and releases each package whose `version` is a release version (`X.Y.Z`) that is not out yet:
+
+| Package                                         | Released to                                               |
+| ----------------------------------------------- | --------------------------------------------------------- |
+| `@yukibana/client` (`packages/client`)          | npm, with provenance                                      |
+| `@yukibana/cli` (`packages/cli`)                | npm, with provenance                                      |
+| the IDE (`ide/electron`, `@yukibana/ide-electron`) | a GitHub release `ide-v<version>`: Windows, Linux, macOS arm64 and x64 installers |
+
+Every `version` in git is `0.0.0-dev` until its package is first released, and that version is never released. A version
+lower than the newest one out, or anything other than `X.Y.Z` or `0.0.0-dev`, fails the run before anything is
+published ([.github/scripts/release-plan.mts](.github/scripts/release-plan.mts)). The packages have their own versions:
+bump the client with the CLI when the CLI needs what changed in it, because the published CLI depends on the client's
+version in git, and the plan refuses a CLI release whose client version is not out.
+
+Nothing is public until everything built: the npm tarballs are packed, installed into an empty folder and run on a
+fixture course, and the installers are built on each OS; only then does the publish job (environment `release`) publish
+npm, then the GitHub release. A failed run is finished by re-running its failed jobs, or by the next push to `main`;
+what is already out is left alone. Running the workflow by hand from any branch is a dry run: it builds and smoke-tests
+everything and publishes nothing, leaving the files as the run's artifacts. Nothing is ever published by hand.
+
 ## Troubleshooting
 
 ### `Could not resolve path of module: @vscode/windows-ca-certs`
