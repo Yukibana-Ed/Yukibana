@@ -76,8 +76,18 @@ describe('a push to main', () => {
         expect(p.refused).toEqual([]);
     });
 
-    test('that bumps the CLI over a client nobody can install is refused, naming the client', () => {
+    test('that bumps the CLI alone releases it, because it bundles the client rather than depending on it', () => {
         const p = plan(observe({ [cli.name]: '0.1.0' }));
+        expect(p.release.map(r => r.package.name)).toEqual([cli.name]);
+        expect(p.refused).toEqual([]);
+    });
+
+    test('that bumps a package over a workspace package it needs and nobody can install is refused, naming that package', () => {
+        const app: Releasable = { name: 'app', manifest: 'app/package.json', registry: 'npm', output: 'app', needs: [client.name] };
+        const p = plan([
+            { package: client, version: UNRELEASED, published: [] },
+            { package: app, version: '0.1.0', published: [] },
+        ]);
         expect(p.refused).toEqual([expect.stringContaining(`${client.name} ${UNRELEASED}`)]);
     });
 

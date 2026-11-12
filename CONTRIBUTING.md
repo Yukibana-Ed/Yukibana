@@ -179,9 +179,9 @@ A release is a pull request that bumps a version. [release.yml](.github/workflow
 
 Every `version` in git is `0.0.0-dev` until its package is first released, and that version is never released. A version
 lower than the newest one out, or anything other than `X.Y.Z` or `0.0.0-dev`, fails the run before anything is
-published ([.github/scripts/release-plan.mts](.github/scripts/release-plan.mts)). The packages have their own versions:
-bump the client with the CLI when the CLI needs what changed in it, because the published CLI depends on the client's
-version in git, and the plan refuses a CLI release whose client version is not out.
+published ([.github/scripts/release-plan.mts](.github/scripts/release-plan.mts)). The packages have their own versions
+and release on their own: the CLI bundles the client it is built with (esbuild, in its `prepare` script), so a CLI
+release never waits for a client release, and the client on npm is a library for whoever else wants it.
 
 Nothing is public until everything built: the npm tarballs are packed, installed into an empty folder and run on a
 fixture course, and the installers are built on each OS; only then does the publish job (environment `release`) publish

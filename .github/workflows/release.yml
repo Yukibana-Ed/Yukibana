@@ -3,8 +3,8 @@
 # the version in a package.json from 0.0.0-dev, or from the version last released, to a higher X.Y.Z; nothing else
 # releases, and nothing is ever published by hand. `.github/scripts/release-plan.mts` decides what each push releases
 # from git and from what is already out, so a push that bumps nothing releases nothing, and a run that failed halfway is
-# finished by re-running it or by the next push to main. Each package has its own version: bump the client with the CLI
-# when the CLI needs what changed in it (the plan refuses a CLI whose client version is not out).
+# finished by re-running it or by the next push to main. Each package has its own version and releases on its own: the
+# CLI bundles the client it was built with, so a CLI release needs no client release.
 #
 # Only commits on main are released, and main moves only by merging a pull request whose CI passed (deploy-cloud.yml
 # says why that is enough), so the tests do not run again here. What runs here is what CI does not do: the npm tarballs
@@ -93,27 +93,36 @@ jobs:
         run: pnpm -r --filter @yukibana/client --filter @yukibana/cli pack --pack-destination "$RUNNER_TEMP/packs"
 
       # Installed from the tarballs alone, outside the workspace, the way someone installs them from npm: no
-      # workspace:, no catalog:, nothing missing from `files`. The fixture is a course repository as git archive makes it.
+      # workspace:, no catalog:, nothing missing from `files`. Each in a folder of its own, so the CLI shows that it runs
+      # without the client installed beside it. The fixture is a course repository as git archive makes it.
       - name: Smoke test
         working-directory: ${{ runner.temp }}
         run: |
           set -euo pipefail
-          mkdir smoke repo
+          mkdir cli library repo
           tar -xzf "$GITHUB_WORKSPACE/packages/fixtures/repo.tar.gz" -C repo --strip-components=1
-          cd smoke
-          npm init -y > /dev/null
-          npm install --no-audit --no-fund ../packs/*.tgz
-          for t in ../packs/*.tgz; do
+          for t in packs/*.tgz; do
             if tar -xOzf "$t" package/package.json | grep -E '"(workspace|catalog):'; then
               echo "::error::$t still has a workspace: or catalog: dependency in its manifest."
               exit 1
             fi
           done
-          npx --no-install yukibana --help > /dev/null
-          npx --no-install yukibana check ../repo
-          npx --no-install yukibana build ../repo --out ../built
-          test -s ../built/starter.tar.gz && test -s ../built/teacher.tar.gz
-          node --input-type=module -e "import('@yukibana/client').then(m => { if (Object.keys(m).length === 0) process.exit(1); })"
+          (
+            cd cli
+            npm init -y > /dev/null
+            npm install --no-audit --no-fund ../packs/yukibana-cli-*.tgz
+            test ! -e node_modules/@yukibana/client
+            npx --no-install yukibana --help > /dev/null
+            npx --no-install yukibana check ../repo
+            npx --no-install yukibana build ../repo --out ../built
+            test -s ../built/starter.tar.gz && test -s ../built/teacher.tar.gz
+          )
+          (
+            cd library
+            npm init -y > /dev/null
+            npm install --no-audit --no-fund ../packs/yukibana-client-*.tgz
+            node --input-type=module -e "import('@yukibana/client').then(m => { if (Object.keys(m).length === 0) process.exit(1); })"
+          )
 
       - name: Upload the tarballs
         uses: actions/upload-artifact@v7
@@ -242,7 +251,7 @@ jobs:
           name: npm
           path: ${{ runner.temp }}/packs
 
-      # The tarballs the smoke test installed, client first: the CLI's manifest names the client's version. A version
+      # The tarballs the smoke test installed. A version
       # already on the registry is left alone, so a re-run after a failure publishes only what is missing. Published from
       # outside the workspace, whose devEngines would otherwise have to match this job's Node exactly.
       - name: Publish to npm

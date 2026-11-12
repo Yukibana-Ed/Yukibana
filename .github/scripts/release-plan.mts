@@ -28,10 +28,13 @@ export interface Releasable {
     readonly needs: readonly string[];
 }
 
-/** The packages Release releases. The IDE bundles the client, so it needs nothing published. */
+/**
+ * The packages Release releases. The CLI and the IDE both bundle the client they were built with, so each releases on
+ * its own; `needs` stays for a package that someday depends on another one published.
+ */
 export const RELEASABLE: readonly Releasable[] = [
     { name: '@yukibana/client', manifest: 'packages/client/package.json', registry: 'npm', output: 'client', needs: [] },
-    { name: '@yukibana/cli', manifest: 'packages/cli/package.json', registry: 'npm', output: 'cli', needs: ['@yukibana/client'] },
+    { name: '@yukibana/cli', manifest: 'packages/cli/package.json', registry: 'npm', output: 'cli', needs: [] },
     { name: '@yukibana/ide-electron', manifest: 'ide/electron/package.json', registry: 'github', output: 'ide', needs: [] },
 ];
 

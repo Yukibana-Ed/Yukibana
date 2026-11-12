@@ -1115,19 +1115,31 @@ importers:
 
   packages/cli:
     dependencies:
-      '@yukibana/client':
+      ignore:
         specifier: 'catalog:'
-        version: link:../client
+        version: 7.0.13
+      modern-tar:
+        specifier: 'catalog:'
+        version: 0.8.6
       uuid:
         specifier: 'catalog:'
         version: 14.0.3
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.7
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
         version: 24.19.2
+      '@yukibana/client':
+        specifier: 'catalog:'
+        version: link:../client
       '@yukibana/fixtures':
         specifier: 'catalog:'
         version: link:../fixtures
+      esbuild:
+        specifier: 'catalog:'
+        version: 0.28.2
       rimraf:
         specifier: 'catalog:'
         version: 6.1.3
