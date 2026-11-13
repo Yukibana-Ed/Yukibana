@@ -16,7 +16,7 @@
 {#snippet switchAccount(label: string)}
   <form method="POST" action="/auth/logout">
     <input type="hidden" name="next" value={login} />
-    <button class="quiet">{label}</button>
+    <button class="yk-btn yk-btn--secondary">{label}</button>
   </form>
 {/snippet}
 
@@ -26,11 +26,11 @@
   {#if data.account === null}
     <h1>You're invited to teach</h1>
     <p class="muted">Log in to accept. If you don't have an account yet, logging in creates one.</p>
-    <a class="button" href={login}>Log in to accept</a>
+    <a class="yk-btn yk-btn--primary" href={login}>Log in to accept</a>
   {:else if accepted}
     <h1>You're a teacher now</h1>
     <p class="muted"><strong>{data.account.email}</strong> can now create courses, publish assignments and review submissions.</p>
-    <a class="button" href="/">Go to your courses</a>
+    <a class="yk-btn yk-btn--primary" href="/">Go to your courses</a>
   {:else if data.account.role !== 'user'}
     <h1>You already have teacher rights</h1>
     <p class="muted">
@@ -46,7 +46,7 @@
     <h1>You're invited to teach</h1>
     <p class="muted">Accepting gives <strong>{data.account.email}</strong> teacher rights: you can create courses, publish assignments and review submissions.</p>
     <form method="POST" action="?/accept">
-      <button>Accept invite</button>
+      <button class="yk-btn yk-btn--primary">Accept invite</button>
     </form>
     <div class="again">
       <span class="muted">Not your account?</span>

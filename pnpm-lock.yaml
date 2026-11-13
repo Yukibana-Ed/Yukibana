@@ -311,6 +311,9 @@ catalogs:
     '@yukibana/cloud-web':
       specifier: workspace:*
       version: workspace:*
+    '@yukibana/design':
+      specifier: workspace:*
+      version: workspace:*
     '@yukibana/fixtures':
       specifier: workspace:*
       version: workspace:*
@@ -528,6 +531,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 24.19.2
+      '@yukibana/design':
+        specifier: 'catalog:'
+        version: link:../../packages/design
       '@yukibana/fixtures':
         specifier: 'catalog:'
         version: link:../../packages/fixtures
@@ -1159,6 +1165,18 @@ importers:
       rimraf:
         specifier: 'catalog:'
         version: 6.1.3
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.5(@types/node@24.19.2)(@vitest/coverage-v8@5.0.5)(jsdom@30.1.3(@noble/hashes@1.8.0))(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
+
+  packages/design:
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.19.2
       typescript:
         specifier: 'catalog:'
         version: 7.0.2

@@ -5,7 +5,10 @@
   import { search, subtitle, type Base, type HandIn, type Release, type StudentHandIns } from '../hand-ins';
   import type { SubmissionId } from '../ids';
   import { downloadAll as saveAll, downloadOne, findings, type ToAssemble } from './assembled';
-  import { menuPosition } from './popover';
+  import { placeMenu } from '../popover';
+  import { notify } from '../toast.svelte';
+  import Chip from '../Chip.svelte';
+  import Icon from '../Icon.svelte';
   import BaseNote from './BaseNote.svelte';
   import StandingChip from './StandingChip.svelte';
 
@@ -48,21 +51,17 @@
     for (const it of everyone) assemblies.set(it.submission, { state: 'busy' });
     const outcomes = await saveAll(slug, releases, everyone, (done) => (all = { state: 'busy', done }));
     for (const o of outcomes) settle(o);
-    all = { state: 'done', saved: outcomes.filter((o) => o.ok).length, failed: outcomes.flatMap((o) => (o.ok ? [] : [o.name])) };
+    const saved = outcomes.filter((o) => o.ok).length;
+    all = { state: 'done', saved, failed: outcomes.flatMap((o) => (o.ok ? [] : [o.name])) };
+    // That it worked is a passing notice (the browser's own download says so too); who was left out stays on the
+    // page, since it is a failure to act on.
+    if (saved > 0) notify(`Saved ${saved} assembled submission${saved === 1 ? '' : 's'}.`);
   }
 
-  // A row's menu is a popover (./popover): placed by its button when it
+  // A row's menu is a popover (../popover): placed by its button when it
   // opens, and closed when the page scrolls, since it would not follow.
-  function place(e: ToggleEvent & { currentTarget: HTMLElement }): void {
-    const menu = e.currentTarget;
-    const button = document.querySelector(`[popovertarget="${menu.id}"]`);
-    if (e.newState !== 'open' || button === null) return;
-    const { top, left } = menuPosition(button.getBoundingClientRect(), menu.offsetWidth, menu.offsetHeight, window.innerWidth, window.innerHeight);
-    menu.style.top = `${top}px`;
-    menu.style.left = `${left}px`;
-  }
   $effect(() => {
-    const close = () => document.querySelectorAll<HTMLElement>('.menu-items:popover-open').forEach((m) => m.hidePopover());
+    const close = () => document.querySelectorAll<HTMLElement>('.hand-ins .menu:popover-open').forEach((m) => m.hidePopover());
     window.addEventListener('scroll', close, { capture: true, passive: true });
     return () => window.removeEventListener('scroll', close, { capture: true });
   });
@@ -82,22 +81,22 @@
 <div class="hand-ins">
   <div class="toolbar">
     <label class="sr-only" for="hand-ins-search">Find a student</label>
-    <input id="hand-ins-search" type="search" placeholder="Find a student by name or email" autocomplete="off" bind:value={query} />
+    <input class="yk-input" id="hand-ins-search" type="search" placeholder="Find a student by name or email" autocomplete="off" bind:value={query} />
     {#if everyone.length > 0}
-      <button type="button" class="download" disabled={all?.state === 'busy'} onclick={downloadAll} title="Every student's latest submission, assembled with its release, in one archive">
-        {all?.state === 'busy' ? `Assembling ${all.done} of ${everyone.length}…` : `Download all (${everyone.length})`}
+      <button type="button" class="yk-btn yk-btn--primary" disabled={all?.state === 'busy'} onclick={downloadAll} title="Every student's latest submission, assembled with its release, in one archive">
+        {#if all?.state === 'busy'}<span class="yk-spinner" aria-hidden="true"></span>Assembling {all.done} of {everyone.length}{:else}Download all ({everyone.length}){/if}
       </button>
     {/if}
   </div>
-  {#if all?.state === 'done'}
+  {#if all?.state === 'done' && all.failed.length > 0}
     {#if all.saved > 0}
-      <p class="ok" role="status">Saved {all.saved} assembled submission{all.saved === 1 ? '' : 's'}{all.failed.length > 0 ? `; left out ${all.failed.join(', ')}, whose rows say why` : ''}.</p>
+      <p class="error" role="alert">Left out {all.failed.join(', ')}, whose rows say why.</p>
     {:else}
       <p class="error" role="alert">Nothing could be assembled; each row says why.</p>
     {/if}
   {/if}
   <div class="scroll">
-    <table>
+    <table class="yk-table">
       <thead>
         <tr><th>Student</th><th>Status</th><th>Submission</th><th>Built on</th><th></th></tr>
       </thead>
@@ -115,7 +114,7 @@
                 <span class="muted">—</span>
               {:else if l.submissions.length > 1}
                 <label class="sr-only" for="pick-{l.key}">Submission of {l.name}</label>
-                <select id="pick-{l.key}" value={s.submissionId} onchange={(e) => picked.set(l.key, e.currentTarget.value as SubmissionId)}>
+                <select class="yk-input" id="pick-{l.key}" value={s.submissionId} onchange={(e) => picked.set(l.key, e.currentTarget.value as SubmissionId)}>
                   {#each l.submissions as o, i (o.submissionId)}
                     <option value={o.submissionId}>#{l.submissions.length - i} · {when(o.submittedAt, viewer.zone)}{o.late ? ' · late' : ''}{i === 0 ? ' (latest)' : ''}</option>
                   {/each}
@@ -123,7 +122,7 @@
               {:else}
                 {when(s.submittedAt, viewer.zone)}
               {/if}
-              {#if s !== null && s !== l.latest && s.late}<span class="chip late">late</span>{/if}
+              {#if s !== null && s !== l.latest && s.late}<Chip tone="late">late</Chip>{/if}
             </td>
             <td>{#if s !== null && newest !== null}<BaseNote handIn={s} {newest} />{:else if s !== null}<span class="muted small">no release</span>{/if}</td>
             <td>
@@ -132,14 +131,14 @@
                 {@const raw = `/api/submissions/${s.submissionId}`}
                 <div class="actions">
                   {#if newest === null}
-                    <a class="button" href={raw} download>Download</a>
+                    <a class="yk-btn yk-btn--secondary" href={raw} download>Download</a>
                   {:else}
                     <div class="split-button">
-                      <button type="button" class="download" disabled={busy} onclick={() => download(l, s)} title="With the release's read-only and hidden files, ready to grade">
-                        {busy ? 'Assembling…' : 'Download'}
+                      <button type="button" class="yk-btn yk-btn--secondary" disabled={busy} onclick={() => download(l, s)} title="With the release's read-only and hidden files, ready to grade">
+                        {#if busy}<span class="yk-spinner" aria-hidden="true"></span>Assembling{:else}Download{/if}
                       </button>
-                      <button type="button" class="menu-toggle" popovertarget="menu-{s.submissionId}" aria-label="More ways to download">▾</button>
-                      <div class="menu-items" id="menu-{s.submissionId}" popover ontoggle={place}>
+                      <button type="button" class="yk-btn yk-btn--secondary menu-toggle" popovertarget="menu-{s.submissionId}" aria-label="More ways to download"><Icon name="chevron-down" /></button>
+                      <div class="menu" id="menu-{s.submissionId}" popover ontoggle={(e) => placeMenu(e)}>
                         <a href={raw} download onclick={(e) => e.currentTarget.closest<HTMLElement>('[popover]')?.hidePopover()}>Download without assembly</a>
                       </div>
                     </div>

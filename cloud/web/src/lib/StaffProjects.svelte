@@ -45,8 +45,11 @@
   import { when } from './format';
   import { viewer } from './viewer.svelte';
   import { changed, hold } from './live.svelte';
-  import { move } from './order';
-  import { toast } from './toast.svelte';
+  import { move, movesTo, type Step } from './order';
+  import { dismiss, toast, toasts } from './toast.svelte';
+  import { followRow } from './row-link';
+  import Chip from './Chip.svelte';
+  import Empty from './Empty.svelte';
 
   /** An edition's projects for staff, in the order students see them.
    *
@@ -86,30 +89,58 @@
   });
   const past = (d: Date | null): boolean => d !== null && new Date(d).getTime() <= now;
 
+  // The order this person last made on screen: what Retry asks the server
+  // for. Read when Retry is pressed, not when the move was refused, so a
+  // retry after further moves sends the latest order and never an older one.
+  let wanted: readonly ProjectId[] = [];
+
   function commit(from: number, to: number): void {
     const moved = move(order, from, to);
-    if (moved === null) return;
-    const previous = order;
-    order = moved.items;
-    saving += 1;
-    queue = queue
-      .then(() => postAction('?tab=projects&/move', { project: moved.items[to] ?? '', after: moved.after ?? '', before: moved.before ?? '' }))
-      .catch((e: unknown) => {
-        order = previous;
-        failed = true;
-        toast(`The new order was not saved: ${e instanceof Error ? e.message : String(e)}`);
-      })
-      .finally(() => {
-        saving -= 1;
-        // Moves queued after a refused one were placed on top of it, so
-        // undoing it on screen is only a guess; once the queue is empty,
-        // show the order the server actually has.
-        if (saving === 0 && failed) {
-          failed = false;
-          changed();
-        }
-      });
+    const item = moved?.items[to];
+    if (moved === null || item === undefined) return;
+    send([{ ...moved, item }]);
   }
+
+  /** Shows the last of `steps` at once and sends them all, one after
+   *  another, behind any moves still on their way. */
+  function send(steps: readonly Step<ProjectId>[]): void {
+    const last = steps.at(-1);
+    if (last === undefined) return;
+    const previous = order;
+    order = wanted = last.items;
+    for (const step of steps) {
+      saving += 1;
+      queue = queue
+        .then(() => postAction('?tab=projects&/move', { project: step.item, after: step.after ?? '', before: step.before ?? '' }))
+        .catch((e: unknown) => {
+          order = previous;
+          failed = true;
+          toast(`The new order was not saved: ${e instanceof Error ? e.message : String(e)}`, null, retry);
+        })
+        .finally(() => {
+          saving -= 1;
+          // Moves queued after a refused one were placed on top of it, so
+          // undoing it on screen is only a guess; once the queue is empty,
+          // show the order the server actually has.
+          if (saving === 0 && failed) {
+            failed = false;
+            changed();
+          }
+        });
+    }
+  }
+
+  /** Retry, on the toast of a refused move: sends what it takes to turn the
+   *  order on screen now (the server's, once it has reloaded) into the
+   *  latest one this person made. Projects added or deleted meanwhile are
+   *  left where they are (#lib/order `movesTo`). */
+  const retry = (): void => send(movesTo(order, wanted));
+
+  // Retry posts to this page's action and moves this list: once the list is
+  // gone it could do neither, so its toasts go with it.
+  $effect(() => () => {
+    for (const t of toasts.filter((n) => n.retry === retry)) dismiss(t.id);
+  });
 
   async function onkey(e: KeyboardEvent, i: number): Promise<void> {
     const to = e.key === 'ArrowUp' ? i - 1 : e.key === 'ArrowDown' ? i + 1 : null;
@@ -165,11 +196,11 @@
 </script>
 
 {#if order.length === 0}
-  <p class="empty">No projects yet.</p>
+  <Empty title="No projects yet">A project is one exercise: its starter, its tests and its dates.</Empty>
 {:else}
   {#if reorder}<p class="note">Drag a project to change the order students see. Changes are saved as you drop.</p>{/if}
   <div class="scroll">
-    <table class="projects">
+    <table class="yk-table projects">
       <thead>
         <tr>
           {#if reorder}<th><span class="sr-only">Order</span></th>{/if}
@@ -181,6 +212,8 @@
           {@const p = byId.get(id)}
           {#if p}
             <tr
+              data-href="/editions/{editionId}/projects/{p.project_id}"
+              onclick={followRow}
               {...(reorder ? draggableRow(id, i) : {})}
               class:dragging={dragging === i}
               class:over={over === i && dragging !== null && dragging !== i}
@@ -192,12 +225,12 @@
               {/if}
               <td>
                 <a href="/editions/{editionId}/projects/{p.project_id}">{p.title}</a>
-                <span class="chip">{p.kind}</span>
-                {#if p.available_after === null}<span class="chip">draft</span>{/if}
-                {#if !p.ready}<span class="chip">no starter yet</span>{/if}
+                <Chip tone="info">{p.kind}</Chip>
+                {#if p.available_after === null}<Chip tone="draft">draft</Chip>{/if}
+                {#if !p.ready}<Chip>no starter yet</Chip>{/if}
               </td>
               <td>{when(p.available_after, viewer.zone)}</td>
-              <td>{when(p.deadline, viewer.zone)}{#if past(p.deadline) && !past(p.closes_at)} <span class="chip late">late window</span>{/if}</td>
+              <td>{when(p.deadline, viewer.zone)}{#if past(p.deadline) && !past(p.closes_at)} <Chip tone="late">late window</Chip>{/if}</td>
               <td>{p.closes_at === null ? 'never' : when(p.closes_at, viewer.zone)}</td>
               <td>{p.releases}</td>
             </tr>
