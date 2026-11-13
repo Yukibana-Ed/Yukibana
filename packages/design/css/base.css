@@ -172,11 +172,12 @@
     cursor: pointer;
     transition: background-color var(--yk-motion-fast) var(--yk-motion-ease);
 }
-/* One line between two segments, drawn once, by the later segment's left border. Overlapping the borders with a negative
+/* One line between two segments, drawn once, by the later segment's start border (its left, or its right on a
+   right-to-left page, as the corners below follow the writing direction too). Overlapping the borders with a negative
    margin instead lets the later segment paint over the earlier one's, which comes out thinner, or vanishes, wherever the
    row sits on a fraction of a pixel (Light, 2026). */
 .yk-segmented > :not(:last-child) {
-    border-right-width: 0;
+    border-inline-end-width: 0;
 }
 .yk-segmented > :first-child {
     border-start-start-radius: var(--yk-radius-sm);
@@ -194,9 +195,9 @@
     background: var(--yk-sunken);
     color: var(--yk-ink);
 }
-/* The chosen segment's right side is its neighbour's divider, so the neighbour draws it in ink. */
+/* The chosen segment's end side is its neighbour's divider, so the neighbour draws it in ink. */
 .yk-segmented > :is(label:has(input:checked), button[aria-pressed='true']) + * {
-    border-left-color: var(--yk-ink);
+    border-inline-start-color: var(--yk-ink);
 }
 .yk-segmented > :is(label:has(input:disabled), button:disabled) {
     opacity: 0.45;
