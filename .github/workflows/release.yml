@@ -40,6 +40,9 @@ permissions:
 jobs:
   plan:
     name: Plan
+    # Not in a fork, whose main may carry a version bump without the tags that say it is out (syncing a fork copies no
+    # tags), unless run by hand as a dry run.
+    if: github.repository == 'Yukibana-Ed/Yukibana' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
@@ -288,8 +291,9 @@ jobs:
           path: ${{ runner.temp }}/installers
 
       # A draft first, published once every installer is attached, so nobody downloads from a half-made release. The
-      # draft of an earlier run that failed is reused. Publishing it creates the tag ide-v<version> on this commit, which
-      # is what tells the next plan that this version is out.
+      # draft of an earlier run that failed is reused, retargeted at this commit. Publishing it creates the tag
+      # ide-v<version> on this commit, which is what tells the next plan that this version is out. A release already
+      # published is left alone: a re-run of an older run must not replace its files with ones built from another commit.
       - name: Publish the GitHub release
         if: needs.plan.outputs.ide == 'true'
         env:
@@ -299,8 +303,13 @@ jobs:
         run: |
           set -euo pipefail
           tag="ide-v$VERSION"
-          if ! gh release view "$tag" > /dev/null 2>&1; then
+          if draft=$(gh release view "$tag" --json isDraft --jq .isDraft 2> /dev/null); then
+            if [ "$draft" = false ]; then
+              echo "The IDE $VERSION is already out ($tag)."
+              exit 0
+            fi
+          else
             gh release create "$tag" --draft --target "$COMMIT" --title "Yukibana IDE $VERSION" --generate-notes
           fi
           gh release upload "$tag" --clobber "$RUNNER_TEMP"/installers/*
-          gh release edit "$tag" --draft=false --latest
+          gh release edit "$tag" --draft=false --latest --target "$COMMIT"
