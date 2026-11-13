@@ -257,6 +257,9 @@
     .yk-tabs {
         overflow-x: auto;
         scrollbar-width: none;
+        /* Room for the first tab's focus ring (below), which the scroller would otherwise clip. */
+        padding-inline: var(--yk-space-1);
+        margin-inline: calc(-1 * var(--yk-space-1));
     }
     .yk-tabs > a {
         display: inline-flex;
@@ -266,6 +269,13 @@
     }
     .yk-tabs > a::after {
         content: none;
+    }
+    /* The scroller clips whatever leaves it, the focus ring included, so a focused tab draws its ring inside itself,
+       and takes a little room on either side for it from the gap (a margin that cancels the padding, so nothing moves). */
+    .yk-tabs > a:focus-visible {
+        padding-inline: var(--yk-space-1);
+        margin-inline: calc(-1 * var(--yk-space-1));
+        outline-offset: calc(-1 * var(--yk-focus-width));
     }
     .yk-tabs .label {
         display: inline-grid;
