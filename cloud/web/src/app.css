@@ -100,7 +100,11 @@
 
 @layer layout {
     /* The header (yk-header, #lib/AppHeader.svelte): the brand and the course switcher on the left, the avatar on the
-       right, nothing else. */
+       right, nothing else. The bar has nothing for the package's middle column, so the avatar is placed in the last
+       column, whichever that is: three columns wide, two on a phone, and one row either way. */
+    .yk-header > .yk-header__end {
+        grid-column: -2;
+    }
     .yk-header .start {
         display: flex;
         align-items: center;

@@ -40,7 +40,6 @@
       </div>
     {/if}
   </div>
-  <div></div>
   <div class="yk-header__end">
     {#if user}
       <button type="button" class="avatar" popovertarget="account-menu" aria-label="Account: {user.email ?? 'signed in'}">{initial}</button>
