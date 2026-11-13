@@ -182,12 +182,19 @@ async function npmVersions(name: string): Promise<string[]> {
     return Object.keys(versions);
 }
 
-/** The IDE versions released, from the tags in this clone (which must have fetched them). */
+/** The prefix of the IDE releases made by hand before this workflow: `v0.1.0`, `v0.2.0`. */
+const LEGACY_IDE_TAG_PREFIX = 'v';
+
+/**
+ * The IDE versions released, from the tags in this clone (which must have fetched them): `ide-v<version>`, and the
+ * `v<version>` of the releases made by hand before, whose installers people have, so that a release goes forward from
+ * those too.
+ */
 function ideVersions(): string[] {
-    return execFileSync('git', ['tag', '--list', `${IDE_TAG_PREFIX}*`], { encoding: 'utf8' })
+    return execFileSync('git', ['tag', '--list', `${IDE_TAG_PREFIX}*`, `${LEGACY_IDE_TAG_PREFIX}*`], { encoding: 'utf8' })
         .split('\n')
-        .filter(t => t.startsWith(IDE_TAG_PREFIX))
-        .map(t => t.slice(IDE_TAG_PREFIX.length));
+        .map(t => (t.startsWith(IDE_TAG_PREFIX) ? t.slice(IDE_TAG_PREFIX.length) : t.startsWith(LEGACY_IDE_TAG_PREFIX) ? t.slice(LEGACY_IDE_TAG_PREFIX.length) : ''))
+        .filter(v => v !== '');
 }
 
 if (import.meta.main) {
