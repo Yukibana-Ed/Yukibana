@@ -136,7 +136,7 @@
     color: var(--yk-soft);
     cursor: pointer;
 }
-.yk-icon-btn:hover {
+.yk-icon-btn:hover:not(:disabled) {
     background: var(--yk-sunken);
     color: var(--yk-ink);
 }
