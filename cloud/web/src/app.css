@@ -347,15 +347,19 @@
     section .yk-table :is(th, td):last-child {
         padding-inline-end: 0;
     }
-    /* Only a row that is a link (#lib/row-link.ts) answers the pointer, and it does so all along the row. */
+    /* Only a row that is a link (#lib/row-link.ts) answers the pointer, and it does so all along the row. A checked
+       row (yk-check) keeps the package's fill under the pointer: this layer is above the package's, so a hover here
+       that did not step aside would win over it. */
     .yk-table tbody tr:hover {
-        background: none;
         cursor: auto;
+    }
+    .yk-table tbody tr:hover:not(:has(.yk-check:checked)) {
+        background: none;
     }
     .yk-table tbody tr[data-href] {
         cursor: pointer;
     }
-    .yk-table tbody tr[data-href]:hover {
+    .yk-table tbody tr[data-href]:hover:not(:has(.yk-check:checked)) {
         background: var(--yk-sunken);
     }
     /* A cell holding a control is an action on its row, and sits at the end of it. */
