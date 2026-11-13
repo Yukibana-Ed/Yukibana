@@ -36,7 +36,8 @@ no specificity and any rule of the app's own wins over them.
 A page follows the system's light or dark scheme, unless its root element says `data-theme="light"` or `"dark"`.
 
 **Browsers.** Every colour is a `light-dark()` pair, which needs Chrome and Edge 123, Firefox 120 or Safari 17.5 (all
-from 2024). There is no fallback: an older browser drops every colour and shows the page unstyled, black on white.
+from 2024), and the segmented control and selected table rows use `:has()`, which Firefox has from 121. There is no
+fallback: an older browser drops every colour and shows the page unstyled, black on white.
 **Fonts.** `css/fonts.css` loads Bricolage Grotesque, Atkinson Hyperlegible Next (upright and italic) and JetBrains
 Mono from `fonts/`, under exactly the names `--yk-font-family-*` uses, with `font-display: swap`. They are variable
 WOFF2 files, about 225 KB for all eight, Latin and Latin Extended only; a browser fetches a subset only when the page
@@ -92,7 +93,7 @@ Checkboxes are drawn, not native: a native one follows the page's colour scheme 
 green for actions.
 
 **Code.** Expressive Code frames, as on hylo-lang.org: the dock tab bar for files, Copy and Run in Light as icon
-buttons, no header on terminal blocks (Copy appears on hover), and marked, added and removed lines with a bar and a sign.
+buttons, no header on terminal blocks (Copy appears on hover or keyboard focus, and always on a touch screen), and marked, added and removed lines with a bar and a sign.
 
 **Feedback.** Where it can, the button says it is done ("✓ Saved" for two seconds). Otherwise a pill, bottom centre,
 on one line: dark for success, fading after three seconds; red for an error, with Retry, staying until dismissed. The
