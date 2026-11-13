@@ -461,6 +461,9 @@
         translate: -50% 0;
         z-index: 20;
         display: grid;
+        /* The column may shrink below its toast's longest line, and each toast fits its content up to the column: the
+           package's width: max-content would hold a long message at full length and push Dismiss off a phone. */
+        grid-template-columns: minmax(0, auto);
         justify-items: center;
         gap: var(--yk-space-2);
         width: max-content;
@@ -469,6 +472,7 @@
     .toasts .yk-toast {
         position: static;
         translate: none;
+        width: auto;
         max-width: 100%;
         white-space: normal;
     }
