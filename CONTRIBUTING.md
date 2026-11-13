@@ -178,8 +178,10 @@ A release is a pull request that bumps a version. [release.yml](.github/workflow
 | the IDE (`ide/electron`, `@yukibana/ide-electron`) | a GitHub release `ide-v<version>`: Windows, Linux, macOS arm64 and x64 installers | `ide-v<version>`    |
 
 Every `version` in git is `0.0.0-dev` until its package is first released, and that version is never released. A version
-lower than the newest one out, or anything other than `X.Y.Z` or `0.0.0-dev`, fails the run before anything is
-published ([.github/scripts/release-plan.mts](.github/scripts/release-plan.mts)). The packages have their own versions
+other than `X.Y.Z` or `0.0.0-dev` fails the run before anything is published
+([.github/scripts/release-plan.mts](.github/scripts/release-plan.mts)). A release number is used once and only goes
+forward, but reverting on `main` is fine: a version that is out already, or lower than the newest one out, releases and
+tags nothing and does not fail the run (the second with a warning, in case it was meant as a bump: bump past the newest). The packages have their own versions
 and release on their own: the CLI bundles the client it is built with (esbuild, in its `prepare` script), so a CLI
 release never waits for a client release, and the client on npm is a library for whoever else wants it.
 

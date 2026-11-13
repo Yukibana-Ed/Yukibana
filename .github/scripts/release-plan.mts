@@ -58,8 +58,11 @@ const RELEASE_VERSION = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/;
 export type Decision =
     /** Publish it. */
     | { readonly kind: 'release' }
-    /** Nothing, for the reason given, which is not a fault. */
-    | { readonly kind: 'skip'; readonly reason: string }
+    /**
+     * Nothing, for the reason given, which is not a fault; `warn` when it may be one worth a look (a version behind the
+     * newest one out, which a revert on main gives, but so does a bump to the wrong number).
+     */
+    | { readonly kind: 'skip'; readonly reason: string; readonly warn?: boolean }
     /** Nothing, and the run fails with this sentence: the version in git cannot be released as it is. */
     | { readonly kind: 'refuse'; readonly reason: string };
 
@@ -93,6 +96,10 @@ export function compareVersions(a: string, b: string): number {
 /**
  * What to do with `name` at `version`, given the versions of it already out. Versions out that are not release
  * versions (an old prerelease, say) are ignored when comparing.
+ *
+ * A version is released once at most, and only when it is higher than every version out: npm's `latest` and the IDE's
+ * updater only go forward. Anything else releases nothing without failing the run, so that reverting a bump on main,
+ * which can bring back a version already out or one never released, is fine.
  */
 export function decide(name: string, version: string, published: readonly string[]): Decision {
     if (version === UNRELEASED) {
@@ -106,7 +113,11 @@ export function decide(name: string, version: string, published: readonly string
     }
     const newest = published.filter(isReleaseVersion).toSorted(compareVersions).at(-1);
     if (newest !== undefined && compareVersions(version, newest) < 0) {
-        return { kind: 'refuse', reason: `${name} ${version} is lower than ${newest}, the newest version out; a release goes forward only` };
+        return {
+            kind: 'skip',
+            warn: true,
+            reason: `${name} ${version} is lower than ${newest}, the newest version out, so it is not released (a release only goes forward); after a revert that is fine, otherwise bump past ${newest}`,
+        };
     }
     return { kind: 'release' };
 }
@@ -138,6 +149,8 @@ export interface Plan {
     readonly release: readonly { readonly package: Releasable; readonly version: string }[];
     /** Why each other package is not released, one sentence each. */
     readonly skipped: readonly string[];
+    /** The sentences of `skipped` worth a look, which Release shows as warnings. */
+    readonly warnings: readonly string[];
     /** Why the run must fail, one sentence each; when not empty, nothing may be released. */
     readonly refused: readonly string[];
     /** The tags of npm packages to make once everything is published, in `RELEASABLE` order. */
@@ -199,6 +212,7 @@ export function plan(observed: readonly Observed[]): Plan {
     return {
         release: decisions.filter(d => d.decision.kind === 'release').map(d => ({ package: d.package, version: d.version })),
         skipped: decisions.flatMap(d => (d.decision.kind === 'skip' ? [d.decision.reason] : [])),
+        warnings: decisions.flatMap(d => (d.decision.kind === 'skip' && d.decision.warn === true ? [d.decision.reason] : [])),
         refused,
         tags,
     };
@@ -355,7 +369,7 @@ if (import.meta.main) {
         process.stdout.write(`release ${r.package.name} ${r.version}\n`);
     }
     for (const s of p.skipped) {
-        process.stdout.write(`skip: ${s}\n`);
+        process.stdout.write(p.warnings.includes(s) ? `::warning::${s}\n` : `skip: ${s}\n`);
     }
     for (const r of refused) {
         process.stderr.write(`::error::${r}\n`);

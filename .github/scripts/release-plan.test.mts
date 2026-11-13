@@ -28,10 +28,9 @@ describe('one package’s version', () => {
         expect(decide('a', '1.10.0', ['1.9.9', '0.0.0-dev'])).toEqual({ kind: 'release' });
     });
 
-    test('a version lower than the newest one out is refused with a sentence that names both', () => {
-        const d = decide('a', '1.2.0', ['1.3.0']);
-        expect(d.kind).toBe('refuse');
-        expect(d.kind === 'refuse' && d.reason).toMatch(/1\.2\.0.*1\.3\.0/);
+    test('a version lower than the newest one out is not released, with a warning that names both, and does not fail the run', () => {
+        const d = decide('a', '1.2.1', ['1.2.0', '1.3.0']);
+        expect(d).toEqual({ kind: 'skip', warn: true, reason: expect.stringMatching(/1\.2\.1.*1\.3\.0/) });
     });
 
     test.each(['1.2', 'v1.2.3', '1.2.3-beta.1', '01.2.3', '1.2.3+build'])('%s is refused: only X.Y.Z or the development version may be on main', v => {
@@ -96,6 +95,49 @@ describe('a push to main', () => {
     test('with one version refused still names it, so the run fails before anything is published', () => {
         const p = plan(observe({ [client.name]: '0.1.0', [ide.name]: '1.0' }));
         expect(p.refused).toHaveLength(1);
+    });
+});
+
+describe('a revert on main', () => {
+    const observe = (versions: Record<string, string>, published: Record<string, string[]> = {}, tagged: Record<string, string[]> = {}): Observed[] =>
+        RELEASABLE.map(p => ({ package: p, version: versions[p.name] ?? UNRELEASED, published: published[p.name] ?? [], tagged: tagged[p.name] ?? published[p.name] ?? [] }));
+    const out = (name: string): Record<string, string[]> => ({ [name]: ['1.2.0', '1.3.0'] });
+
+    test.each([client, cli, ide])('back to a version out ($name 1.2.0 after 1.3.0) releases, tags and refuses nothing', p => {
+        const o = observe({ [p.name]: '1.2.0' }, out(p.name));
+        const result = plan(o);
+        expect(result).toMatchObject({ release: [], refused: [], tags: [], warnings: [] });
+        expect(outputs(o, result)).toMatchObject({ npm: 'false', ide: 'false', tags: 'false' });
+    });
+
+    test('back to the IDE\u2019s hand-made v0.2.0 releases nothing', () => {
+        const p = plan(observe({ [ide.name]: '0.2.0' }, { [ide.name]: ['0.1.0', '0.2.0', '0.3.0'] }));
+        expect(p).toMatchObject({ release: [], refused: [], tags: [] });
+    });
+
+    test('back to a version never released (1.2.1, after 1.3.0 is out) releases nothing and only warns', () => {
+        const p = plan(observe({ [cli.name]: '1.2.1', [client.name]: '0.2.0' }, { [cli.name]: ['1.2.0', '1.3.0'], [client.name]: ['0.1.0'] }));
+        expect(p.refused).toEqual([]);
+        expect(p.release.map(r => r.package.name)).toEqual([client.name]);
+        expect(p.warnings).toEqual([expect.stringContaining('cli 1.2.1')]);
+        expect(p.tags).toEqual([{ package: client, version: '0.2.0', action: 'here' }]);
+    });
+
+    test('of a bump that was never released, back to the development version, releases nothing', () => {
+        expect(plan(observe({}, out(cli.name)))).toMatchObject({ release: [], refused: [], tags: [], warnings: [] });
+    });
+
+    test('then a bump past the newest one out releases that version', () => {
+        const p = plan(observe({ [cli.name]: '1.3.1' }, out(cli.name)));
+        expect(p.release).toEqual([{ package: cli, version: '1.3.1' }]);
+        expect(p.tags).toEqual([{ package: cli, version: '1.3.1', action: 'here' }]);
+    });
+
+    test('back to a version out whose tag is missing tags it on the commit npm\u2019s provenance names, not this one', () => {
+        const o = observe({ [cli.name]: '1.2.0' }, out(cli.name), { [cli.name]: ['1.3.0'] });
+        const p = plan(o);
+        expect(p.release).toEqual([]);
+        expect(p.tags).toEqual([{ package: cli, version: '1.2.0', action: 'recover' }]);
     });
 });
 
