@@ -81,16 +81,17 @@
     background: var(--yk-accent);
     color: var(--yk-on-accent);
 }
-/* Hover only where a click would do something: a disabled button stays as it is. */
-.yk-btn--primary:hover:not(:disabled) {
+/* Hover only where a click would do something: a disabled button stays as it is, and so does a done one, whose label
+   is the success colour and would sink into a green or red hover fill. */
+.yk-btn--primary:hover:not(:disabled, [data-done]) {
     background: var(--yk-accent-strong);
 }
 .yk-btn--secondary {
     background: var(--yk-surface);
     border-color: var(--yk-line-strong);
 }
-.yk-btn--secondary:hover:not(:disabled),
-.yk-btn--ghost:hover:not(:disabled) {
+.yk-btn--secondary:hover:not(:disabled, [data-done]),
+.yk-btn--ghost:hover:not(:disabled, [data-done]) {
     background: var(--yk-sunken);
 }
 .yk-btn--ghost {
@@ -102,7 +103,7 @@
 }
 /* No token of its own: the red moves a step towards ink, darker in the light theme and lighter in the dark, as the
    primary's hover does, so its label only gains contrast. Mixed in OKLab, where mixing in a grey does not turn the hue. */
-.yk-btn--danger:hover:not(:disabled) {
+.yk-btn--danger:hover:not(:disabled, [data-done]) {
     background: color-mix(in oklab, var(--yk-danger) 85%, var(--yk-ink));
 }
 /* A toggle that is on (Wrap lines, Show hidden tests): pressed, as a chosen segment of .yk-segmented is, a sunken fill
