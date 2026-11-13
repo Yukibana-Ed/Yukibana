@@ -721,7 +721,8 @@
         max-width: none;
         text-align: start;
     }
-    section.login form button {
+    section.login form button,
+    section.login > a.button {
         width: 100%;
         display: inline-flex;
         align-items: center;
