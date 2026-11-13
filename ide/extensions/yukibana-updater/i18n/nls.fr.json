@@ -1,0 +1,16 @@
+{
+  "yukibana": {
+    "updater": {
+      "available": "Yukibana {0} est disponible",
+      "availableTooltip": "Ouvrir la page de téléchargement de Yukibana {0}",
+      "checkCommand": "Rechercher des mises à jour de l'IDE",
+      "downloading": "Téléchargement de Yukibana {0} en arrière-plan.",
+      "failed": "Impossible de rechercher des mises à jour: {0}",
+      "off": "Cette version de Yukibana ne se met pas à jour elle-même.",
+      "restartCommand": "Redémarrer pour mettre à jour l'IDE",
+      "restartToUpdate": "Redémarrer pour passer à la version {0}",
+      "restartToUpdateTooltip": "Yukibana {0} est téléchargé. Redémarrez maintenant pour l'utiliser, sinon il s'installera la prochaine fois que vous quitterez.",
+      "upToDate": "Yukibana est à jour."
+    }
+  }
+}

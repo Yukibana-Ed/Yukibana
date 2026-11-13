@@ -109,9 +109,11 @@ catalog:
   '@yukibana/ide-scala-lang-ext': workspace:*
   '@yukibana/ide-submission-ext': workspace:*
   '@yukibana/ide-telemetry-ext': workspace:*
+  '@yukibana/ide-updater-ext': workspace:*
   aws4fetch: 1.0.20
   chai: 6.3.0
   electron-builder: 26.18.0
+  electron-updater: 6.8.12
   esbuild: 0.28.2
   fs-extra: 11.4.1
   ignore: 7.0.13

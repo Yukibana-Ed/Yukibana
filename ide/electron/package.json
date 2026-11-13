@@ -50,6 +50,7 @@
     "@yukibana/ide-scala-lang-ext": "catalog:",
     "@yukibana/ide-submission-ext": "catalog:",
     "@yukibana/ide-telemetry-ext": "catalog:",
+    "@yukibana/ide-updater-ext": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:"
   },

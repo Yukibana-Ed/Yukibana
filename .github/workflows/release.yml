@@ -186,11 +186,6 @@ jobs:
           restore-keys: |
             electron-${{ runner.os }}-${{ matrix.os }}-
 
-      - name: Update electron-builder.yml for macos-15
-        if: matrix.os == 'macos-15'
-        run: |
-          sed -i '' 's|https://yukibana.isc-vs.ch/download/latest/macos|https://yukibana.isc-vs.ch/download/latest/macos-arm|g' ide/electron/electron-builder.yml
-
       # electron-builder takes the app's version from ide/electron/package.json, which is the version released.
       - name: Build the installers
         shell: bash

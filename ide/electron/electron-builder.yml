@@ -12,6 +12,16 @@ asarUnpack:
 nodeGypRebuild: false
 npmRebuild: false
 
+# Where the installed app looks for updates (written into its app-update.yml): the GitHub release that GitHub marks
+# latest, which release.yml makes the newest ide-v<version>, and its latest.yml or latest-linux.yml. Its files are
+# fetched from that release's own tag, so electron-updater finds the installed version's blockmap in its release and
+# downloads only the blocks that changed. electron-builder uploads nothing (ide/scripts/cli.mts passes --publish never);
+# the release workflow does.
+publish:
+  provider: github
+  owner: Yukibana-Ed
+  repo: Yukibana
+
 directories:
   buildResources: resources
 
@@ -32,10 +42,6 @@ win:
   icon: resources/icons/WindowsLauncherIcons/Yukibana.ico
   target:
     - nsis
-  publish:
-    provider: generic
-    url: 'https://yukibana.isc-vs.ch/download/${version}/windows'
-    useMultipleRangeRequest: false
 mac:
   icon: resources/icons/MacLauncherIcons/icon.icns
   category: public.app-category.developer-tools
@@ -49,9 +55,6 @@ mac:
     - zip
   # With the architecture: the arm64 and the x64 build are attached to the same GitHub release.
   artifactName: ${productName}-${version}-${arch}.${ext}
-  publish:
-    provider: generic
-    url: 'https://yukibana.isc-vs.ch/download/latest/macos'
 linux:
   # Otherwise the package's name, which as a scoped name (`@yukibana/ide-electron`) the AppImage and deb refuse. Also
   # the name after-pack.js wraps, and the same as package.json's desktopName.
@@ -64,9 +67,6 @@ linux:
   target:
     - deb
     - AppImage
-  publish:
-    provider: generic
-    url: 'https://yukibana.isc-vs.ch/download/latest/linux'
 
 nsis:
   # One click, per user, like Figma or VS Code's user installer: no wizard and no admin prompt; it installs into the

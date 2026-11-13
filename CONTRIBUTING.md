@@ -189,6 +189,12 @@ npm, then the GitHub release. A failed run is finished by re-running its failed 
 what is already out is left alone. Running the workflow by hand from any branch is a dry run: it builds and smoke-tests
 everything and publishes nothing, leaving the files as the run's artifacts. Nothing is ever published by hand.
 
+Installed IDEs update from these GitHub releases (see [IDE updates](docs/features.md#ide-updates)): each one carries
+`latest.yml` and `latest-linux.yml`, which electron-updater reads, and every installer's `.blockmap`, which lets it
+download only what changed since the installed version. An IDE release therefore has to stay GitHub's latest release,
+and the releases it updates from must keep their files: deleting an old release only makes its users download the next
+update whole.
+
 ## Troubleshooting
 
 ### `Could not resolve path of module: @vscode/windows-ca-certs`

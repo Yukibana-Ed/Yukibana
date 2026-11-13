@@ -23,6 +23,9 @@
     },
     {
       "path": "../extensions/yukibana-telemetry"
+    },
+    {
+      "path": "../extensions/yukibana-updater"
     }
   ]
 }
