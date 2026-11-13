@@ -22,7 +22,11 @@ test('retrying puts one misplaced project back with one move', () => {
 
 test('retrying reaches the wanted order whatever order the server had', () => {
     const wanted = ['e', 'c', 'a', 'd', 'b'];
-    for (const list of [['a', 'b', 'c', 'd', 'e'], ['b', 'e', 'd', 'c', 'a'], ['d', 'b', 'e', 'a', 'c']]) {
+    for (const list of [
+        ['a', 'b', 'c', 'd', 'e'],
+        ['b', 'e', 'd', 'c', 'a'],
+        ['d', 'b', 'e', 'a', 'c'],
+    ]) {
         const steps = movesTo(list, wanted);
         expect(steps.length).toBeLessThan(wanted.length);
         expect(steps.at(-1)?.items).toEqual(wanted);

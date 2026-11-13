@@ -139,7 +139,7 @@
   // Retry posts to this page's action and moves this list: once the list is
   // gone it could do neither, so its toasts go with it.
   $effect(() => () => {
-    for (const t of toasts.filter((t) => t.retry === retry)) dismiss(t.id);
+    for (const t of toasts.filter((n) => n.retry === retry)) dismiss(t.id);
   });
 
   async function onkey(e: KeyboardEvent, i: number): Promise<void> {
