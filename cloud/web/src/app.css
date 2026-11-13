@@ -3,7 +3,9 @@
  * The tokens (`--yk-*`) and the shared components (`yk-` classes: buttons, chips, tabs, the header, toasts, tables,
  * fields, the empty state) come from the package, whose README says what was decided and why. This file styles what
  * the package leaves to each app: the page's elements (a section is a card, a form a stack of fields), and the few
- * things only the cloud has. It names no colour, size or font of its own: everything is a token.
+ * things only the cloud has. Colours and fonts are tokens, except the shadows of menus and dialogs and the dialog's
+ * backdrop, which the package has no token for yet, and the GitHub button, in GitHub's own colours. Sizes are tokens
+ * where the package has one; the rest are small values written in place (hairlines, icon boxes, compact padding).
  *
  * The order of the layers is said first, so the package's components sit under the app's layout and controls.
  */
@@ -145,7 +147,7 @@
     }
 
     /* A menu that opens from a button: a popover in the top layer, so no scrolling box clips it; the button places it
-       (#lib/menu.ts). */
+       (#lib/popover.ts). */
     .menu {
         position: fixed;
         inset: auto;
