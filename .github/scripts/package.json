@@ -1,7 +1,7 @@
 {
   "private": true,
   "name": "@yukibana/ci-scripts",
-  "description": "The scripts the CI workflows run: the plan of what a change affects, the plan of what a push to main releases, the license check, the release-age exclusion check and the deploy's placeholder check. Node runs them as they are; they import nothing but Node's own modules.",
+  "description": "The scripts the CI workflows run: the plan of what a change affects, the check of the tag a release is started with, the license check, the release-age exclusion check and the deploy's placeholder check. Node runs them as they are; they import nothing but Node's own modules.",
   "version": "0.0.0-dev",
   "license": "MIT",
   "type": "module",

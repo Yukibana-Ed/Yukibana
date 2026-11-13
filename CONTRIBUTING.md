@@ -168,36 +168,30 @@ the end-to-end tests. The devcontainer is built when `cloud/dev/`, what its inst
 
 ## Releasing
 
-A release is a pull request that bumps a version. [release.yml](.github/workflows/release.yml) runs on every push to
-`main` and releases each package whose `version` is a release version (`X.Y.Z`) that is not out yet:
+A release is started by hand: **Actions → Release → Run workflow**, from `main`, with the tag to make:
 
-| Package                                            | Released to                                                                       | Tag                  |
-| -------------------------------------------------- | --------------------------------------------------------------------------------- | -------------------- |
-| `@yukibana/client` (`packages/client`)             | npm, with provenance                                                              | `client-v<version>` |
-| `@yukibana/cli` (`packages/cli`)                   | npm, with provenance                                                              | `cli-v<version>`    |
-| the IDE (`ide/electron`, `@yukibana/ide-electron`) | a GitHub release `ide-v<version>`: Windows, Linux, macOS arm64 and x64 installers | `ide-v<version>`    |
+| Tag                | Releases                                           | To                                                                                   |
+| ------------------ | -------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `client-v<X.Y.Z>`  | `@yukibana/client` (`packages/client`)             | npm, with provenance                                                                 |
+| `cli-v<X.Y.Z>`     | `@yukibana/cli` (`packages/cli`)                   | npm, with provenance                                                                 |
+| `ide-v<X.Y.Z>`     | the IDE (`ide/electron`, `@yukibana/ide-electron`) | a GitHub release: Windows, Linux, macOS arm64 and x64 installers, and the update feeds |
 
-Every `version` in git is `0.0.0-dev` until its package is first released, and that version is never released. A version
-other than `X.Y.Z` or `0.0.0-dev` fails the run before anything is published
-([.github/scripts/release-plan.mts](.github/scripts/release-plan.mts)). A release number is used once and only goes
-forward, but reverting on `main` is fine: a version that is out already, or lower than the newest one out, releases and
-tags nothing and does not fail the run (the second with a warning, in case it was meant as a bump: bump past the newest). The packages have their own versions
-and release on their own: the CLI bundles the client it is built with (esbuild, in its `prepare` script), so a CLI
-release never waits for a client release, and the client on npm is a library for whoever else wants it.
+[release.yml](.github/workflows/release.yml) first checks the tag
+([.github/scripts/release-tag.mts](.github/scripts/release-tag.mts)): its shape, that it does not exist yet, and that the
+version is higher than the package's newest release (for the IDE, the `v0.1.0` and `v0.2.0` tags made by hand before
+count too). A version is released once and only goes forward. Every `version` in git stays `0.0.0-dev`: the run writes
+the tag's version into the package's manifest before it builds, so the tag is the only place a version is chosen, and
+reverting on `main` never touches a release.
 
-Nothing is public until everything built: the npm tarballs are packed, installed into an empty folder and run on a
-fixture course, and the installers are built on each OS; only then does the publish job (environment `release`) publish
-npm, then the GitHub release. A failed run is finished by re-running its failed jobs, or by the next push to `main`;
-what is already out is left alone. Running the workflow by hand from any branch is a dry run: it builds and smoke-tests
-everything and publishes and tags nothing, leaving the files as the run's artifacts. Nothing is ever published by hand.
+Then it builds and smoke-tests that package: the npm tarball is packed, installed into an empty folder and run on a
+fixture course, or the installers are built on each OS. Nothing is published and no tag is made unless all of that
+passed. Only then does the publish job (environment `release`) publish to npm and make the tag on the commit it built,
+or attach the installers to a draft GitHub release and publish it, which makes the `ide-v` tag. Only the IDE gets a GitHub
+release. A tag is never moved. If tagging fails after an npm publish, re-run the failed jobs of that run: it leaves the
+version on npm alone and only tags.
 
-Each release is tagged on the commit it was built from, and only once it is out: `client-v` and `cli-v` tags right after
-their npm publish, and the `ide-v` tag by publishing the IDE's GitHub release, which stays a draft until all its
-installers are attached. So a broken build never gets a tag, and tags and releases can be immutable. Only the IDE gets a
-GitHub release. A tag is never moved: a run that finds one on another commit fails. An npm version that is out without
-its tag (the tag failed right after the publish) gets it from the next run, on the commit npm's provenance says it was
-built from; a tag whose version npm does not have fails the plan. The `v0.1.0` and `v0.2.0` tags are the IDE releases
-made by hand before this workflow; the plan counts them, so the IDE's next version must be higher.
+A run from any other branch, or in a fork, is a dry run: it checks, builds and smoke-tests, and publishes and tags
+nothing, leaving the files as the run's artifacts. Nothing is ever published from a laptop.
 
 Installed IDEs update from these GitHub releases (see [IDE updates](docs/features.md#ide-updates)): each one carries
 `latest.yml` and `latest-linux.yml`, which electron-updater reads, and every installer's `.blockmap`, which lets it
