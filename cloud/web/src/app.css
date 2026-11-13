@@ -315,16 +315,24 @@
         color: var(--yk-soft);
     }
 
-    /* A table is wider than a phone more often than not; let it scroll on its own rather than the page sideways. */
+    /* A table is wider than a phone more often than not; let it scroll on its own rather than the page sideways. A
+       scroller clips what is drawn outside it, and its first and last cells have no padding at their outer side, so it
+       reaches out by a focus ring's width and offset, into the card's padding: a control at either end keeps all of
+       its ring, and the table stays where it was. */
     .scroll {
+        --ring: calc(var(--yk-focus-width) + var(--yk-focus-offset));
         overflow-x: auto;
+        padding-inline: var(--ring);
+        margin-inline: calc(-1 * var(--ring));
     }
 
-    /* Tables are yk-table. Inside a card the card is already the frame, so the table drops its own. */
+    /* Tables are yk-table. Inside a card the card is already the frame, so the table drops its own, and with it the
+       clipping that kept rows inside its rounded corners, which would cut the focus ring of a control at either end. */
     section .yk-table {
         border: 0;
         border-radius: 0;
         background: none;
+        overflow: visible;
     }
     .yk-table :is(th, td) {
         vertical-align: baseline;
@@ -757,10 +765,11 @@
             border-start-start-radius: 0;
             border-end-start-radius: 0;
         }
-        /* The ring of a focused half sits inside it: outside, it would wrap one half with corners of its own. */
+        /* A focused half has the ink ring every control has, drawn above its neighbour, which it overlaps by a
+           border and which would otherwise cover the ring's inner edge. */
         .split-button > .yk-btn:focus-visible {
-            outline: 2px solid currentcolor;
-            outline-offset: -4px;
+            position: relative;
+            z-index: 1;
         }
         /* What an assembly changed: a strip with an amber edge, quieter than a box. */
         ul.note-strip {
