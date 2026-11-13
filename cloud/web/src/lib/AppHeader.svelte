@@ -22,7 +22,7 @@
     <a href="/" class="yk-header__brand"><img src="/logo-64.png" alt="" width="24" height="24" />Yukibana</a>
     {#if user}
       <span class="sep" aria-hidden="true">/</span>
-      <button type="button" class="yk-btn yk-btn--ghost course" popovertarget="course-menu" aria-label="Switch course">
+      <button type="button" class="yk-btn yk-btn--ghost course" popovertarget="course-menu">
         <span>{here === null ? 'Courses' : `${here.code} ${here.label}`}</span><Icon name="chevron-down" />
       </button>
       <div class="menu" id="course-menu" popover ontoggle={(e) => placeMenu(e, 'start')}>
