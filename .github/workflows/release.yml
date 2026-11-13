@@ -11,8 +11,14 @@
 # are packed, installed into an empty folder and run, and the installers are built on each OS. Nothing becomes public
 # until every build passed: the publish job needs them all, and publishes npm before the GitHub release.
 #
+# Every release is a tag on the commit it was built from, made only once every build and smoke test passed and the
+# package is out: client-v<version> and cli-v<version> right after their npm publish, ide-v<version> by publishing the
+# IDE's GitHub release (a draft until all its installers are attached). Only the IDE gets a GitHub release. A tag is
+# never moved or made again; an npm version left without its tag gets it from the next run, on the commit npm's
+# provenance names.
+#
 # Run by hand (workflow_dispatch, from any branch) it is a dry run: it packs, smoke-tests and builds everything at the
-# versions in git and publishes nothing, leaving the files as the run's artifacts.
+# versions in git and publishes and tags nothing, leaving the files as the run's artifacts.
 #
 # npm publishing uses trusted publishing (OIDC), with no token: @yukibana/client and @yukibana/cli each name this
 # repository, workflow release.yml and environment `release` as their trusted publisher on npmjs.com (Settings of each
@@ -53,8 +59,13 @@ jobs:
       cli-version: ${{ steps.plan.outputs.cli-version }}
       ide: ${{ steps.plan.outputs.ide }}
       ide-version: ${{ steps.plan.outputs.ide-version }}
+      tags: ${{ steps.plan.outputs.tags }}
+      client-tag: ${{ steps.plan.outputs.client-tag }}
+      client-tag-commit: ${{ steps.plan.outputs.client-tag-commit }}
+      cli-tag: ${{ steps.plan.outputs.cli-tag }}
+      cli-tag-commit: ${{ steps.plan.outputs.cli-tag-commit }}
     steps:
-      # With the tags, which say which IDE versions are out.
+      # With the tags, which say which IDE versions are out and which npm versions are tagged.
       - name: Checkout
         uses: actions/checkout@v7
         with:
@@ -223,7 +234,7 @@ jobs:
     # a build the plan did not need is skipped, which is not a failure.
     if: >-
       !cancelled() && github.event_name == 'push' && github.repository == 'Yukibana-Ed/Yukibana' &&
-      (needs.plan.outputs.npm == 'true' || needs.plan.outputs.ide == 'true') &&
+      (needs.plan.outputs.npm == 'true' || needs.plan.outputs.ide == 'true' || needs.plan.outputs.tags == 'true') &&
       !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -276,6 +287,46 @@ jobs:
           }
           if [ "$CLIENT" = true ]; then publish @yukibana/client "$CLIENT_VERSION" "packs/yukibana-client-$CLIENT_VERSION.tgz"; fi
           if [ "$CLI" = true ]; then publish @yukibana/cli "$CLI_VERSION" "packs/yukibana-cli-$CLI_VERSION.tgz"; fi
+
+      # What was just published, on this commit; and a version out without its tag, on the commit npm's provenance names
+      # (the plan found it). A tag that exists on the same commit is fine; one on another commit fails the run, since
+      # tags are never moved.
+      - name: Tag the npm releases
+        if: needs.plan.outputs.tags == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          CLIENT_TAG: ${{ needs.plan.outputs.client-tag }}
+          CLIENT_TAG_COMMIT: ${{ needs.plan.outputs.client-tag-commit }}
+          CLIENT_VERSION: ${{ needs.plan.outputs.client-version }}
+          CLI_TAG: ${{ needs.plan.outputs.cli-tag }}
+          CLI_TAG_COMMIT: ${{ needs.plan.outputs.cli-tag-commit }}
+          CLI_VERSION: ${{ needs.plan.outputs.cli-version }}
+        run: |
+          set -euo pipefail
+          tag() { # tag, action (here or recover), commit for recover
+            local commit="$COMMIT"
+            case "$2" in
+              none) return ;;
+              recover) commit="$3" ;;
+            esac
+            if [ -z "$commit" ]; then
+              echo "::error::No commit to tag $1 on."
+              exit 1
+            fi
+            if existing=$(gh api "repos/$GH_REPO/git/ref/tags/$1" --jq .object.sha 2> /dev/null); then
+              if [ "$existing" = "$commit" ]; then
+                echo "$1 is already on $commit."
+                return
+              fi
+              echo "::error::$1 is on $existing, not $commit; tags are never moved."
+              exit 1
+            fi
+            gh api "repos/$GH_REPO/git/refs" -f ref="refs/tags/$1" -f sha="$commit" > /dev/null
+            echo "Tagged $commit as $1."
+          }
+          tag "client-v$CLIENT_VERSION" "$CLIENT_TAG" "$CLIENT_TAG_COMMIT"
+          tag "cli-v$CLI_VERSION" "$CLI_TAG" "$CLI_TAG_COMMIT"
 
       - name: Download the installers
         if: needs.plan.outputs.ide == 'true'
