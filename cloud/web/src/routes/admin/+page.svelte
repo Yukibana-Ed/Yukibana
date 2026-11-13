@@ -2,6 +2,7 @@
   import { page } from '$app/state';
   import Tabs from '#lib/Tabs.svelte';
   import Chip from '#lib/Chip.svelte';
+  import Confirm from '#lib/Confirm.svelte';
   import CopyButton from '#lib/CopyButton.svelte';
   import Empty from '#lib/Empty.svelte';
   import { when } from '#lib/format.ts';
@@ -76,18 +77,18 @@
     <h2>Invite a teacher</h2>
     <p>The person who accepts the link gets teacher rights and can create courses. If they have no account, they create one when they sign in. Each link works once.</p>
     <form method="POST" action={actionIn('invites', 'createInvite')} class="stack">
-      <label>For <input name="label" maxlength="200" placeholder="Prof. Rossi, Operating Systems" /></label>
-      <button>Create invite link</button>
+      <label>For <input class="yk-input" name="label" maxlength="200" placeholder="Prof. Rossi, Operating Systems" /></label>
+      <button class="yk-btn yk-btn--primary">Create invite link</button>
     </form>
   </section>
 
   <section>
     <h2>Unused invites</h2>
     {#if data.invites.length === 0}
-      <p class="empty">No unused invites.</p>
+      <Empty title="No unused invites">An invite link you create above is listed here until somebody accepts it.</Empty>
     {:else}
       <div class="scroll">
-        <table>
+        <table class="yk-table">
           <thead><tr><th>For</th><th>Created by</th><th>Created</th><th></th></tr></thead>
           <tbody>
             {#each data.invites as i (i.invite_id)}
@@ -96,10 +97,9 @@
                 <td>{i.created_by ?? ''}</td>
                 <td>{when(i.created_at, viewer.zone)}</td>
                 <td>
-                  <form method="POST" action={actionIn('invites', 'revokeInvite')} class="inline">
-                    <input type="hidden" name="invite_id" value={i.invite_id} />
-                    <button>Remove</button>
-                  </form>
+                  <Confirm label="Remove" title={i.label === '' ? 'Remove this invite?' : `Remove the invite for “${i.label}”?`} action={actionIn('invites', 'revokeInvite')} fields={{ invite_id: i.invite_id }}>
+                    Its link stops working at once. A removed invite cannot be restored; create a new one instead.
+                  </Confirm>
                 </td>
               </tr>
             {/each}
