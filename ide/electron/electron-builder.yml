@@ -69,19 +69,18 @@ linux:
     url: 'https://yukibana.isc-vs.ch/download/latest/linux'
 
 nsis:
-  menuCategory: true
-  oneClick: false
+  # One click, per user, like Figma or VS Code's user installer: no wizard and no admin prompt; it installs into the
+  # user's profile and opens the app. Per user is also what lets the app update itself without elevation, and
+  # electron-updater only updates NSIS installs. The license page and the folder choice exist only in the wizard.
+  oneClick: true
   perMachine: false
-  installerHeaderIcon: resources/icons/WindowsLauncherIcons/Yukibana.ico
+  menuCategory: true
   installerIcon: resources/icons/WindowsLauncherIcons/Yukibana.ico
   uninstallerIcon: resources/icons/WindowsLauncherIcons/Yukibana.ico
-  installerSidebar: resources/icons/InstallerSidebarImage/164-314Windows.bmp
-  uninstallerSidebar: resources/icons/InstallerSidebarImage/164-314Windows.bmp
-  allowToChangeInstallationDirectory: true
-  runAfterFinish: false
+  installerHeaderIcon: resources/icons/WindowsLauncherIcons/Yukibana.ico
+  runAfterFinish: true
   # Every installer's name carries its version, so that the files attached to one GitHub release say which they are.
   artifactName: ${productName}-Setup-${version}.${ext}
-  license: LICENSE
 deb:
   artifactName: ${productName}-${version}-${arch}.${ext}
 appImage:

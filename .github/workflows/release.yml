@@ -198,7 +198,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # The installers only: the update feeds (latest*.yml) and blockmaps wait for the updater (issue #91).
+      # The installers, their blockmaps (which let an updater download only the blocks that changed since the version it
+      # has) and the Windows and Linux update feeds. macOS's arm64 and x64 builds each write a latest-mac.yml of the same
+      # name, so neither goes up until they are merged; an unsigned Mac cannot install updates anyway (issue #91).
       - name: Upload the installers
         uses: actions/upload-artifact@v7
         with:
@@ -209,6 +211,9 @@ jobs:
             ide/electron/dist/*.zip
             ide/electron/dist/*.AppImage
             ide/electron/dist/*.deb
+            ide/electron/dist/*.blockmap
+            ide/electron/dist/latest.yml
+            ide/electron/dist/latest-linux.yml
           compression-level: 0
           if-no-files-found: error
           retention-days: 7
