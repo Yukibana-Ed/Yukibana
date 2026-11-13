@@ -13,6 +13,9 @@
 @layer base, components, layout, controls, bits;
 
 @import '@yukibana/design/tokens.css';
+/* The three faces, self-hosted from the package: Bricolage Grotesque for headings, Atkinson Hyperlegible Next for text,
+   JetBrains Mono for code. Each file is fetched only when the page shows a character it covers. */
+@import '@yukibana/design/fonts.css';
 @import '@yukibana/design/base.css' layer(components);
 
 @layer base {

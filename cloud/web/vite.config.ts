@@ -1,6 +1,8 @@
 import adapter from '@sveltejs/adapter-cloudflare';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { execSync } from 'node:child_process';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { UserConfig } from 'vite';
 
 /** The commit this build is, for `version` in `$app/env`, which every
@@ -22,6 +24,13 @@ function commit(): string | undefined {
 }
 const name = commit();
 
+/** The design package's folder, wherever it is installed. As a workspace
+ *  package it is a link out of node_modules to packages/design, which the
+ *  dev server's file list (SvelteKit's: src, node_modules and its own) does
+ *  not cover, so the fonts its CSS names were refused with 403 in
+ *  development. The build bundles them and needs nothing. */
+const design = dirname(fileURLToPath(import.meta.resolve('@yukibana/design/package.json')));
+
 /** One Worker serves the pages and the API. In development the adapter
  *  emulates the Worker's bindings (Hyperdrive, vars, secrets from .dev.vars)
  *  from wrangler.jsonc behind `cloudflare:workers`, so the env is the same
@@ -38,4 +47,5 @@ export default {
             }),
         }),
     ],
+    server: { fs: { allow: [design] } },
 } satisfies UserConfig;
