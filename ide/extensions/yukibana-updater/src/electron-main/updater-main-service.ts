@@ -5,9 +5,13 @@ import { app, net } from '@theia/core/electron-shared/electron';
 import { RpcProxy } from '@theia/core/lib/common/messaging/proxy-factory';
 import { ElectronMainApplication, ElectronMainApplicationContribution } from '@theia/core/lib/electron-main/electron-main-application';
 import { injectable } from '@theia/core/shared/inversify';
-import { autoUpdater, ProgressInfo, UpdateInfo } from 'electron-updater';
+import { YukibanaMainApplication } from '@yukibana/ide-product-ext/lib/electron-main/yukibana-main-application';
+import { AppImageUpdater, AppUpdater, autoUpdater, ProgressInfo, UpdateInfo } from 'electron-updater';
 import { CHECK_INTERVAL_MS, feedOverride, FIRST_CHECK_DELAY_MS, isNewer, releasePage, releaseVersion, RELEASES_REPOSITORY, UpdateMode, updateMode } from '../common/updater-policy';
 import { UpdaterClient, UpdaterServer, UpdaterState } from '../common/updater-protocol';
+
+/** How long the manual check waits for GitHub before it gives up. */
+const MANUAL_CHECK_TIMEOUT_MS = 60 * 1000;
 
 /**
  * The IDE's updater, in the Electron main process. Where the app can update itself ({@link UpdateMode} `auto`),
@@ -26,7 +30,14 @@ export class UpdaterMainService implements ElectronMainApplicationContribution {
     protected readonly clients = new Set<UpdaterClient>();
     protected readonly timers: NodeJS.Timeout[] = [];
     protected application: ElectronMainApplication | undefined;
-    /** Whether the person asked to restart into the downloaded update, so the quit that follows also relaunches. */
+    /** electron-updater's updater for this platform, in `auto` mode only. */
+    protected updater: AppUpdater | undefined;
+    /** The check running now, which a later {@link checkNow} waits for instead of starting another. */
+    protected running: Promise<void> | undefined;
+    /**
+     * Whether the person asked to restart into the downloaded update and every window agreed to close, so the quit that
+     * follows also starts the new version. Cleared as soon as a window refuses to close.
+     */
     protected restartRequested = false;
 
     /** Decides the mode, and in any but `off` schedules the checks; in `auto`, also sets electron-updater up. */
@@ -38,7 +49,7 @@ export class UpdaterMainService implements ElectronMainApplicationContribution {
         }
         this.setState({ kind: 'idle' });
         if (this.mode === 'auto') {
-            this.setUpAutoUpdater();
+            this.updater = this.createUpdater();
         }
         const first = setTimeout(() => this.checkNow(), FIRST_CHECK_DELAY_MS);
         const every = setInterval(() => this.checkNow(), CHECK_INTERVAL_MS);
@@ -64,22 +75,38 @@ export class UpdaterMainService implements ElectronMainApplicationContribution {
         return {
             getState: async () => this.state,
             checkNow: () => this.checkNow(),
-            restartToUpdate: async () => this.restartToUpdate(),
+            restartToUpdate: () => this.restartToUpdate(),
             setClient: () => {},
             dispose: () => this.clients.delete(client),
         };
     }
 
-    /** See {@link UpdaterServer.checkNow}. Failures become the `failed` state, never an exception. */
-    async checkNow(): Promise<void> {
-        if (this.mode === 'off' || this.state.kind === 'checking' || this.state.kind === 'downloading' || this.state.kind === 'downloaded') {
-            return;
+    /**
+     * See {@link UpdaterServer.checkNow}: resolves once the check has an answer, also when it joins one already running.
+     * Failures become the `failed` state, never an exception.
+     */
+    checkNow(): Promise<void> {
+        if (this.running) {
+            return this.running;
         }
+        if (this.mode === 'off' || this.state.kind === 'downloading' || this.state.kind === 'downloaded') {
+            return Promise.resolve();
+        }
+        this.running = this.check().finally(() => {
+            this.running = undefined;
+        });
+        return this.running;
+    }
+
+    /** One check, setting `checking` and then the state it ends in. */
+    protected async check(): Promise<void> {
         this.setState({ kind: 'checking' });
         try {
-            if (this.mode === 'auto') {
+            if (this.updater) {
                 // The events set the state that follows: downloading, then downloaded, or idle, or failed.
-                await autoUpdater.checkForUpdates();
+                const result = await this.updater.checkForUpdates();
+                // A failed download is reported by the 'error' event; this only keeps its rejection from going unhandled.
+                result?.downloadPromise?.catch(() => {});
             } else {
                 await this.checkManually();
             }
@@ -88,60 +115,80 @@ export class UpdaterMainService implements ElectronMainApplicationContribution {
         }
     }
 
-    /** See {@link UpdaterServer.restartToUpdate}. */
-    protected restartToUpdate(): void {
+    /**
+     * See {@link UpdaterServer.restartToUpdate}. Closes the windows one by one through Theia's close flow; the last one
+     * closing quits the app, and the quit handler of {@link createUpdater} installs and relaunches. If a window refuses,
+     * the windows before it stay closed, the app keeps running, and a later quit installs without relaunching.
+     */
+    protected async restartToUpdate(): Promise<void> {
         if (this.state.kind !== 'downloaded' || !this.application) {
             return;
         }
         this.restartRequested = true;
-        // Closes every window through Theia's close flow, which asks about unsaved changes; a cancel aborts the quit.
-        this.application.requestStop();
+        if (this.application instanceof YukibanaMainApplication) {
+            if (!(await this.application.closeAllWindows())) {
+                this.restartRequested = false;
+            }
+        } else {
+            // Without the product's application, a refusal cannot be seen: a cancelled restart leaves the request set.
+            this.application.requestStop();
+        }
     }
 
     /**
-     * Configures electron-updater: download in the background, install on quit, never pre-releases, and the feed of
-     * `YUKIBANA_UPDATE_FEED` if set. Its events become states. Registers, before electron-updater's own, the quit handler
-     * that relaunches the app when the person asked to restart into the update.
+     * electron-updater's updater for this platform: download in the background, install on quit, never pre-releases,
+     * and the feed of `YUKIBANA_UPDATE_FEED` if set. Its events become states. Also registers, before the updater's own,
+     * the quit handler that relaunches the app when the person asked to restart into the update.
+     *
+     * On Linux always the AppImage updater (`auto` there means an AppImage): electron-updater's `autoUpdater` would pick
+     * the .deb updater whenever the app's resources say `package-type: deb`, which electron-builder also writes into the
+     * AppImage when it builds both from the same folder.
      */
-    protected setUpAutoUpdater(): void {
-        autoUpdater.autoDownload = true;
-        autoUpdater.autoInstallOnAppQuit = true;
-        autoUpdater.allowPrerelease = false;
-        autoUpdater.allowDowngrade = false;
+    protected createUpdater(): AppUpdater {
+        const updater: AppUpdater = process.platform === 'linux' ? new AppImageUpdater() : autoUpdater;
+        updater.autoDownload = true;
+        updater.autoInstallOnAppQuit = true;
+        updater.allowPrerelease = false;
+        updater.allowDowngrade = false;
         const feed = feedOverride(process.env);
         if (feed) {
-            autoUpdater.setFeedURL({ provider: 'generic', url: feed });
+            updater.setFeedURL({ provider: 'generic', url: feed });
         }
-        autoUpdater.on('update-available', (info: UpdateInfo) => this.setState({ kind: 'downloading', version: info.version, percent: 0 }));
-        autoUpdater.on('update-not-available', () => this.setState({ kind: 'idle' }));
-        autoUpdater.on('download-progress', (progress: ProgressInfo) => {
+        updater.on('update-available', (info: UpdateInfo) => this.setState({ kind: 'downloading', version: info.version, percent: 0 }));
+        updater.on('update-not-available', () => this.setState({ kind: 'idle' }));
+        updater.on('download-progress', (progress: ProgressInfo) => {
             if (this.state.kind === 'downloading') {
                 this.setState({ ...this.state, percent: Math.floor(progress.percent) });
             }
         });
-        autoUpdater.on('update-downloaded', (info: UpdateInfo) => this.setState({ kind: 'downloaded', version: info.version }));
-        autoUpdater.on('error', (error: Error) => {
+        updater.on('update-downloaded', (info: UpdateInfo) => this.setState({ kind: 'downloaded', version: info.version }));
+        updater.on('error', (error: Error) => {
             if (this.state.kind !== 'downloaded') {
                 this.setState({ kind: 'failed', message: error.message });
             }
         });
-        // 'quit' listeners run in the order they were added, and electron-updater adds its own only once an update is
-        // downloaded. Installing here, silently and starting the app after, makes electron-updater's handler skip.
+        // 'quit' listeners run in the order they were added, and the updater adds its own only once an update is
+        // downloaded. Installing here, silently and starting the app after, makes the updater's own handler skip.
         app.once('quit', (_event, exitCode) => {
             if (this.restartRequested && this.state.kind === 'downloaded' && exitCode === 0) {
-                autoUpdater.quitAndInstall(true, true);
+                updater.quitAndInstall(true, true);
             }
         });
+        return updater;
     }
 
     /**
      * Asks GitHub which IDE release is the latest, and sets `available` with its page when it is newer than this app,
-     * `idle` otherwise. Throws when GitHub cannot be reached or answers with something else than a release.
+     * `idle` otherwise. Throws when GitHub cannot be reached in {@link MANUAL_CHECK_TIMEOUT_MS} or answers with something
+     * else than an IDE release.
      */
     protected async checkManually(): Promise<void> {
         const { owner, repo } = RELEASES_REPOSITORY;
         // github.com's own redirect to the latest release, answered as JSON: not the API, whose anonymous limit is low.
-        const response = await net.fetch(`https://github.com/${owner}/${repo}/releases/latest`, { headers: { accept: 'application/json' } });
+        const response = await net.fetch(`https://github.com/${owner}/${repo}/releases/latest`, {
+            headers: { accept: 'application/json' },
+            signal: AbortSignal.timeout(MANUAL_CHECK_TIMEOUT_MS),
+        });
         if (!response.ok) {
             throw new Error(`GitHub answered ${response.status} for the latest release`);
         }

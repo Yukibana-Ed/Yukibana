@@ -12,6 +12,7 @@
   ],
   "dependencies": {
     "@theia/core": "catalog:",
+    "@yukibana/ide-product-ext": "catalog:",
     "electron-updater": "catalog:"
   },
   "devDependencies": {
