@@ -55,7 +55,7 @@
             <td>
               <div class="actions">
                 {#if r.starter_ready}
-                  <a class="yk-btn yk-btn--primary" href={ideUrl(r.project_id)}>Open in IDE</a>
+                  <a class="yk-btn yk-btn--secondary" href={ideUrl(r.project_id)}>Open in IDE</a>
                   <a class="yk-btn yk-btn--secondary" href="/api/projects/{r.project_id}/starter">Download</a>
                 {/if}
                 {#if r.can_submit}<a class="yk-btn yk-btn--secondary" href="{page(r)}#submit">Submit</a>{/if}

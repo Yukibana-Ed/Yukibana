@@ -126,13 +126,13 @@
                 {@const raw = `/api/submissions/${s.submissionId}`}
                 <div class="actions">
                   {#if newest === null}
-                    <a class="yk-btn yk-btn--primary" href={raw} download>Download</a>
+                    <a class="yk-btn yk-btn--secondary" href={raw} download>Download</a>
                   {:else}
                     <div class="split-button">
-                      <button type="button" class="yk-btn yk-btn--primary" disabled={busy} onclick={() => download(l, s)} title="With the release's read-only and hidden files, ready to grade">
+                      <button type="button" class="yk-btn yk-btn--secondary" disabled={busy} onclick={() => download(l, s)} title="With the release's read-only and hidden files, ready to grade">
                         {#if busy}<span class="yk-spinner" aria-hidden="true"></span>Assembling{:else}Download{/if}
                       </button>
-                      <button type="button" class="yk-btn yk-btn--primary menu-toggle" popovertarget="menu-{s.submissionId}" aria-label="More ways to download"><Icon name="chevron-down" /></button>
+                      <button type="button" class="yk-btn yk-btn--secondary menu-toggle" popovertarget="menu-{s.submissionId}" aria-label="More ways to download"><Icon name="chevron-down" /></button>
                       <div class="menu" id="menu-{s.submissionId}" popover ontoggle={(e) => placeMenu(e)}>
                         <a href={raw} download onclick={(e) => e.currentTarget.closest<HTMLElement>('[popover]')?.hidePopover()}>Download without assembly</a>
                       </div>
