@@ -87,7 +87,8 @@
       <form method="POST" action={actionIn('create', 'createCourse')} class="stack">
         <label>Code <input class="yk-input" name="code" placeholder="CS-101" required /></label>
         <label>Title <input class="yk-input" name="title" placeholder="Introduction to Programming" required /></label>
-        <button class="yk-btn yk-btn--primary">Create course</button>
+        <!-- A new edition is what a teacher makes most; a course is made once. With no course yet, it is the only form. -->
+        <button class="yk-btn {data.courses.length > 0 ? 'yk-btn--secondary' : 'yk-btn--primary'}">Create course</button>
       </form>
       <p class="note">A course groups its editions; the work lives in an edition.</p>
     </section>

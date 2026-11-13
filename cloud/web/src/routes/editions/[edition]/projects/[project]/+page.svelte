@@ -145,7 +145,8 @@
           <label>Your solution as .tar.gz
             <input class="yk-input" type="file" name="archive" accept=".gz,.tgz,application/gzip" required />
           </label>
-          <button class="yk-btn yk-btn--primary">Submit</button>
+          <!-- Secondary: the IDE is the way in (Open in Yukibana IDE, above) and submits for the student; this is the by-hand way. -->
+          <button class="yk-btn yk-btn--secondary">Submit</button>
         </form>
         <p class="note">
           You can submit as many times as you like. Every version is kept; the latest version is the one assessed.

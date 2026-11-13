@@ -140,7 +140,7 @@
     <h2>Duplicate</h2>
     <form method="POST" action={actionIn('settings', 'duplicate')} class="stack">
       <label>New edition's label <input class="yk-input" name="label" placeholder="2027 autumn" required /></label>
-      <button class="yk-btn yk-btn--primary">Duplicate</button>
+      <button class="yk-btn yk-btn--secondary">Duplicate</button>
     </form>
     <p class="note">A duplicate carries the projects and the staff, not the students or the dates.</p>
   </section>
