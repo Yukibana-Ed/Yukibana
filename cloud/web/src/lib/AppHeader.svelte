@@ -1,12 +1,13 @@
 <script lang="ts">
   import { page } from '$app/state';
   import Icon from './Icon.svelte';
+  import ThemeSwitch from './ThemeSwitch.svelte';
   import { placeMenu } from './popover';
   import type { Membership } from './memberships';
 
   /** The cloud's bar (yk-header): the brand, the course switcher, the avatar, and nothing else. The switcher names the
-   *  edition the page is in, or "Courses", and lists the person's editions; the avatar opens who they are signed in as
-   *  and Log out. Signed out, the bar holds the brand and Log in. */
+   *  edition the page is in, or "Courses", and lists the person's editions; the avatar opens who they are signed in as,
+   *  the theme (ThemeSwitch) and Log out. Signed out, the bar holds the brand and Log in. */
   let { user, memberships }: { user: { readonly email: string | null } | null; memberships: readonly Membership[] } = $props();
 
   const here = $derived(memberships.find((m) => m.edition_id === page.params['edition']) ?? null);
@@ -45,6 +46,8 @@
       <button type="button" class="avatar" popovertarget="account-menu" aria-label="Account: {user.email ?? 'signed in'}">{initial}</button>
       <div class="menu" id="account-menu" popover ontoggle={(e) => placeMenu(e)}>
         <div class="who">Signed in as {user.email ?? 'an account without an address'}</div>
+        <hr />
+        <ThemeSwitch />
         <hr />
         <form method="POST" action="/auth/logout"><button>Log out</button></form>
       </div>

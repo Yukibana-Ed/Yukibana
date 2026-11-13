@@ -8,8 +8,21 @@
         <!-- Both schemes are real, so say so before any CSS loads and the browser
              paints the right background instead of a white flash. -->
         <meta name="color-scheme" content="light dark" />
-        <meta name="theme-color" content="#f5f6f9" media="(prefers-color-scheme: light)" />
-        <meta name="theme-color" content="#0e1116" media="(prefers-color-scheme: dark)" />
+        <meta name="theme-color" content="#f5f6f9" media="(prefers-color-scheme: light)" data-scheme="light" />
+        <meta name="theme-color" content="#0e1116" media="(prefers-color-scheme: dark)" data-scheme="dark" />
+        <!-- The theme the person chose in the account menu (#lib/theme), applied before anything paints so the page
+             never flashes the other scheme. It is applyTheme in #lib/theme.ts, inlined; tests/theme.test.ts runs it. -->
+        <script id="theme-boot">
+            try {
+                var theme = localStorage.getItem('yukibana-theme');
+                if (theme === 'light' || theme === 'dark') {
+                    document.documentElement.setAttribute('data-theme', theme);
+                    document.querySelectorAll('meta[name="theme-color"][data-scheme]').forEach(function (meta) {
+                        meta.media = meta.dataset.scheme === theme ? 'all' : 'not all';
+                    });
+                }
+            } catch (e) {}
+        </script>
         <!-- The design system's three faces (@yukibana/design): Bricolage Grotesque for headings, Atkinson
              Hyperlegible Next for text, JetBrains Mono for code. -->
         <link rel="preconnect" href="https://fonts.googleapis.com" />
