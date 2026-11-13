@@ -16,7 +16,7 @@
           <summary>Details</summary>
           <pre>{t.details}</pre>
         </details>
-        <CopyButton text={t.details} />
+        <CopyButton text={t.details} plain />
       {/if}
       {#if t.retry !== null}
         {@const retry = t.retry}
