@@ -31,7 +31,7 @@
 
 <fieldset class="theme-switch">
   <legend>Theme</legend>
-  <div class="segments">
+  <div class="yk-segmented">
     {#each THEMES as t (t)}
       <label>
         <input type="radio" name="theme" value={t} checked={theme === t} onchange={() => choose(t)} />
@@ -42,6 +42,8 @@
 </fieldset>
 
 <style>
+  /* The segmented control is the package's (yk-segmented). What is the menu's own: the fieldset's frame and legend, the
+     row as wide as the menu with three equal segments, and the menu's smaller type and padding. */
   .theme-switch {
     margin: 0;
     padding: 4px 10px 6px;
@@ -53,56 +55,14 @@
     color: var(--yk-soft);
     font-size: var(--yk-font-size-xs);
   }
-  .segments {
+  .yk-segmented {
     display: flex;
   }
-  /* One line between two segments, drawn once by the later one: overlapped borders come out uneven. */
-  label {
+  .yk-segmented > label {
     flex: 1 1 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
     gap: 4px;
     padding: 4px 8px;
-    border: 1px solid var(--yk-line-strong);
-    background: var(--yk-surface);
-    color: var(--yk-soft);
     font-size: var(--yk-font-size-xs);
-    font-weight: var(--yk-font-weight-semibold);
-    white-space: nowrap;
-    cursor: pointer;
-    transition: background-color var(--yk-motion-fast);
-  }
-  label:not(:last-child) {
-    border-right-width: 0;
-  }
-  label:first-child {
-    border-radius: var(--yk-radius-sm) 0 0 var(--yk-radius-sm);
-  }
-  label:last-child {
-    border-radius: 0 var(--yk-radius-sm) var(--yk-radius-sm) 0;
-  }
-  label:hover {
-    background: var(--yk-sunken);
-  }
-  /* The chosen one, as a pressed toggle: filled, in ink, outlined in ink on all four sides. */
-  label:has(input:checked) {
-    border-color: var(--yk-ink);
-    background: var(--yk-sunken);
-    color: var(--yk-ink);
-  }
-  label:has(input:checked) + label {
-    border-left-color: var(--yk-ink);
-  }
-  label:has(input:focus-visible) {
-    position: relative;
-    z-index: 1;
-    outline: var(--yk-focus-width) solid var(--yk-ink);
-    outline-offset: var(--yk-focus-offset);
-  }
-  input {
-    position: absolute;
-    opacity: 0;
-    pointer-events: none;
+    line-height: inherit;
   }
 </style>
