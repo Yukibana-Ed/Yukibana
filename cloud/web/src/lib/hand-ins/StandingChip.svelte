@@ -1,13 +1,14 @@
 <script lang="ts">
+  import Chip from '../Chip.svelte';
   import type { Standing } from '../hand-ins';
   /** How a student stands, as a chip: nothing yet, late, or on time. */
   let { standing }: { standing: Standing } = $props();
 </script>
 
 {#if standing === 'missing'}
-  <span class="chip">not submitted</span>
+  <Chip tone="open">not submitted</Chip>
 {:else if standing === 'late'}
-  <span class="chip late">late</span>
+  <Chip tone="late">late</Chip>
 {:else}
-  <span class="chip good">on time</span>
+  <Chip tone="done">on time</Chip>
 {/if}

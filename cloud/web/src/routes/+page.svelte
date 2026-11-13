@@ -1,6 +1,9 @@
 <script lang="ts">
   import { page } from '$app/state';
   import Tabs from '#lib/Tabs.svelte';
+  import Chip from '#lib/Chip.svelte';
+  import Empty from '#lib/Empty.svelte';
+  import { followRow } from '#lib/row-link.ts';
   import StudentProjects from '#lib/StudentProjects.svelte';
   import { byUrgency, outstanding, progressOf } from '#lib/progress.ts';
   import { actionIn, tabOf, type Tab } from '#lib/tabs.ts';
@@ -46,7 +49,7 @@
       starter archive; students download it, solve it in their own editor, and submit as many
       versions as they like.
     </p>
-    <p><a class="button" href="/auth/login">Log in</a> to see yours.</p>
+    <p><a class="yk-btn yk-btn--primary" href="/auth/login">Log in</a> to see yours.</p>
   </section>
 {:else}
   <Tabs {tabs} current={tab} />
@@ -54,12 +57,12 @@
   {#if tab === 'todo'}
     <section>
       <h2>Still to hand in</h2>
-      <StudentProjects rows={todo} showCourse empty="Nothing outstanding. Projects appear here once they open." />
+      <StudentProjects rows={todo} showCourse empty={{ title: 'Nothing outstanding', text: 'Projects appear here once they open.' }} />
     </section>
     {#if done.length > 0}
       <section>
         <h2>Handed in</h2>
-        <StudentProjects rows={done} showCourse empty="" />
+        <StudentProjects rows={done} showCourse empty={{ title: 'Nothing handed in yet', text: '' }} />
         <p class="note">You can keep submitting while a project is open; the latest version is the one assessed.</p>
       </section>
     {/if}
@@ -69,12 +72,12 @@
         <h2>New edition</h2>
         <form method="POST" action={actionIn('create', 'createEdition')} class="stack">
           <label>Course
-            <select name="course_id">
+            <select class="yk-input" name="course_id">
               {#each data.courses as c (c.course_id)}<option value={c.course_id}>{c.code} · {c.title}</option>{/each}
             </select>
           </label>
-          <label>Label <input name="label" placeholder="2026 autumn" required /></label>
-          <button>Create edition</button>
+          <label>Label <input class="yk-input" name="label" placeholder="2026 autumn" required /></label>
+          <button class="yk-btn yk-btn--primary">Create edition</button>
         </form>
         <p class="note">To reuse last year's projects and staff, open that edition and duplicate it instead.</p>
       </section>
@@ -82,9 +85,9 @@
     <section>
       <h2>New course</h2>
       <form method="POST" action={actionIn('create', 'createCourse')} class="stack">
-        <label>Code <input name="code" placeholder="CS-101" required /></label>
-        <label>Title <input name="title" placeholder="Introduction to Programming" required /></label>
-        <button>Create course</button>
+        <label>Code <input class="yk-input" name="code" placeholder="CS-101" required /></label>
+        <label>Title <input class="yk-input" name="title" placeholder="Introduction to Programming" required /></label>
+        <button class="yk-btn yk-btn--primary">Create course</button>
       </form>
       <p class="note">A course groups its editions; the work lives in an edition.</p>
     </section>
@@ -92,20 +95,19 @@
     <section>
       <h2>{tab === 'archived' ? 'Archived editions' : 'Editions you are in'}</h2>
       {#if shown.length === 0}
-        <p class="empty">
-          Nothing yet. Enrolment is by address: once a teacher enrols the address you logged in with,
-          the edition appears here.
-        </p>
+        <Empty title={tab === 'archived' ? 'Nothing archived' : 'No courses yet'}>
+          Enrolment is by address: once a teacher enrols the address you logged in with, the edition appears here.
+        </Empty>
       {:else}
         <div class="scroll">
-          <table>
+          <table class="yk-table">
             <thead><tr><th>Course</th><th>Edition</th><th>You are</th></tr></thead>
             <tbody>
               {#each shown as e (e.edition_id)}
-                <tr>
+                <tr data-href="/editions/{e.edition_id}" onclick={followRow}>
                   <td>{e.code} · {e.title}</td>
                   <td><a href="/editions/{e.edition_id}">{e.label}</a></td>
-                  <td><span class="chip">{e.role}</span></td>
+                  <td><Chip>{e.role}</Chip></td>
                 </tr>
               {/each}
             </tbody>

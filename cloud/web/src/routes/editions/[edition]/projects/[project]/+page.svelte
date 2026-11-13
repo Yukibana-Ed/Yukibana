@@ -1,6 +1,9 @@
 <script lang="ts">
   import { page } from '$app/state';
   import Tabs from '#lib/Tabs.svelte';
+  import Chip from '#lib/Chip.svelte';
+  import Confirm from '#lib/Confirm.svelte';
+  import Empty from '#lib/Empty.svelte';
   import { kb, when } from '#lib/format.ts';
   import { viewer } from '#lib/viewer.svelte.ts';
   import { local } from '#lib/wall-time.ts';
@@ -58,6 +61,14 @@
   // page does not say it is out of date. It used to, and every save flashed
   // the warning before "Saved.".
   let saving = $state(false);
+  // The Save button says it worked, for two seconds, instead of a line above the form.
+  let saved = $state(false);
+  $effect(() => {
+    if (form?.ok !== true) return;
+    saved = true;
+    const shown = setTimeout(() => (saved = false), 2000);
+    return () => clearTimeout(shown);
+  });
   function discard(): void {
     editing = false;
     refresh();
@@ -72,9 +83,9 @@
   </nav>
   <h1>{p.title}</h1>
   <p class="row">
-    <span class="chip">{p.kind}</span>
-    {#if data.staff && p.available_after === null}<span class="chip">draft</span>{/if}
-    {#if pastDeadline}<span class="chip late">past the deadline</span>{/if}
+    <Chip tone="info">{p.kind}</Chip>
+    {#if data.staff && p.available_after === null}<Chip tone="draft">draft</Chip>{/if}
+    {#if pastDeadline}<Chip tone="late">past the deadline</Chip>{/if}
   </p>
 </div>
 
@@ -116,12 +127,12 @@
     <h2>{data.staff ? 'Starter' : 'Work on it'}</h2>
     {#if p.ready}
       <p class="row">
-        <a class="button" href={ideUrl(p.project_id)}>Open in Yukibana IDE</a>
-        <a class="button quiet" href="/api/projects/{p.project_id}/starter">Download {p.slug}.tar.gz</a>
+        <a class="yk-btn yk-btn--primary" href={ideUrl(p.project_id)}>Open in Yukibana IDE</a>
+        <a class="yk-btn yk-btn--secondary" href="/api/projects/{p.project_id}/starter">Download {p.slug}.tar.gz</a>
       </p>
       {#if !data.staff}<p class="note">The IDE opens the project, downloading it if needed. Without the IDE, download the starter and work in that folder.</p>{/if}
     {:else}
-      <p class="empty">No exercise contents have been released yet.</p>
+      <Empty title="Nothing released yet">{data.staff ? 'Publish a release from the project’s repository; the Releases tab says how.' : 'The starter appears here once the teacher releases it.'}</Empty>
     {/if}
   </section>
 
@@ -132,16 +143,16 @@
         {#if pastDeadline}<p class="error">The deadline has passed: a submission now is recorded as late.</p>{/if}
         <form method="POST" action={actionIn('overview', 'submit')} enctype="multipart/form-data" class="stack">
           <label>Your solution as .tar.gz
-            <input type="file" name="archive" accept=".gz,.tgz,application/gzip" required />
+            <input class="yk-input" type="file" name="archive" accept=".gz,.tgz,application/gzip" required />
           </label>
-          <button>Submit</button>
+          <button class="yk-btn yk-btn--primary">Submit</button>
         </form>
         <p class="note">
           You can submit as many times as you like. Every version is kept; the latest version is the one assessed.
           The IDE's submit button sends the right archive for you; to make one by hand, run <code>yukibana pack</code> in the project folder.
         </p>
       {:else}
-        <p class="empty">This project is not accepting submissions from you now.</p>
+        <Empty title="Not accepting submissions">This project is not accepting submissions from you now.</Empty>
       {/if}
     </section>
   {/if}
@@ -150,7 +161,7 @@
     <section>
       <h2>Submissions</h2>
       {#if lines.length === 0}
-        <p class="empty">Nobody is enrolled as a student yet.</p>
+        <Empty title="No students yet">Submissions appear here, one row per student, once students are enrolled.</Empty>
       {:else}
         <HandInsTable {lines} releases={data.allReleases} slug={p.slug} />
       {/if}
@@ -159,17 +170,17 @@
     <section>
       <h2>My submissions</h2>
       {#if data.submissions.length === 0}
-        <p class="empty">None yet.</p>
+        <Empty title="No submissions yet">Every version you submit is listed here.</Empty>
       {:else}
         <div class="scroll">
-          <table>
+          <table class="yk-table">
             <thead>
               <tr><th>Submitted</th><th>Size</th><th>SHA-256</th><th></th></tr>
             </thead>
             <tbody>
               {#each data.submissions as s (s.submissionId)}
                 <tr>
-                  <td>{when(s.submittedAt, viewer.zone)}{#if s.late} <span class="chip late">late</span>{/if}</td>
+                  <td>{when(s.submittedAt, viewer.zone)}{#if s.late} <Chip tone="late">late</Chip>{/if}</td>
                   <td>{kb(s.byteSize)}</td>
                   <td><code>{s.sha256.slice(0, 12)}</code></td>
                   <td><a href="/api/submissions/{s.submissionId}">Download</a></td>
@@ -185,23 +196,22 @@
   <section>
     <h2>Releases</h2>
     {#if data.releases.length === 0}
-      <p class="empty">
-        No releases yet. A release is two archives: the starter students get, and the whole project
-        for staff.
-      </p>
+      <Empty title="No releases yet">
+        A release is two archives: the starter students get, and the whole project for staff.
+      </Empty>
     {:else}
       <div class="scroll">
-        <table>
+        <table class="yk-table">
           <thead>
             <tr><th>Uploaded</th><th>Label</th><th>Commit</th><th>By</th><th>Starter</th><th>Teacher archive</th></tr>
           </thead>
           <tbody>
             {#each data.releases as r, i (r.release_id)}
               <tr>
-                <td>{when(r.uploaded_at, viewer.zone)}{#if i === 0} <span class="chip live">live</span>{/if}</td>
+                <td>{when(r.uploaded_at, viewer.zone)}{#if i === 0} <Chip tone="info">live</Chip>{/if}</td>
                 <td>{r.label}</td>
                 <td><code>{r.commit_sha?.slice(0, 12) ?? '—'}</code></td>
-                <td>{r.uploader ?? ''}{#if r.via_token} <span class="chip">token</span>{/if}</td>
+                <td>{r.uploader ?? ''}{#if r.via_token} <Chip>token</Chip>{/if}</td>
                 <td><a href="/api/releases/{r.release_id}/starter">{kb(r.starter_size)}</a></td>
                 <td><a href="/api/releases/{r.release_id}/teacher">{kb(r.teacher_size)}</a></td>
               </tr>
@@ -239,20 +249,19 @@ YUKIBANA_PROJECT {p.project_id}
 YUKIBANA_URL     {data.origin}</pre>
     {#if data.tokens.length > 0}
       <div class="scroll">
-        <table>
+        <table class="yk-table">
           <thead><tr><th>Label</th><th>Created</th><th>Last used</th><th></th></tr></thead>
           <tbody>
             {#each data.tokens as t (t.token_id)}
               <tr>
                 <td>{t.label}</td>
                 <td>{when(t.created_at, viewer.zone)}</td>
-                <td>{#if t.revoked_at}<span class="chip">revoked</span>{:else}{when(t.last_used_at, viewer.zone)}{/if}</td>
+                <td>{#if t.revoked_at}<Chip>revoked</Chip>{:else}{when(t.last_used_at, viewer.zone)}{/if}</td>
                 <td>
                   {#if !t.revoked_at}
-                    <form method="POST" action={actionIn('tokens', 'revokeToken')} class="inline">
-                      <input type="hidden" name="token_id" value={t.token_id} />
-                      <button>Revoke</button>
-                    </form>
+                    <Confirm label="Revoke" title="Revoke “{t.label}”?" action={actionIn('tokens', 'revokeToken')} fields={{ token_id: t.token_id }}>
+                      CI that publishes with this token stops working at once. A revoked token cannot be restored; make a new one instead.
+                    </Confirm>
                   {/if}
                 </td>
               </tr>
@@ -265,33 +274,32 @@ YUKIBANA_URL     {data.origin}</pre>
   <section>
     <h2>New token</h2>
     <form method="POST" action={actionIn('tokens', 'createToken')} class="stack">
-      <label>Label <input name="label" placeholder="github actions" /></label>
-      <button>Create token</button>
+      <label>Label <input class="yk-input" name="label" placeholder="github actions" /></label>
+      <button class="yk-btn yk-btn--primary">Create token</button>
     </form>
   </section>
 {:else if tab === 'settings'}
-  {#if form?.ok}<p class="ok">Saved.</p>{/if}
   <section>
     <h2>Settings</h2>
     {#if editing && live.stale && !saving}
       <p class="error" role="alert">
         Somebody else changed this project while you were editing. Saving replaces their change.
-        <button type="button" class="quiet" onclick={discard}>Discard my edits and show theirs</button>
+        <button type="button" class="yk-btn yk-btn--secondary" onclick={discard}>Discard my edits and show theirs</button>
       </p>
     {/if}
     {#key p}
       <form method="POST" action={actionIn('settings', 'update')} class="stack" oninput={() => (editing = true)} onsubmit={() => (saving = true)}>
-        <label>Title <input name="title" value={p.title} required /></label>
+        <label>Title <input class="yk-input" name="title" value={p.title} required /></label>
         <!-- The zone the times below are written in, and the instants they
              were written from: the action reads the times in that zone, and
              keeps an instant whose time nobody changed (#lib/wall-time). -->
         <input type="hidden" name="zone" value={viewer.zone} />
         {#each times as [name, label, at] (name)}
           <input type="hidden" name="{name}_was" value={at === null ? '' : new Date(at).toISOString()} />
-          <label>{label} <input type="datetime-local" {name} value={local(at, viewer.zone)} /></label>
+          <label>{label} <input class="yk-input" type="datetime-local" {name} value={local(at, viewer.zone)} /></label>
         {/each}
         <p class="note">Times are in {viewer.zone}{viewer.zone === 'UTC' ? '' : ', this browser’s time zone'}.</p>
-        <button>Save</button>
+        <button class="yk-btn yk-btn--primary" data-done={saved ? '' : undefined}>{saved ? '✓ Saved' : 'Save'}</button>
       </form>
     {/key}
     <p class="note">

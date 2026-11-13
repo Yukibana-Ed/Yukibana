@@ -2,6 +2,7 @@ import { expect, test } from 'vitest';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 
 const src = fileURLToPath(new URL('../src', import.meta.url));
 
@@ -38,8 +39,11 @@ test('the one stylesheet is pulled in once, by the layout every page is inside',
 });
 
 test('both colour schemes come from one set of values, not a second block to keep in step', () => {
+    // The values are the design system's tokens, each a light-dark() pair; the app's stylesheet loads them.
     const css = readFileSync(join(src, 'app.css'), 'utf8');
-    expect(css).toMatch(/color-scheme:\s*light dark/);
+    const tokens = readFileSync(createRequire(import.meta.url).resolve('@yukibana/design/tokens.css'), 'utf8');
+    expect(css).toContain("@import '@yukibana/design/tokens.css'");
+    expect(tokens).toMatch(/color-scheme:\s*light dark/);
     // A `prefers-color-scheme` block would be the second place a colour is
     // decided, and the one that falls behind.
     expect(css).not.toMatch(/prefers-color-scheme/);

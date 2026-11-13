@@ -1,6 +1,8 @@
 <script lang="ts">
   import { page } from '$app/state';
   import Tabs from '#lib/Tabs.svelte';
+  import Chip from '#lib/Chip.svelte';
+  import Empty from '#lib/Empty.svelte';
   import StaffProjects from '#lib/StaffProjects.svelte';
   import StudentProjects from '#lib/StudentProjects.svelte';
   import { actionIn, tabOf, type Tab } from '#lib/tabs.ts';
@@ -18,8 +20,8 @@
   <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Courses</a><span>{data.edition.code} {data.edition.label}</span></nav>
   <h1>{data.edition.code} · {data.edition.title}</h1>
   <p>
-    <span class="chip">{data.edition.label}</span>
-    {#if data.edition.archived_at}<span class="chip">archived</span>{/if}
+    <Chip>{data.edition.label}</Chip>
+    {#if data.edition.archived_at}<Chip>archived</Chip>{/if}
   </p>
 </div>
 
@@ -29,7 +31,7 @@
   {#if !data.staff}
     <section>
       <h2>Projects</h2>
-      <StudentProjects rows={data.mine} empty="Nothing is open to you right now." />
+      <StudentProjects rows={data.mine} empty={{ title: 'Nothing open to you', text: 'Projects appear here once they open.' }} />
     </section>
   {:else}
     <section>
@@ -43,12 +45,12 @@
       <h2>New project</h2>
       <form method="POST" action={actionIn('projects', 'createProject')} class="stack">
         <!-- The dash is escaped: browsers compile `pattern` with the v flag, where a bare one is an error and the check is silently dropped. -->
-        <label>Slug <input name="slug" pattern="[a-z0-9][a-z0-9\-]*" placeholder="warmup" required /></label>
-        <label>Title <input name="title" required /></label>
+        <label>Slug <input class="yk-input" name="slug" pattern="[a-z0-9][a-z0-9\-]*" placeholder="warmup" required /></label>
+        <label>Title <input class="yk-input" name="title" required /></label>
         <label>Kind
-          <select name="kind">{#each data.kinds as k (k)}<option value={k}>{k}</option>{/each}</select>
+          <select class="yk-input" name="kind">{#each data.kinds as k (k)}<option value={k}>{k}</option>{/each}</select>
         </label>
-        <button>Create project</button>
+        <button class="yk-btn yk-btn--primary">Create project</button>
       </form>
       <p class="note">A project starts as a draft: students see it once you set its dates on its page.</p>
     </section>
@@ -57,10 +59,10 @@
   <section>
     <h2>Roster</h2>
     {#if data.roster.length === 0}
-      <p class="empty">Nobody is enrolled yet.</p>
+      <Empty title="Nobody enrolled yet">{data.owner ? 'Enrol students and staff by address below.' : 'The owners enrol students and staff by address.'}</Empty>
     {:else}
       <div class="scroll">
-        <table>
+        <table class="yk-table">
           <thead>
             <tr>
               <th>Address</th><th>Person</th><th>Role</th><th>Status</th>{#if data.owner}<th></th>{/if}
@@ -75,21 +77,23 @@
                   {#if data.owner}
                     <form method="POST" action={actionIn('roster', 'setRole')} class="inline">
                       <input type="hidden" name="email" value={r.email} />
-                      <select name="role" aria-label="Role of {r.email}" onchange={(e) => (e.currentTarget.form as HTMLFormElement).requestSubmit()}>
+                      <select class="yk-input" name="role" aria-label="Role of {r.email}" onchange={(e) => (e.currentTarget.form as HTMLFormElement).requestSubmit()}>
                         {#each ['student', 'assistant', 'owner'] as role (role)}<option value={role} selected={role === r.role}>{role}</option>{/each}
                       </select>
                     </form>
-                  {:else}<span class="chip">{r.role}</span>{/if}
+                  {:else}<Chip>{r.role}</Chip>{/if}
                 </td>
                 <td>
-                  <span class="chip" class:good={r.linked}>{r.linked ? 'logged in' : 'not yet'}</span>
-                  {#if r.source !== 'manual'}<span class="chip">{r.source}</span>{/if}
+                  <Chip tone={r.linked ? 'done' : 'open'}>{r.linked ? 'logged in' : 'not yet'}</Chip>
+                  {#if r.source !== 'manual'}<Chip>{r.source}</Chip>{/if}
                 </td>
                 {#if data.owner}
                   <td>
+                    <!-- The design system removes at once and offers Undo, which needs the enrolment kept (soft
+                         delete); app.unenrol deletes the row, so for now Remove stays as it was: at once, no Undo. -->
                     <form method="POST" action={actionIn('roster', 'unenrol')} class="inline">
                       <input type="hidden" name="email" value={r.email} />
-                      <button>Remove</button>
+                      <button class="yk-btn yk-btn--secondary yk-btn--remove">Remove</button>
                     </form>
                   </td>
                 {/if}
@@ -105,11 +109,11 @@
     <section>
       <h2>Enrol somebody</h2>
       <form method="POST" action={actionIn('roster', 'enrol')} class="stack">
-        <label>Address <input name="email" type="email" required placeholder="student@school.example" /></label>
+        <label>Address <input class="yk-input" name="email" type="email" required placeholder="student@school.example" /></label>
         <label>As
-          <select name="role"><option value="student">student</option><option value="assistant">assistant</option><option value="owner">owner</option></select>
+          <select class="yk-input" name="role"><option value="student">student</option><option value="assistant">assistant</option><option value="owner">owner</option></select>
         </label>
-        <button>Enrol</button>
+        <button class="yk-btn yk-btn--primary">Enrol</button>
       </form>
       <p class="note">
         An address that has not logged in yet is linked the first time that person proves it: by a
@@ -121,10 +125,10 @@
   <section>
     <h2>Details</h2>
     <form method="POST" action={actionIn('settings', 'details')} class="stack">
-      <label>Label <input name="label" value={data.edition.label} required /></label>
-      <label>Course name <input name="title" value={data.edition.title} required /></label>
-      <label>Course code <input name="code" value={data.edition.code} required /></label>
-      <button>Save</button>
+      <label>Label <input class="yk-input" name="label" value={data.edition.label} required /></label>
+      <label>Course name <input class="yk-input" name="title" value={data.edition.title} required /></label>
+      <label>Course code <input class="yk-input" name="code" value={data.edition.code} required /></label>
+      <button class="yk-btn yk-btn--primary">Save</button>
     </form>
     <p class="note">
       The course name belongs to this edition: other editions keep theirs, and the course is listed
@@ -135,8 +139,8 @@
   <section>
     <h2>Duplicate</h2>
     <form method="POST" action={actionIn('settings', 'duplicate')} class="stack">
-      <label>New edition's label <input name="label" placeholder="2027 autumn" required /></label>
-      <button>Duplicate</button>
+      <label>New edition's label <input class="yk-input" name="label" placeholder="2027 autumn" required /></label>
+      <button class="yk-btn yk-btn--primary">Duplicate</button>
     </form>
     <p class="note">A duplicate carries the projects and the staff, not the students or the dates.</p>
   </section>
@@ -149,7 +153,7 @@
     </p>
     <form method="POST" action={actionIn('settings', 'archive')}>
       <input type="hidden" name="archived" value={data.edition.archived_at ? 'false' : 'true'} />
-      <button class="quiet">{data.edition.archived_at ? 'Unarchive' : 'Archive'} this edition</button>
+      <button class="yk-btn yk-btn--secondary">{data.edition.archived_at ? 'Unarchive' : 'Archive'} this edition</button>
     </form>
   </section>
 {/if}

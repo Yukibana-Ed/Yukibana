@@ -1,7 +1,9 @@
 <script lang="ts">
   import { page } from '$app/state';
   import Tabs from '#lib/Tabs.svelte';
+  import Chip from '#lib/Chip.svelte';
   import CopyButton from '#lib/CopyButton.svelte';
+  import Empty from '#lib/Empty.svelte';
   import { when } from '#lib/format.ts';
   import { viewer } from '#lib/viewer.svelte.ts';
   import { actionIn, tabOf, type Tab } from '#lib/tabs.ts';
@@ -27,15 +29,15 @@
   <section>
     <h2>Change a platform role</h2>
     <form method="POST" action={actionIn('roles', 'setRole')} class="stack">
-      <label>Address <input name="email" type="email" required placeholder="teacher@school.example" /></label>
+      <label>Address <input class="yk-input" name="email" type="email" required placeholder="teacher@school.example" /></label>
       <label>Role
-        <select name="role">
+        <select class="yk-input" name="role">
           <option value="teacher">teacher</option>
           <option value="user">user</option>
           <option value="admin">admin</option>
         </select>
       </label>
-      <button>Set role</button>
+      <button class="yk-btn yk-btn--primary">Set role</button>
     </form>
     <p class="note">The person must have logged in once, so there is an account to change. For someone who has not, create an invite link in the Invites tab.</p>
   </section>
@@ -43,16 +45,16 @@
   <section>
     <h2>Teachers and admins</h2>
     {#if data.staff.length === 0}
-      <p class="empty">Nobody but you.</p>
+      <Empty title="Nobody but you">Set a role above to make somebody a teacher or an admin.</Empty>
     {:else}
       <div class="scroll">
-        <table>
+        <table class="yk-table">
           <thead><tr><th>Person</th><th>Role</th></tr></thead>
           <tbody>
             {#each data.staff as s (s.user_id)}
               <tr>
                 <td>{s.full_name ?? ''} {#if s.github_login}<span class="muted">@{s.github_login}</span>{/if}</td>
-                <td><span class="chip">{s.role}</span></td>
+                <td><Chip>{s.role}</Chip></td>
               </tr>
             {/each}
           </tbody>
@@ -111,16 +113,16 @@
   <section>
     <h2>Audit log</h2>
     {#if data.audit.length === 0}
-      <p class="empty">Nothing has happened yet.</p>
+      <Empty title="Nothing has happened yet">Every change anybody makes is listed here.</Empty>
     {:else}
       <div class="scroll">
-        <table>
+        <table class="yk-table">
           <thead><tr><th>When</th><th>Action</th><th>Subject</th></tr></thead>
           <tbody>
             {#each data.audit as a, i (i)}
               <tr>
                 <td>{when(a.at, viewer.zone)}</td>
-                <td><span class="chip">{a.action}</span></td>
+                <td><Chip>{a.action}</Chip></td>
                 <td><code>{a.subject}</code></td>
               </tr>
             {/each}

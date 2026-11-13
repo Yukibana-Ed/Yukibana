@@ -17,4 +17,4 @@
   }
 </script>
 
-<button type="button" class="quiet" onclick={copy}>{said === '' ? label : said}</button>
+<button type="button" class="yk-btn yk-btn--secondary" data-done={said === 'Copied' ? '' : undefined} onclick={copy}>{said === '' ? label : said === 'Copied' ? '✓ Copied' : said}</button>
