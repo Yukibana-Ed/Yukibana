@@ -6,6 +6,7 @@
   import type { SubmissionId } from '../ids';
   import { downloadAll as saveAll, downloadOne, findings, type ToAssemble } from './assembled';
   import { placeMenu } from '../popover';
+  import { notify } from '../toast.svelte';
   import Chip from '../Chip.svelte';
   import Icon from '../Icon.svelte';
   import BaseNote from './BaseNote.svelte';
@@ -50,7 +51,11 @@
     for (const it of everyone) assemblies.set(it.submission, { state: 'busy' });
     const outcomes = await saveAll(slug, releases, everyone, (done) => (all = { state: 'busy', done }));
     for (const o of outcomes) settle(o);
-    all = { state: 'done', saved: outcomes.filter((o) => o.ok).length, failed: outcomes.flatMap((o) => (o.ok ? [] : [o.name])) };
+    const saved = outcomes.filter((o) => o.ok).length;
+    all = { state: 'done', saved, failed: outcomes.flatMap((o) => (o.ok ? [] : [o.name])) };
+    // That it worked is a passing notice (the browser's own download says so too); who was left out stays on the
+    // page, since it is a failure to act on.
+    if (saved > 0) notify(`Saved ${saved} assembled submission${saved === 1 ? '' : 's'}.`);
   }
 
   // A row's menu is a popover (../popover): placed by its button when it
@@ -83,9 +88,9 @@
       </button>
     {/if}
   </div>
-  {#if all?.state === 'done'}
+  {#if all?.state === 'done' && all.failed.length > 0}
     {#if all.saved > 0}
-      <p class="ok" role="status">Saved {all.saved} assembled submission{all.saved === 1 ? '' : 's'}{all.failed.length > 0 ? `; left out ${all.failed.join(', ')}, whose rows say why` : ''}.</p>
+      <p class="error" role="alert">Left out {all.failed.join(', ')}, whose rows say why.</p>
     {:else}
       <p class="error" role="alert">Nothing could be assembled; each row says why.</p>
     {/if}

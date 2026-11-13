@@ -714,7 +714,7 @@
             flex: 1 1 16rem;
             max-width: 22rem;
         }
-        .toolbar + :is(.ok, .error) {
+        .toolbar + .error {
             margin-bottom: var(--yk-space-3);
         }
         tr.missing td {
