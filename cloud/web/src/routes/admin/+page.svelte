@@ -93,7 +93,7 @@
           <tbody>
             {#each data.invites as i (i.invite_id)}
               <tr>
-                <td>{i.label}</td>
+                <td>{#if i.label === ''}<span class="muted">No label</span>{:else}{i.label}{/if}</td>
                 <td>{i.created_by ?? ''}</td>
                 <td>{when(i.created_at, viewer.zone)}</td>
                 <td>
