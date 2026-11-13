@@ -37,7 +37,7 @@
       </label>
       <button>Set role</button>
     </form>
-    <p class="note">The person must have logged in once, so there is an account to change. For someone who has not, send an invite link from the Invites tab.</p>
+    <p class="note">The person must have logged in once, so there is an account to change. For someone who has not, create an invite link in the Invites tab.</p>
   </section>
 
   <section>
@@ -62,22 +62,17 @@
   </section>
 
 {:else if tab === 'invites'}
-  {#if form && 'invite' in form && form.invite}
+  {#if form && 'invite' in form}
     <section>
-      <h2>Your new invite link</h2>
-      <p class="ok">
-        Invite{form.invite.label === '' ? '' : ` for ${form.invite.label}`} created. Copy the link now; it is not shown again.
-      </p>
+      <h2>New invite link</h2>
+      <p class="ok">Invite{form.invite.label === '' ? '' : ` for ${form.invite.label}`} created. Copy the link now: it will not be shown again.</p>
       <pre>{form.invite.link}</pre>
       <CopyButton text={form.invite.link} label="Copy link" />
     </section>
   {/if}
   <section>
     <h2>Invite a teacher</h2>
-    <p>
-      Whoever opens the link and signs in becomes a teacher, and may create courses. Someone without an account makes
-      one on the way. A link works once, for two weeks; send it to one person.
-    </p>
+    <p>The person who accepts the link gets teacher rights and can create courses. If they have no account, they create one when they sign in. Each link works once.</p>
     <form method="POST" action={actionIn('invites', 'createInvite')} class="stack">
       <label>For <input name="label" maxlength="200" placeholder="Prof. Rossi, Operating Systems" /></label>
       <button>Create invite link</button>
@@ -87,21 +82,20 @@
   <section>
     <h2>Unused invites</h2>
     {#if data.invites.length === 0}
-      <p class="empty">No invite is waiting to be used.</p>
+      <p class="empty">No unused invites.</p>
     {:else}
       <div class="scroll">
         <table>
-          <thead><tr><th>For</th><th>Made by</th><th>Created</th><th>Expires</th><th></th></tr></thead>
+          <thead><tr><th>For</th><th>Created by</th><th>Created</th><th></th></tr></thead>
           <tbody>
-            {#each data.invites as i (i.id)}
+            {#each data.invites as i (i.invite_id)}
               <tr>
-                <td>{#if i.label === ''}<span class="muted">no label</span>{:else}{i.label}{/if}</td>
-                <td>{#if i.createdByName === null}<span class="muted">an admin with no name</span>{:else}{i.createdByName}{/if}</td>
-                <td>{when(i.createdAt, viewer.zone)}</td>
-                <td>{#if i.expired}<span class="chip">expired</span>{:else}{when(i.expiresAt, viewer.zone)}{/if}</td>
+                <td>{i.label}</td>
+                <td>{i.created_by ?? ''}</td>
+                <td>{when(i.created_at, viewer.zone)}</td>
                 <td>
                   <form method="POST" action={actionIn('invites', 'revokeInvite')} class="inline">
-                    <input type="hidden" name="invite_id" value={i.id} />
+                    <input type="hidden" name="invite_id" value={i.invite_id} />
                     <button>Remove</button>
                   </form>
                 </td>

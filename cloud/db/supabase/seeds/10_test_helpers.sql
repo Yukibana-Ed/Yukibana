@@ -64,13 +64,9 @@ as $$
   update auth.users set email_confirmed_at = now() where id = tests.uid(addr);
 $$;
 
--- A platform role set from outside the app, the way an operator's
--- `app.bootstrap_admin` sets the first one. The integration suite needs an
--- admin and a local database has none until a developer makes themselves
--- one; it cannot use bootstrap_admin, which would then refuse that
--- developer, so it makes a throwaway account an admin with this and lowers
--- it again when done. Security definer so the app's own role can call it;
--- it exists only where seeds run.
+-- Sets the platform role of the account `tests.create_user(addr)` made, as an operator would. The integration suite uses it to make a
+-- throwaway admin and demote it afterwards, because `app.bootstrap_admin` works only while no admin exists and would then refuse the developer
+-- whose local database it is. Security definer, so that the app's own role can call it; seeds exist only locally and in CI.
 create or replace function tests.set_platform_role(addr text, r app.platform_role)
 returns void
 language sql
