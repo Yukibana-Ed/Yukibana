@@ -40,50 +40,27 @@ one is the person's choice, kept by the theme module below.
 
 ## The theme choice
 
-Choosing Dark on yukibana.dev makes cloud.yukibana.dev dark too. The choice lives in one cookie, and
-`@yukibana/design/theme` (`src/theme.ts`, no framework, no dependencies) reads, keeps and shows it:
+`@yukibana/design/theme` (`src/theme.ts`, no framework, no dependencies) keeps the person's choice of System, Light or
+Dark, as `yk-theme`, in localStorage and in a cookie with `Domain=yukibana.dev`. localStorage is per origin, so the
+cookie is what makes yukibana.dev and cloud.yukibana.dev share it; on other hosts (localhost, a preview) the browser
+drops the cookie and localStorage alone works.
 
 | Export | What it does |
 | --- | --- |
-| `readTheme({ legacyKey? })` | The choice: `'system'`, `'light'` or `'dark'`. |
-| `writeTheme(choice)` | Keeps it, in the cookie. `'system'` is kept too, rather than deleting the cookie. |
-| `applyTheme(choice)` | Shows it: `data-theme` on `<html>` (`'system'` removes it), and the `theme-color` metas to match. |
+| `readTheme()` | The choice: the cookie's, else localStorage's, else `'system'`. Anything but `system`, `light` or `dark` counts as nothing. |
+| `writeTheme(choice)` | Keeps it in both. |
+| `applyTheme(choice)` | Shows it: `data-theme` on `<html>`, removed for `'system'`. |
 | `onSystemChange(listener)` | Calls `listener('light' \| 'dark')` when the system's scheme changes; returns the function that stops it. |
-| `themeBoot(legacyKey?)` | The inline script that does `applyTheme(readTheme())` before the first paint, as a string. |
-| `THEMES`, `parseTheme`, `themeCookie`, … | The pieces, for switchers and tests. |
+| `themeBoot()` | The inline script that does `applyTheme(readTheme())` before the first paint, as a string. |
 
-An app puts two `theme-color` metas and the boot script at the top of `<head>`, before any stylesheet:
+An app puts the boot script at the top of `<head>`, before any stylesheet. A page rendered by a framework inlines
+`themeBoot()` itself (React: `<script dangerouslySetInnerHTML={{ __html: themeBoot() }} />`); a static template pastes
+its output and tests that it still matches, as the cloud's `app.html` does. Its switcher calls `readTheme` when it
+mounts, and `writeTheme(choice)` then `applyTheme(choice)` when the person picks one. Every cookie, localStorage and
+`matchMedia` access is inside `try`, so a browser that blocks them gets the system's scheme, never an error.
 
-```html
-<meta name="color-scheme" content="light dark" />
-<meta name="theme-color" content="#f5f7fa" media="(prefers-color-scheme: light)" data-scheme="light" />
-<meta name="theme-color" content="#0b0e15" media="(prefers-color-scheme: dark)" data-scheme="dark" />
-<script>/* themeBoot('<the app's old localStorage key>'), inlined */</script>
-```
-
-A page rendered by a framework inlines `themeBoot(…)` itself (React: `<script dangerouslySetInnerHTML={{ __html: themeBoot() }} />`).
-A static template pastes its output and tests that it still matches, as the cloud's `app.html` does. Its switcher calls
-`readTheme` when it mounts, and `writeTheme(choice)` then `applyTheme(choice)` when the person picks one.
-
-**Why a cookie.** localStorage belongs to one origin: what yukibana.dev stores there, cloud.yukibana.dev cannot read.
-A cookie with `Domain=yukibana.dev` is sent to, and readable by, every host under it. The cookie is
-
-```
-yk-theme=<system|light|dark>; Domain=yukibana.dev; Path=/; Max-Age=31536000; SameSite=Lax; Secure
-```
-
-On any host not under yukibana.dev (localhost, a preview deployment) it has no Domain, so it belongs to that host alone,
-all its ports included: the docs site and the cloud running on localhost share it. It is `Secure` there only over HTTPS.
-
-**Why it is safe, and the rule that keeps it so.** The cookie carries no authority. Any page under yukibana.dev can set
-it, Light's included, which runs programs people paste into it (see the cloud's CLAUDE.md, "A sibling subdomain is
-another person's page"), so it is deliberately not a `__Host-` cookie, and the worst a page there can do with it is
-change a visitor's colours. That holds only while nothing reads it for anything but the theme: no server reads it, and
-nothing may start to. Its value is validated strictly: anything but `light` or `dark` means the system's scheme.
-
-**Moving off localStorage.** Before the cookie, the cloud kept the choice under `yukibana-theme` and the docs site under
-next-themes' `theme`. Given that key, `readTheme` and the boot script move a `light` or `dark` found there into the
-cookie, once, and remove the key whenever there is a cookie. Nothing is written to localStorage any more.
+The value carries no authority: any page under yukibana.dev can set the cookie, Light's included, which runs programs
+people paste into it. Nothing may read it for anything but the theme.
 
 **Browsers.** Every colour is a `light-dark()` pair, which needs Chrome and Edge 123, Firefox 120 or Safari 17.5 (all
 from 2024), and the segmented control and selected table rows use `:has()`, which Firefox has from 121. There is no

@@ -8,49 +8,23 @@
         <!-- Both schemes are real, so say so before any CSS loads and the browser
              paints the right background instead of a white flash. -->
         <meta name="color-scheme" content="light dark" />
-        <meta name="theme-color" content="#f5f7fa" media="(prefers-color-scheme: light)" data-scheme="light" />
-        <meta name="theme-color" content="#0b0e15" media="(prefers-color-scheme: dark)" data-scheme="dark" />
-        <!-- The theme the person chose in the account menu, shared with every site under yukibana.dev by the design
-             system's cookie (@yukibana/design/theme), applied before anything paints so the page never flashes the other
-             scheme. It is the package's themeBoot(LEGACY_THEME_KEY), pasted; tests/theme.test.ts checks that it still is. -->
+        <meta name="theme-color" content="#f5f7fa" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#0b0e15" media="(prefers-color-scheme: dark)" />
+        <!-- The theme the person chose in the account menu, shared with the other Yukibana sites by the design system
+             (@yukibana/design/theme), applied before anything paints so the page never flashes the other scheme. It is
+             the package's themeBoot(), pasted; tests/theme.test.ts checks that it still is. -->
         <script id="theme-boot">
             (function () {
-                var name = 'yk-theme';
-                var key = 'yukibana-theme';
-                function cookie() {
-                    var parts = document.cookie.split(';');
-                    for (var i = 0; i < parts.length; i++) {
-                        var eq = parts[i].indexOf('=');
-                        if (eq !== -1 && parts[i].slice(0, eq).trim() === name) return parts[i].slice(eq + 1).trim();
-                    }
-                    return null;
-                }
+                var t;
                 try {
-                    var theme = cookie();
-                    if (key !== null) {
-                        try {
-                            if (theme === null) {
-                                var old = localStorage.getItem(key);
-                                if (old === 'light' || old === 'dark') {
-                                    var host = location.hostname;
-                                    var shared = host === 'yukibana.dev' || host.slice(-13) === '.yukibana.dev';
-                                    var set = name + '=' + old + '; Path=/; Max-Age=31536000; SameSite=Lax';
-                                    if (shared) set += '; Domain=yukibana.dev';
-                                    if (shared || location.protocol === 'https:') set += '; Secure';
-                                    document.cookie = set;
-                                    theme = cookie();
-                                    if (theme === null) theme = old;
-                                    else localStorage.removeItem(key);
-                                }
-                            } else localStorage.removeItem(key);
-                        } catch (e) {}
-                    }
-                    if (theme === 'light' || theme === 'dark') {
-                        document.documentElement.setAttribute('data-theme', theme);
-                        var metas = document.querySelectorAll('meta[name="theme-color"][data-scheme]');
-                        for (var j = 0; j < metas.length; j++) metas[j].media = metas[j].getAttribute('data-scheme') === theme ? 'all' : 'not all';
-                    }
+                    t = (/(?:^|;\s*)yk-theme=([^;]*)/.exec(document.cookie) || [])[1];
                 } catch (e) {}
+                if (t !== 'system' && t !== 'light' && t !== 'dark') {
+                    try {
+                        t = localStorage.getItem('yk-theme');
+                    } catch (e) {}
+                }
+                if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
             })();
         </script>
         <!-- The snow-flower mark, from cloud/web/static: a PNG for browsers that take
