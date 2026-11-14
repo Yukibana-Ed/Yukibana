@@ -12,13 +12,12 @@ why, so that nobody has to rerun them to learn it.
 | `css/base/*.css` | The shared components, `yk-` classes, drawn from the tokens only: one file per component (`buttons.css`, `fields.css`, `toast.css`, …), and `core.css` for the page and the focus ring. Edit these. |
 | `css/base.css` | Generated: the parts in `css/base/` joined into one file, in the order `src/base.ts` lists them. Committed, and the file apps import. |
 | `css/fonts.css` | `@font-face` for the three typefaces, under the names `tokens.css` uses, from `fonts/`. Optional. |
-| `src/theme.ts` | The theme choice (System, Light or Dark), shared by every site under yukibana.dev in one cookie. See [The theme choice](#the-theme-choice). |
-| `js/theme.js`, `js/theme.d.ts` | Generated: `src/theme.ts` compiled by TypeScript (`tsconfig.theme.json`). Committed, like the CSS, and the files apps import. |
+| `src/theme.ts` | The theme choice (System, Light or Dark), shared by the sites of one domain in one cookie, exported as TypeScript for the app's bundler. See [The theme choice](#the-theme-choice). |
 | `fonts/` | The fonts as variable WOFF2, Latin and Latin Extended, each family with its licence (`OFL.txt`, SIL Open Font License 1.1). |
 | `reference/index.html` | The living reference. Open it from this directory. |
 
 ```sh
-pnpm --filter @yukibana/design build   # tokens → css/tokens.css, css/base/*.css → css/base.css, src/theme.ts → js/
+pnpm --filter @yukibana/design build   # tokens → css/tokens.css, css/base/*.css → css/base.css
 pnpm --filter @yukibana/design test    # the generated files are up to date, every colour pair passes WCAG, the compiler's tables, the theme
 ```
 
@@ -42,22 +41,23 @@ one is the person's choice, kept by the theme module below.
 
 `@yukibana/design/theme` (`src/theme.ts`, no framework, no dependencies) keeps the person's choice of System, Light or
 Dark, as `yk-theme`, in localStorage and in a cookie. localStorage is per origin, so the cookie is what makes
-yukibana.dev and cloud.yukibana.dev share it. `writeTheme` sets it on the broadest parent domain the browser accepts,
+yukibana.dev and cloud.yukibana.dev share it. `chooseTheme` sets it on the broadest parent domain the browser accepts,
 which is the site's registrable domain since browsers refuse public suffixes, so a self-hosted pair shares it with no
 change to the code; on localhost or an IP address it belongs to the host alone.
 
 | Export | What it does |
 | --- | --- |
-| `themeBoot()` | The inline script that shows the stored choice before the first paint: the cookie's, else localStorage's. Anything but `system`, `light` or `dark` counts as nothing. |
+| `THEME_BOOT` | The inline script that shows the stored choice before the first paint: the cookie's, else localStorage's. Anything but `system`, `light` or `dark` counts as nothing. |
 | `readTheme()` | The choice the page shows, read back from `data-theme`. |
-| `writeTheme(choice)` | Keeps it in both stores. |
-| `applyTheme(choice)` | Shows it: `data-theme` on `<html>`, removed for `'system'`. |
+| `chooseTheme(choice)` | Shows it (`data-theme` on `<html>`, removed for `'system'`) and keeps it in both stores. |
+| `THEMES`, `Theme` | The three choices, in a switcher's order, and their type. |
 
 An app puts the boot script at the top of `<head>`, before any stylesheet. A page rendered by a framework inlines
-`themeBoot()` itself (React: `<script dangerouslySetInnerHTML={{ __html: themeBoot() }} />`); Svelte the same in
-`{@html \`<script>${themeBoot()}</script>\`}` in `<svelte:head>`, as the cloud's root layout does). Its switcher calls `readTheme` when it
-mounts, and `writeTheme(choice)` then `applyTheme(choice)` when the person picks one. Every cookie and localStorage access
-is inside `try`, so a browser that blocks them gets the system's scheme, never an error.
+it itself (React: `<script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />`; Svelte: `{@html THEME_SCRIPT}` in
+`<svelte:head>`, with the `<script>` element built outside the component, as in `cloud/web/src/lib/theme-script.ts`).
+Its switcher calls `readTheme` when it mounts and `chooseTheme(choice)` when the person picks one. A browser that blocks
+site data gets the cookie's choice or the system's scheme, never an error. A Vite app that renders on the server and
+installs the package into node_modules lists it in `ssr.noExternal`, since Node will not strip the types there.
 
 The value carries no authority: any page under the same domain can set the cookie, Light's included, which runs programs
 people paste into it. Nothing may read it for anything but the theme.
@@ -145,7 +145,7 @@ other stamp in the files. What it exports:
 | `@yukibana/design/tokens.css` | `css/tokens.css` |
 | `@yukibana/design/base.css` | `css/base.css` |
 | `@yukibana/design/fonts.css` | `css/fonts.css` |
-| `@yukibana/design/theme` | `js/theme.js`, with its types in `js/theme.d.ts` |
+| `@yukibana/design/theme` | `src/theme.ts`, as TypeScript |
 | `@yukibana/design/css/*` | any file in `css/`, such as one part, `css/base/segmented.css` |
 | `@yukibana/design/fonts/*` | the font files and their licences |
 | `@yukibana/design/tokens/*` | the token files, for tools |

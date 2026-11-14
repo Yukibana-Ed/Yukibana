@@ -123,8 +123,8 @@ its own, the cloud protects itself, by these rules:
   that carries authority gets the prefix too.
 * **The theme cookie, `yk-theme`, is the one exception, and carries
   nothing.** It is the design system's (`@yukibana/design/theme`), set for
-  the whole of yukibana.dev so the docs site and the cloud share one theme
-  choice, so a sibling can set it too. Only the page's own script reads it,
+  the whole registrable domain (yukibana.dev here) so the docs site and the
+  cloud share one theme choice, so a sibling can set it too. Only the page's own script reads it,
   for the theme alone: the worst a sibling does with it is change a
   visitor's colours. No server code reads it, and none may start to.
 
