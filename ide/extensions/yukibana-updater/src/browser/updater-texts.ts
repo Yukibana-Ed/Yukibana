@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 import { nls } from '@theia/core';
 import { UpdaterState } from '../common/updater-protocol';
 
@@ -30,7 +27,11 @@ export function statusText(state: UpdaterState): StatusText | undefined {
                 text: `$(cloud-download) ${nls.localize('yukibana/updater/available', 'Yukibana {0} is available', state.version)}`,
                 tooltip: nls.localize('yukibana/updater/availableTooltip', 'Open the download page of Yukibana {0}', state.version),
             };
-        default:
+        case 'off':
+        case 'idle':
+        case 'checking':
+        case 'downloading':
+        case 'failed':
             return undefined;
     }
 }
@@ -46,8 +47,12 @@ export function checkResultMessage(state: UpdaterState): string | undefined {
             return nls.localize('yukibana/updater/failed', 'Could not check for updates: {0}', state.message);
         case 'off':
             return nls.localize('yukibana/updater/off', 'This build of Yukibana does not update itself.');
-        default:
-            // downloaded and available show their status bar item; checking is not an end state.
+        case 'downloaded':
+        case 'available':
+            // These show their status bar item.
+            return undefined;
+        case 'checking':
+            // Not an end state.
             return undefined;
     }
 }

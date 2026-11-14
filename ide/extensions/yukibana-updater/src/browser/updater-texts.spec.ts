@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 import { describe, expect, test } from 'vitest';
 import { UpdaterState } from '../common/updater-protocol';
 import { checkResultMessage, statusText } from './updater-texts';

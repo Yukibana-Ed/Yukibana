@@ -1,26 +1,18 @@
-# Releases one package, by hand: Actions, Release, Run workflow, with the tag to make, `client-v<version>`,
-# `cli-v<version>` or `ide-v<version>`, from the branch chosen in "Use workflow from" (main to publish). The client and
-# the CLI go to npm, the IDE's installers for Windows, Linux and macOS (arm64 and x64) to a GitHub release; only the IDE
-# gets a GitHub release. The versions in git stay 0.0.0-dev: the run writes the version into the package's manifest
-# before it builds, so the tag is the only place a version is chosen.
+# Releases one package, by hand: Actions, Release, Run workflow, with its tag, `client-v<version>`, `cli-v<version>` or
+# `ide-v<version>`, from main (any other branch, or a fork, is a dry run that builds and publishes nothing). The client
+# and the CLI go to npm, the IDE's installers to a GitHub release, the only kind of GitHub release made. The versions in
+# git stay 0.0.0-dev: the run writes the tag's version into the package's manifest before it builds.
 #
-# `.github/scripts/release-tag.mts` checks the tag first: its shape, that it does not exist yet, and that the version is
-# higher than the package's newest release. Then the package is built and smoke-tested (the npm tarball installed into
-# an empty folder and run, or the installers built on each OS). Nothing is published and no tag is made unless all of
-# that passed: the publish job needs every build, publishes, and only then tags. The client's and the CLI's tag is made on
-# the commit the run built, right after the npm publish; the IDE's by publishing its GitHub release, a draft until every
-# installer is attached. If tagging fails after an npm publish, re-running the failed jobs of that run tags it (the
-# version on npm is left alone).
+# The tag is the lock. `.github/scripts/release-tag.mts` checks, before the builds and again before publishing, that it
+# is new or already on this run's commit and higher than every release of the package; the publish job, which runs only
+# once every build passed, makes the tag on the commit built and then publishes. Tags and releases are immutable (a tag
+# ruleset and GitHub's immutable releases), so every version out has its tag, and a failed publish is finished by fixing
+# what failed and re-running the run's jobs. CONTRIBUTING.md's Releasing section says how to release.
 #
-# From any branch but main, or in a fork, a run is a dry run: it checks, builds and smoke-tests everything, and publishes
-# and tags nothing, leaving the files as the run's artifacts.
-#
-# npm publishing uses trusted publishing (OIDC), with no token: @yukibana/client and @yukibana/cli each name this
-# repository, workflow release.yml and environment `release` as their trusted publisher on npmjs.com (Settings of each
-# package), and pnpm exchanges the job's GitHub OIDC token for a one-time publish token, which also signs each version's
-# provenance. Renaming this file, the environment or the repository breaks publishing until those settings follow. The
-# `release` environment (Settings, Environments) holds no secrets; it is where a required reviewer and the rule that only
-# main may deploy go. The GitHub release uses the job's own token.
+# npm publishing uses trusted publishing (OIDC), with no token: each package names this repository, workflow
+# release.yml and environment `release` as its trusted publisher on npmjs.com, and pnpm exchanges the job's OIDC token
+# for a one-time publish token, which also signs the provenance. Renaming this file, the environment or the repository
+# breaks publishing until those settings follow.
 name: Release
 run-name: ${{ format('Release {0}{1}', inputs.tag, (github.ref != 'refs/heads/main' || github.repository != 'Yukibana-Ed/Yukibana') && format(' (dry run of {0})', github.ref_name) || '') }}
 
@@ -31,12 +23,6 @@ on:
         description: 'The release, as its tag: client-vX.Y.Z, cli-vX.Y.Z or ide-vX.Y.Z'
         required: true
         type: string
-
-# One release at a time, and none cancelled halfway: a publish stopped between npm and the tag is finished by re-running
-# it, but there is no reason to make it.
-concurrency:
-  group: release
-  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -209,9 +195,21 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Without its feed (latest.yml from Windows, latest-linux.yml from Linux), the release would leave every installed IDE
+      # failing to update; upload-artifact only fails when nothing matches at all.
+      - name: Check the update feed
+        shell: bash
+        env:
+          ARTIFACT: ${{ matrix.artifact }}
+        run: |
+          case "$ARTIFACT" in
+            windows) test -f ide/electron/dist/latest.yml ;;
+            linux) test -f ide/electron/dist/latest-linux.yml ;;
+          esac
+
       # The installers, their blockmaps (which let an updater download only the blocks that changed since the version it
       # has) and the Windows and Linux update feeds. macOS's arm64 and x64 builds each write a latest-mac.yml of the same
-      # name, so neither goes up until they are merged; an unsigned Mac cannot install updates anyway (issue #91).
+      # name, so neither goes up until they are merged; an unsigned Mac cannot install updates anyway.
       - name: Upload the installers
         uses: actions/upload-artifact@v7
         with:
@@ -239,6 +237,10 @@ jobs:
       !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    # One publish at a time, none cancelled; the builds of different releases still run side by side.
+    concurrency:
+      group: release
+      cancel-in-progress: false
     environment:
       name: release
     permissions:
@@ -247,21 +249,38 @@ jobs:
       # npm's trusted publishing and provenance.
       id-token: write
     env:
-      COMMIT: ${{ github.sha }}
       TAG: ${{ inputs.tag }}
       VERSION: ${{ needs.check.outputs.version }}
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
     steps:
+      # With the tags as they are now: a re-run of this job may come days after the check job ran.
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          fetch-depth: 0
+          fetch-tags: true
           persist-credentials: false
 
       - name: Install pnpm and Node.js
         uses: ./.github/actions/setup
         with:
           cache: false
+
+      # Again, so that a re-run of an old run never publishes once a newer release is out.
+      - name: Check the tag again
+        run: node .github/scripts/release-tag.mts
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+
+      # The lock: once made, nothing but this commit can release this version. A tag already here is this run's own,
+      # from an earlier attempt (the check refuses one on another commit).
+      - name: Tag
+        run: |
+          set -euo pipefail
+          if [ -z "$(git tag --list "$TAG")" ]; then
+            gh api "repos/$GH_REPO/git/refs" -f ref="refs/tags/$TAG" -f sha="$GITHUB_SHA" > /dev/null
+          fi
 
       - name: Download the tarball
         if: needs.check.outputs.kind != 'ide'
@@ -270,11 +289,9 @@ jobs:
           name: npm
           path: ${{ runner.temp }}/packs
 
-      # The tarball the smoke test installed; then its tag, on the commit it was built from. A version already on npm (a
-      # re-run after the tag failed) is not published again, and a tag already on this commit is fine; one on another
-      # commit fails, since tags are never moved. Published from outside the workspace, whose devEngines would otherwise
-      # have to match this job's Node exactly.
-      - name: Publish to npm and tag
+      # The tarball the smoke test installed, unless an earlier attempt of this run published it already. Published from
+      # outside the workspace, whose devEngines would otherwise have to match this job's Node exactly.
+      - name: Publish to npm
         if: needs.check.outputs.kind != 'ide'
         working-directory: ${{ runner.temp }}
         env:
@@ -282,19 +299,9 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$(curl -s -o /dev/null -w '%{http_code}' "https://registry.npmjs.org/${NAME/\//%2f}/$VERSION")" = 200 ]; then
-            echo "$NAME $VERSION is already on npm."
+            echo "$NAME $VERSION is on npm already."
           else
             pnpm publish packs/*.tgz --access public --provenance --no-git-checks
-          fi
-          if existing=$(gh api "repos/$GH_REPO/git/ref/tags/$TAG" --jq .object.sha 2> /dev/null); then
-            if [ "$existing" != "$COMMIT" ]; then
-              echo "::error::$TAG is on $existing, not $COMMIT; tags are never moved."
-              exit 1
-            fi
-            echo "$TAG is already on $COMMIT."
-          else
-            gh api "repos/$GH_REPO/git/refs" -f ref="refs/tags/$TAG" -f sha="$COMMIT" > /dev/null
-            echo "Tagged $COMMIT as $TAG."
           fi
 
       - name: Download the installers
@@ -305,21 +312,14 @@ jobs:
           merge-multiple: true
           path: ${{ runner.temp }}/installers
 
-      # A draft first, published once every installer is attached, so nobody downloads from a half-made release.
-      # Publishing it creates the tag on the commit built and marks it latest, which is where installed IDEs look for
-      # updates. A draft left by an earlier run that failed is reused, retargeted at this commit; a release already
-      # published is never touched.
+      # gh makes a draft, attaches every installer and only then publishes it (deleting the draft if that fails), marked
+      # latest, which is where installed IDEs look for updates. A release an earlier attempt published is left as it is.
       - name: Publish the GitHub release
         if: needs.check.outputs.kind == 'ide'
         run: |
           set -euo pipefail
-          if draft=$(gh release view "$TAG" --json isDraft --jq .isDraft 2> /dev/null); then
-            if [ "$draft" = false ]; then
-              echo "::error::$TAG is already published."
-              exit 1
-            fi
+          if [ "$(gh release view "$TAG" --json isDraft --jq .isDraft 2> /dev/null)" = false ]; then
+            echo "$TAG is published already."
           else
-            gh release create "$TAG" --draft --target "$COMMIT" --title "Yukibana IDE $VERSION" --generate-notes
+            gh release create "$TAG" --verify-tag --latest --title "Yukibana IDE $VERSION" --generate-notes "$RUNNER_TEMP"/installers/*
           fi
-          gh release upload "$TAG" --clobber "$RUNNER_TEMP"/installers/*
-          gh release edit "$TAG" --draft=false --latest --target "$COMMIT"

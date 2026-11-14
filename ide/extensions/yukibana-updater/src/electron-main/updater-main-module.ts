@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 import { RpcConnectionHandler } from '@theia/core/lib/common/messaging/proxy-factory';
 import { ElectronMainApplicationContribution } from '@theia/core/lib/electron-main/electron-main-application';
 import { ElectronConnectionHandler } from '@theia/core/lib/electron-main/messaging/electron-connection-handler';

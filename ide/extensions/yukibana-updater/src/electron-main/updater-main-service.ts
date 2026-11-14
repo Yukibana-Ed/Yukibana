@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 import { app, net } from '@theia/core/electron-shared/electron';
 import { RpcProxy } from '@theia/core/lib/common/messaging/proxy-factory';
 import { ElectronMainApplication, ElectronMainApplicationContribution } from '@theia/core/lib/electron-main/electron-main-application';
@@ -21,15 +18,14 @@ const MANUAL_CHECK_TIMEOUT_MS = 60 * 1000;
  * window's frontend its {@link UpdaterState}.
  *
  * The releases come from the GitHub releases of {@link RELEASES_REPOSITORY}, as the app's `app-update.yml` (written by
- * electron-builder from `publish` in electron-builder.yml) says, unless `YUKIBANA_UPDATE_FEED` names another feed.
+ * electron-builder from `publish` in electron-builder.yml) says; in `auto` mode, `YUKIBANA_UPDATE_FEED` can name another.
  */
 @injectable()
 export class UpdaterMainService implements ElectronMainApplicationContribution {
     protected mode: UpdateMode = 'off';
     protected state: UpdaterState = { kind: 'off' };
     protected readonly clients = new Set<UpdaterClient>();
-    protected readonly timers: NodeJS.Timeout[] = [];
-    protected application: ElectronMainApplication | undefined;
+    protected application: YukibanaMainApplication | undefined;
     /** electron-updater's updater for this platform, in `auto` mode only. */
     protected updater: AppUpdater | undefined;
     /** The check running now, which a later {@link checkNow} waits for instead of starting another. */
@@ -40,8 +36,16 @@ export class UpdaterMainService implements ElectronMainApplicationContribution {
      */
     protected restartRequested = false;
 
-    /** Decides the mode, and in any but `off` schedules the checks; in `auto`, also sets electron-updater up. */
+    /**
+     * Decides the mode, and in any but `off` schedules the checks (on timers that do not keep the app alive); in `auto`,
+     * also sets electron-updater up.
+     *
+     * - Requires: `application` is the product's {@link YukibanaMainApplication}, which yukibana-product binds.
+     */
     onStart(application: ElectronMainApplication): void {
+        if (!(application instanceof YukibanaMainApplication)) {
+            throw new Error('the updater needs YukibanaMainApplication (from @yukibana/ide-product-ext) as the main application');
+        }
         this.application = application;
         this.mode = updateMode({ platform: process.platform, version: app.getVersion(), isPackaged: app.isPackaged, appImage: process.env.APPIMAGE });
         if (this.mode === 'off') {
@@ -55,13 +59,6 @@ export class UpdaterMainService implements ElectronMainApplicationContribution {
         const every = setInterval(() => this.checkNow(), CHECK_INTERVAL_MS);
         first.unref();
         every.unref();
-        this.timers.push(first, every);
-    }
-
-    /** Stops the scheduled checks. */
-    onStop(): void {
-        this.timers.forEach(timer => clearTimeout(timer));
-        this.timers.length = 0;
     }
 
     /**
@@ -125,13 +122,8 @@ export class UpdaterMainService implements ElectronMainApplicationContribution {
             return;
         }
         this.restartRequested = true;
-        if (this.application instanceof YukibanaMainApplication) {
-            if (!(await this.application.closeAllWindows())) {
-                this.restartRequested = false;
-            }
-        } else {
-            // Without the product's application, a refusal cannot be seen: a cancelled restart leaves the request set.
-            this.application.requestStop();
+        if (!(await this.application.closeAllWindows())) {
+            this.restartRequested = false;
         }
     }
 

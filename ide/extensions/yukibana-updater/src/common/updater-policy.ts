@@ -1,6 +1,4 @@
 /**
- * SPDX-License-Identifier: MIT
- *
  * When and how the IDE updates itself: pure functions, so that they can be tested without Electron.
  */
 
@@ -53,8 +51,8 @@ export function updateMode(env: UpdateEnvironment): UpdateMode {
 
 /**
  * The update feed that `YUKIBANA_UPDATE_FEED` in `env` names, in place of the GitHub releases: an `http:` or `https:`
- * URL of a folder holding `latest.yml` (or `latest-linux.yml`) and the files it lists, as the release workflow's update
- * test serves. Undefined when the variable is unset, empty, or not such a URL.
+ * URL of a folder holding `latest.yml` (or `latest-linux.yml`) and the files it lists, as a local server serves to try an
+ * update. Undefined when the variable is unset, empty, or not such a URL.
  *
  * An environment variable and no setting, because whoever can set it already controls the machine.
  */

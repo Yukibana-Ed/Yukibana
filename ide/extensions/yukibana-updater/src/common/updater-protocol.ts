@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 import { RpcServer } from '@theia/core/lib/common/messaging/proxy-factory';
 
 /** The path the Electron main process serves {@link UpdaterServer} on, over Theia's Electron IPC. */
@@ -39,7 +36,10 @@ export const UpdaterServer = Symbol('UpdaterServer');
 export interface UpdaterServer extends RpcServer<UpdaterClient> {
     /** The current state. */
     getState(): Promise<UpdaterState>;
-    /** Checks for a newer version now, unless the updater is off or a check or download is already running. */
+    /**
+     * Checks for a newer version now and resolves once it has an answer; joins a check already running; does nothing
+     * when the updater is off or an update is downloading or downloaded.
+     */
     checkNow(): Promise<void>;
     /**
      * When an update is downloaded, quits the app the way closing its windows does (so unsaved changes are asked

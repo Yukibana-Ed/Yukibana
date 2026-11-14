@@ -1,6 +1,6 @@
 {
   "extends": "./tsconfig.json",
-  // Composite, so that the IDE's `tsc --build` and the CLI's build compile it first.
+  // Composite, so that the IDE's `tsc --build` compiles it first. The CLI bundles its lib/ with esbuild instead.
   "compilerOptions": { "noEmit": false, "composite": true, "outDir": "lib", "rootDir": "src", "declaration": true },
   "include": ["src/**/*.ts"]
 }

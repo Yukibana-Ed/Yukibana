@@ -1,8 +1,5 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 import { describe, expect, test } from 'vitest';
-import { CHECK_INTERVAL_MS, feedOverride, isNewer, releasePage, releaseVersion, UNRELEASED, updateMode, UpdateEnvironment } from './updater-policy';
+import { feedOverride, isNewer, releasePage, releaseVersion, UNRELEASED, updateMode, UpdateEnvironment } from './updater-policy';
 
 const packaged: UpdateEnvironment = { platform: 'win32', version: '1.2.3', isPackaged: true, appImage: undefined };
 
@@ -73,8 +70,4 @@ describe('isNewer', () => {
 
 test('releasePage links the GitHub release of that version', () => {
     expect(releasePage('0.2.0')).toBe('https://github.com/Yukibana-Ed/Yukibana/releases/tag/ide-v0.2.0');
-});
-
-test('the app checks again every six hours', () => {
-    expect(CHECK_INTERVAL_MS).toBe(6 * 60 * 60 * 1000);
 });

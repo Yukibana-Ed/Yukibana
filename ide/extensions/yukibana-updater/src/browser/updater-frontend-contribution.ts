@@ -1,7 +1,4 @@
-/**
- * SPDX-License-Identifier: MIT
- */
-import { Command, CommandContribution, CommandRegistry, MessageService } from '@theia/core';
+import { Command, CommandContribution, CommandRegistry, Emitter, MessageService } from '@theia/core';
 import { FrontendApplicationContribution, StatusBar, StatusBarAlignment } from '@theia/core/lib/browser';
 import { WindowService } from '@theia/core/lib/browser/window/window-service';
 import { inject, injectable } from '@theia/core/shared/inversify';
@@ -23,31 +20,23 @@ export namespace UpdaterCommands {
     );
 }
 
-/** The frontend's end of the updater: the state it was last told, and a way to wait for the next one. */
+/** The frontend's end of the updater, which the Electron main process tells each state: the last one, and the changes. */
 @injectable()
 export class UpdaterStateHolder {
     protected current: UpdaterState = { kind: 'off' };
-    protected listeners: ((state: UpdaterState) => void)[] = [];
+    protected readonly changed = new Emitter<UpdaterState>();
+    /** Fires with each state after the first one is recorded. */
+    readonly onDidChange = this.changed.event;
 
-    /** The last state the Electron main process reported. */
+    /** The last state the Electron main process reported; `off` until it reports one. */
     get state(): UpdaterState {
         return this.current;
     }
 
-    /** Records `state` and calls every listener with it. */
+    /** Records `state` and fires {@link onDidChange} with it. */
     onStateChanged(state: UpdaterState): void {
         this.current = state;
-        for (const listener of this.listeners) {
-            listener(state);
-        }
-    }
-
-    /** Calls `listener` with every later state, until the returned function is called. */
-    listen(listener: (state: UpdaterState) => void): () => void {
-        this.listeners.push(listener);
-        return () => {
-            this.listeners = this.listeners.filter(l => l !== listener);
-        };
+        this.changed.fire(state);
     }
 }
 
@@ -62,13 +51,8 @@ export class UpdaterFrontendContribution implements FrontendApplicationContribut
 
     /** Keeps the status bar item in step with the state, from the state current at start on. */
     onStart(): void {
-        this.holder.listen(state => this.showStatus(state));
-        this.server.getState().then(
-            state => this.holder.onStateChanged(state),
-            () => {
-                // No updater in this window's main process (e.g. while it closes): nothing to show.
-            },
-        );
+        this.showStatus(this.holder.state);
+        this.holder.onDidChange(state => this.showStatus(state));
     }
 
     registerCommands(registry: CommandRegistry): void {

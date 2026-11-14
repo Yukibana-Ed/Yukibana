@@ -1,16 +1,16 @@
-// Checks the tag a Release run was started with (Actions, Release, Run workflow), before anything builds: what it
-// releases, at which version, and that the version is new and goes forward. Release builds, smoke-tests and publishes
-// that one package, and makes the tag only once that succeeded.
+// Checks the tag a Release run was started with (Actions, Release, Run workflow): what it releases, at which version,
+// and that the run may release it. Release runs it before anything builds and again before it publishes, so that a
+// re-run of an old run never publishes after a newer release.
 //
 //   RELEASE_TAG=cli-v1.2.3 node .github/scripts/release-tag.mts   # from the repository root; writes GITHUB_OUTPUT if set
 import { execFileSync } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
 
-/** What Release can release, by the prefix of its tag (`<kind>-v<version>`). */
+/** What Release can release, by the prefix of its tag (`<kind>-v<version>`): the package's name and folder. */
 export const PACKAGES = {
-    client: { name: '@yukibana/client', dir: 'packages/client', registry: 'npm' },
-    cli: { name: '@yukibana/cli', dir: 'packages/cli', registry: 'npm' },
-    ide: { name: '@yukibana/ide-electron', dir: 'ide/electron', registry: 'github' },
+    client: { name: '@yukibana/client', dir: 'packages/client' },
+    cli: { name: '@yukibana/cli', dir: 'packages/cli' },
+    ide: { name: '@yukibana/ide-electron', dir: 'ide/electron' },
 } as const;
 
 /** Which package a tag releases. */
@@ -22,9 +22,14 @@ const RELEASE_VERSION = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/;
 /** The tags of the IDE releases made by hand before this workflow, `v0.1.0` and `v0.2.0`, which count as IDE versions. */
 const LEGACY_IDE_TAG = /^v(.*)$/;
 
+/** Whether `value` names a package Release knows. */
+function isKind(value: string | undefined): value is Kind {
+    return value !== undefined && Object.hasOwn(PACKAGES, value);
+}
+
 /** The package and version of a release tag, `<kind>-v<X.Y.Z>`; undefined for anything else. */
 export function parseTag(tag: string): { kind: Kind; version: string } | undefined {
-    const match = /^(client|cli|ide)-v(.*)$/.exec(tag);
+    const match = /^([a-z]+)-v(.*)$/.exec(tag);
     const kind = match?.[1];
     const version = match?.[2];
     if (!isKind(kind) || version === undefined || !RELEASE_VERSION.test(version)) {
@@ -33,24 +38,13 @@ export function parseTag(tag: string): { kind: Kind; version: string } | undefin
     return { kind, version };
 }
 
-/** Whether `value` names a package Release knows. */
-function isKind(value: string | undefined): value is Kind {
-    return value === 'client' || value === 'cli' || value === 'ide';
-}
-
 /**
  * Returns a negative number, zero or a positive number as `a` is lower than, equal to or higher than `b`.
  *
- * - Requires: both are `X.Y.Z`; throws otherwise.
+ * - Requires: both are `X.Y.Z`.
  */
 export function compareVersions(a: string, b: string): number {
-    const parts = (v: string): number[] => {
-        if (!RELEASE_VERSION.test(v)) {
-            throw new Error(`compareVersions: ${JSON.stringify(v)} is not X.Y.Z`);
-        }
-        return v.split('.').map(Number);
-    };
-    const [x, y] = [parts(a), parts(b)];
+    const [x, y] = [a.split('.').map(Number), b.split('.').map(Number)];
     for (let i = 0; i < 3; i++) {
         const d = (x[i] ?? 0) - (y[i] ?? 0);
         if (d !== 0) {
@@ -60,9 +54,9 @@ export function compareVersions(a: string, b: string): number {
     return 0;
 }
 
-/** The versions of `kind` released so far, from the repository's `tags`: its own, and for the IDE the old `v` ones. */
-export function releasedVersions(kind: Kind, tags: readonly string[]): string[] {
-    return tags.flatMap(tag => {
+/** The versions of `kind` released, from the repository's tag names: its own, and for the IDE the old `v` ones. */
+export function releasedVersions(kind: Kind, tags: Iterable<string>): string[] {
+    return [...tags].flatMap(tag => {
         const parsed = parseTag(tag);
         if (parsed) {
             return parsed.kind === kind ? [parsed.version] : [];
@@ -73,65 +67,49 @@ export function releasedVersions(kind: Kind, tags: readonly string[]): string[] 
 }
 
 /**
- * Whether `tag` may be released, given the repository's `tags` and, for an npm package, the versions npm has. A release
- * tag that does not exist yet, whose version npm does not have and which is higher than every version of that package
- * released: a version is used once, and npm's `latest` and the IDE's updater only go forward.
+ * Whether a run building `commit` may release `tag`, given the repository's tags (name to the commit each is on). It may
+ * when `tag` is a release tag that does not exist yet, or is on `commit` already (an earlier attempt of the same release,
+ * which the run finishes), and no release of the same package is as high or higher: a version is used once, and npm's
+ * `latest` and the IDE's updater only go forward. Tags are never moved, so every published version has its tag, and the
+ * tags alone say what is out.
  */
-export function check(tag: string, tags: readonly string[], onNpm: readonly string[]): { ok: true; kind: Kind; version: string } | { ok: false; reason: string } {
+export function check(tag: string, tags: ReadonlyMap<string, string>, commit: string): { ok: true; kind: Kind; version: string } | { ok: false; reason: string } {
     const parsed = parseTag(tag);
     if (!parsed) {
         return { ok: false, reason: `${JSON.stringify(tag)} is not a release tag: client-vX.Y.Z, cli-vX.Y.Z or ide-vX.Y.Z` };
     }
-    if (tags.includes(tag)) {
-        return { ok: false, reason: `${tag} exists already; a version is released once` };
+    const on = tags.get(tag);
+    if (on !== undefined && on !== commit) {
+        return { ok: false, reason: `${tag} is released already, from ${on}; a version is used once, so release the next one` };
     }
-    if (onNpm.includes(parsed.version)) {
-        return {
-            ok: false,
-            reason: `npm has ${PACKAGES[parsed.kind].name} ${parsed.version} but there is no tag ${tag}: re-run the failed jobs of the run that published it, which then only tags`,
-        };
-    }
-    const newest = releasedVersions(parsed.kind, tags).toSorted(compareVersions).at(-1);
+    const others = [...tags.keys()].filter(t => t !== tag);
+    const newest = releasedVersions(parsed.kind, others).toSorted(compareVersions).at(-1);
     if (newest !== undefined && compareVersions(parsed.version, newest) <= 0) {
         return { ok: false, reason: `${tag} is not higher than ${newest}, the newest ${parsed.kind} release; a release only goes forward` };
     }
     return { ok: true, ...parsed };
 }
 
-/**
- * The versions of an npm package on the public registry; none when the registry has never heard of it. Asked over HTTP
- * rather than through `npm view`, which in this workspace refuses to run on any Node but devEngines' exact release.
- */
-async function npmVersions(name: string): Promise<string[]> {
-    const response = await fetch(`https://registry.npmjs.org/${name.replace('/', '%2f')}`, { headers: { accept: 'application/vnd.npm.install-v1+json' } });
-    if (response.status === 404) {
-        return [];
-    }
-    if (!response.ok) {
-        throw new Error(`the npm registry answered ${response.status} for ${name}`);
-    }
-    const body: unknown = await response.json();
-    const versions = typeof body === 'object' && body !== null && 'versions' in body ? body.versions : undefined;
-    if (typeof versions !== 'object' || versions === null) {
-        throw new Error(`the npm registry's answer for ${name} has no versions`);
-    }
-    return Object.keys(versions);
-}
-
 if (import.meta.main) {
     const tag = process.env['RELEASE_TAG'] ?? '';
-    const tags = execFileSync('git', ['tag', '--list'], { encoding: 'utf8' })
-        .split('\n')
-        .filter(t => t !== '');
-    const parsed = parseTag(tag);
-    const pkg = parsed ? PACKAGES[parsed.kind] : undefined;
-    const result = check(tag, tags, pkg?.registry === 'npm' ? await npmVersions(pkg.name) : []);
+    const commit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+    const tags = new Map(
+        execFileSync('git', ['for-each-ref', '--format=%(refname:short) %(*objectname) %(objectname)', 'refs/tags'], { encoding: 'utf8' })
+            .split('\n')
+            .filter(line => line !== '')
+            .map(line => {
+                // An annotated tag's commit is %(*objectname); a lightweight tag's is %(objectname), and its %(*objectname) is empty.
+                const [name = '', peeled = '', object = ''] = line.split(' ');
+                return [name, peeled || object] as const;
+            }),
+    );
+    const result = check(tag, tags, commit);
     if (!result.ok) {
         process.stderr.write(`::error::${result.reason}\n`);
         process.exitCode = 1;
     } else {
         const { name, dir } = PACKAGES[result.kind];
-        process.stdout.write(`release ${name} ${result.version} as ${tag}\n`);
+        process.stdout.write(`release ${name} ${result.version} as ${tag} from ${commit}\n`);
         if (process.env['GITHUB_OUTPUT'] !== undefined) {
             appendFileSync(process.env['GITHUB_OUTPUT'], `kind=${result.kind}\nversion=${result.version}\nname=${name}\ndir=${dir}\n`);
         }

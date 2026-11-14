@@ -1,6 +1,3 @@
-/**
- * SPDX-License-Identifier: MIT
- */
 import { CommandContribution } from '@theia/core';
 import { FrontendApplicationContribution } from '@theia/core/lib/browser';
 import { ElectronIpcConnectionProvider } from '@theia/core/lib/electron-browser/messaging/electron-ipc-connection-source';
