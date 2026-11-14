@@ -1,10 +1,22 @@
 {
-  "private": true,
   "name": "@yukibana/client",
   "description": "The library the IDE and the CLI share: the registry client, login and sessions, packing, unpacking and assembly of Yukibana course projects.",
   "version": "0.0.0-dev",
   "license": "MIT",
+  "homepage": "https://github.com/Yukibana-Ed/Yukibana#readme",
+  "bugs": {
+    "url": "https://github.com/Yukibana-Ed/Yukibana/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Yukibana-Ed/Yukibana.git",
+    "directory": "packages/client"
+  },
   "type": "module",
+  "files": [
+    "lib",
+    "yukibana.schema.json"
+  ],
   "exports": {
     ".": {
       "types": "./lib/library.d.ts",
@@ -40,5 +52,8 @@
     "ignore": "catalog:",
     "modern-tar": "catalog:",
     "zod": "catalog:"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

@@ -88,7 +88,7 @@ function packageElectron(preview: boolean): void {
     const dir = appDir('electron');
     fs.rmSync(path.join(dir, 'dist'), { recursive: true, force: true });
     const electronBuilder = createRequire(path.join(dir, 'package.json')).resolve('electron-builder/cli.js');
-    // electron-builder.yml only publishes to generic servers, to which electron-builder uploads nothing anyway.
+    // Never publishes: electron-builder.yml's `publish` only tells the app where to find updates; release.yml uploads.
     exec(dir, electronBuilder, ['-c.mac.identity=null', ...(preview ? ['--dir'] : ['--publish', 'never'])]);
 }
 

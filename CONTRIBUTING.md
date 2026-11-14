@@ -166,6 +166,36 @@ the end-to-end tests. The devcontainer is built when `cloud/dev/`, what its inst
 [preview.yml](.github/workflows/preview.yml) uploads a pull request's Worker as a preview once a maintainer approves;
 [docs/cloud/deploy.md](docs/cloud/deploy.md) describes both.
 
+## Releasing
+
+**Actions → Release → Run workflow**, from `main`, with the tag to make:
+
+| Tag               | Releases                                           | To                                                                                     |
+| ----------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `client-v<X.Y.Z>` | `@yukibana/client` (`packages/client`)             | npm, with provenance                                                                   |
+| `cli-v<X.Y.Z>`    | `@yukibana/cli` (`packages/cli`)                   | npm, with provenance                                                                   |
+| `ide-v<X.Y.Z>`    | the IDE (`ide/electron`, `@yukibana/ide-electron`) | a GitHub release: Windows, Linux, macOS arm64 and x64 installers, and the update feeds |
+
+The run checks the tag ([.github/scripts/release-tag.mts](.github/scripts/release-tag.mts)), writes its version into the
+package's manifest (every `version` in git stays `0.0.0-dev`), builds the package (and, for npm, installs the tarball
+into an empty folder and runs it on a fixture course), and only once all of that passed makes the tag on the commit it
+built and publishes. Only the IDE gets a GitHub release. A run from another branch is a dry run that publishes nothing.
+
+- **A build or the publish failed** (a flaky runner, a missing setting): fix it and use **Re-run failed jobs** on that
+  run (after 7 days its built files are gone: **Re-run all jobs** instead). A tag the run already made is its own, so
+  the re-run finishes the release.
+- **The tag is taken, or is not higher than the package's newest release**, so the check refuses it: a version is used
+  once and only goes forward. Release the next version. For the IDE, the `v0.1.0` and `v0.2.0` tags made by hand before
+  this workflow count, so its first release here is `ide-v0.3.0` or higher.
+- Tags and releases are immutable (a tag ruleset and GitHub's immutable releases), so what was published is never
+  changed or replaced.
+
+Installed IDEs update from these GitHub releases (see [IDE updates](docs/features.md#ide-updates)): each one carries
+`latest.yml` and `latest-linux.yml`, which electron-updater reads, and every installer's `.blockmap`, which lets it
+download only what changed since the installed version. An IDE release therefore has to stay GitHub's latest release,
+and the releases it updates from must keep their files: deleting an old release only makes its users download the next
+update whole.
+
 ## Troubleshooting
 
 ### `Could not resolve path of module: @vscode/windows-ca-certs`

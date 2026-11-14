@@ -9,4 +9,9 @@ the one place that reads `yukibana.json` (`parseConfig`). The commands are in
 [`docs/cloud/README.md`](../docs/cloud/README.md) and
 [`CONTRIBUTING.md`](../CONTRIBUTING.md).
 
+Both are published to npm, by hand, from a `client-v<X.Y.Z>` or `cli-v<X.Y.Z>` tag (CONTRIBUTING.md,
+Releasing); their `version` in git stays `0.0.0-dev`. The CLI bundles the client with esbuild (its `prepare`
+script), so a client fix reaches CLI users only through a CLI release, and a runtime dependency of the client
+the CLI should not bundle is listed both as an `--external:` there and in the CLI's `dependencies`.
+
 @../cloud/CLAUDE.md
