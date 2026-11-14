@@ -1,6 +1,7 @@
 <script lang="ts">
   import '../app.css';
   import { page } from '$app/state';
+  import AppHeader from '#lib/AppHeader.svelte';
   import Toasts from '#lib/Toasts.svelte';
   import { listen } from '#lib/live.svelte.ts';
   import { toast } from '#lib/toast.svelte.ts';
@@ -31,17 +32,7 @@
   });
 </script>
 
-<header class="bar">
-  <a href="/" class="brand"><img src="/logo-64.png" alt="" width="28" height="28" />Yukibana</a>
-  <nav>
-    {#if data.user}
-      <span class="muted">{data.user.email ?? 'signed in'}</span>
-      <form method="POST" action="/auth/logout"><button class="quiet">Log out</button></form>
-    {:else}
-      <a href="/auth/login">Log in</a>
-    {/if}
-  </nav>
-</header>
+<AppHeader user={data.user} memberships={data.memberships} />
 <main>
   {@render children()}
 </main>

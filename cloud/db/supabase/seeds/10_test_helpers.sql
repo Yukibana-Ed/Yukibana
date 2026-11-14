@@ -64,6 +64,17 @@ as $$
   update auth.users set email_confirmed_at = now() where id = tests.uid(addr);
 $$;
 
+-- Sets the platform role of the account `tests.create_user(addr)` made, as an operator would. The integration suite uses it to make a
+-- throwaway admin and demote it afterwards, because `app.bootstrap_admin` works only while no admin exists and would then refuse the developer
+-- whose local database it is. Security definer, so that the app's own role can call it; seeds exist only locally and in CI.
+create or replace function tests.set_platform_role(addr text, r app.platform_role)
+returns void
+language sql
+security definer
+as $$
+  update public.app_user set role = r where user_id = tests.uid(addr);
+$$;
+
 -- Lookups that see through RLS, for a test to name what it made. Positional
 -- parameters on purpose: in a SQL function an unqualified `code` is the
 -- column, and `c.code = code` was true of every row.

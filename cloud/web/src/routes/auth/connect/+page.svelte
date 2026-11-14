@@ -22,9 +22,9 @@
     <input type="hidden" name="redirect_uri" value={data.request.redirect_uri} />
     <input type="hidden" name="code_challenge" value={data.request.code_challenge} />
     <input type="hidden" name="state" value={data.request.state} />
-    <button formaction="?/continue">Continue as {who}</button>
-    <button class="quiet" formaction="?/switch">Use a different account</button>
-    <button class="quiet" formaction="?/cancel">Cancel</button>
+    <button class="yk-btn yk-btn--primary" formaction="?/continue">Continue as {who}</button>
+    <button class="yk-btn yk-btn--secondary" formaction="?/switch">Use a different account</button>
+    <button class="yk-btn yk-btn--secondary" formaction="?/cancel">Cancel</button>
   </form>
 
   <p class="note">

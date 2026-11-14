@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="yk-root">
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -8,7 +8,21 @@
         <!-- Both schemes are real, so say so before any CSS loads and the browser
              paints the right background instead of a white flash. -->
         <meta name="color-scheme" content="light dark" />
-        <meta name="theme-color" content="#3048c8" />
+        <meta name="theme-color" content="#f5f7fa" media="(prefers-color-scheme: light)" data-scheme="light" />
+        <meta name="theme-color" content="#0b0e15" media="(prefers-color-scheme: dark)" data-scheme="dark" />
+        <!-- The theme the person chose in the account menu (#lib/theme), applied before anything paints so the page
+             never flashes the other scheme. It is applyTheme in #lib/theme.ts, inlined; tests/theme.test.ts runs it. -->
+        <script id="theme-boot">
+            try {
+                var theme = localStorage.getItem('yukibana-theme');
+                if (theme === 'light' || theme === 'dark') {
+                    document.documentElement.setAttribute('data-theme', theme);
+                    document.querySelectorAll('meta[name="theme-color"][data-scheme]').forEach(function (meta) {
+                        meta.media = meta.dataset.scheme === theme ? 'all' : 'not all';
+                    });
+                }
+            } catch (e) {}
+        </script>
         <!-- The snow-flower mark, from cloud/web/static: a PNG for browsers that take
              one, an .ico for those that ask for /favicon.ico regardless, and an
              opaque one for a phone's home screen, which would fill transparency
@@ -21,7 +35,7 @@
     <body data-sveltekit-preload-data="hover">
         <!-- SvelteKit asks for a wrapper: an extension that injects a node
              straight into <body> breaks hydration otherwise. Nothing in app.css
-             reaches through it — the header and main are styled by name. -->
+             reaches through it: the header and main are styled by name. -->
         <div>%sveltekit.body%</div>
     </body>
 </html>

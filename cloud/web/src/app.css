@@ -1,44 +1,25 @@
-/* The whole look of the app, in one file.
+/* The cloud's look: Yukibana's design system (@yukibana/design), and what this app adds to it.
  *
- * It styles elements rather than classes, so a page is plain HTML: a table
- * is a table, a form is a form, and a new page is styled the moment it is
- * written. That is the point — the pages hold what is on them, and nothing
- * about how it looks. The handful of classes below exist because no element
- * means "this is fine" or "this is a draft".
+ * The tokens (`--yk-*`) and the shared components (`yk-` classes: buttons, chips, tabs, the header, toasts, tables,
+ * fields, the empty state) come from the package, whose README says what was decided and why. This file styles what
+ * the package leaves to each app: the page's elements (a section is a card, a form a stack of fields), and the few
+ * things only the cloud has. Colours and fonts are tokens, except the shadows of menus and dialogs and the dialog's
+ * backdrop, which the package has no token for yet, and the GitHub button, in GitHub's own colours. Sizes are tokens
+ * where the package has one; the rest are small values written in place (hairlines, icon boxes, compact padding).
  *
- * Both schemes come from one set of values with `light-dark()`, so there is
- * one place a colour is decided and no second block to keep in step.
+ * The order of the layers is said first, so the package's components sit under the app's layout and controls.
  */
 
-@layer base, layout, controls, bits;
+@layer base, components, layout, controls, bits;
+
+@import '@yukibana/design/tokens.css';
+/* The three faces, self-hosted from the package: Bricolage Grotesque for headings, Atkinson Hyperlegible Next for text,
+   JetBrains Mono for code. Each file is fetched only when the page shows a character it covers. */
+@import '@yukibana/design/fonts.css';
+@import '@yukibana/design/base.css' layer(components);
 
 @layer base {
     :root {
-        color-scheme: light dark;
-
-        /* Surfaces, from the page backwards to the thing in front of you. */
-        --bg: light-dark(#f4f5f7, #0c0d11);
-        --surface: light-dark(#ffffff, #15171d);
-        --sunken: light-dark(#f4f5f7, #1b1e26);
-        --line: light-dark(#e4e6ea, #262a33);
-
-        /* Ink. `--ink-soft` is for what a reader may skip, and stays above 4.5:1. */
-        --ink: light-dark(#14161a, #e8eaf0);
-        --ink-soft: light-dark(#5a6170, #9ba3b2);
-
-        --accent: light-dark(#3048c8, #8ea6ff);
-        --accent-bg: light-dark(#eef1fe, #1a2040);
-        --ok: light-dark(#136c3c, #58d79a);
-        --ok-bg: light-dark(#e7f5ed, #0f2d20);
-        --bad: light-dark(#a3221b, #ff9b91);
-        --bad-bg: light-dark(#fdecea, #351714);
-
-        --radius: 14px;
-        --radius-sm: 9px;
-        --pad: clamp(1rem, 0.6rem + 1.6vw, 1.75rem);
-        --shadow: 0 1px 2px light-dark(rgb(16 18 24 / 6%), rgb(0 0 0 / 40%)), 0 10px 26px -18px light-dark(rgb(16 18 24 / 45%), rgb(0 0 0 / 80%));
-
-        font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
         /* Numbers sit in columns all over this app: sizes, dates, hashes. */
         font-variant-numeric: tabular-nums;
     }
@@ -49,304 +30,11 @@
 
     body {
         margin: 0;
-        background: var(--bg);
-        color: var(--ink);
-        font-size: 1rem;
-        line-height: 1.55;
         -webkit-text-size-adjust: 100%;
     }
 
-    /* A type scale that holds on a phone without a media query. */
-    h1 {
-        font-size: clamp(1.45rem, 1.2rem + 1.1vw, 1.9rem);
-        line-height: 1.2;
-        letter-spacing: -0.02em;
-        margin: 0 0 0.35rem;
-    }
-    h2 {
-        font-size: 1.05rem;
-        letter-spacing: -0.01em;
-        margin: 0 0 0.9rem;
-    }
-    h1 + p,
-    h2 + p:first-of-type {
-        margin-top: 0;
-    }
-    p {
-        margin: 0 0 0.9rem;
-    }
-    :is(h1, h2, p, table, form, ul):last-child {
-        margin-bottom: 0;
-    }
-
-    a {
-        color: var(--accent);
-        text-decoration-thickness: 1px;
-        text-underline-offset: 0.18em;
-    }
-    a:hover {
-        text-decoration-thickness: 2px;
-    }
-
-    code,
-    pre {
-        font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, monospace;
-        font-size: 0.875em;
-    }
-    code {
-        background: var(--sunken);
-        border-radius: 5px;
-        padding: 0.1em 0.35em;
-    }
-    pre {
-        background: var(--sunken);
-        border: 1px solid var(--line);
-        border-radius: var(--radius-sm);
-        padding: 0.75rem;
-        overflow-x: auto;
-        /* A token is one long unbroken string and must be selectable whole. */
-        white-space: pre-wrap;
-        word-break: break-all;
-        margin: 0 0 0.9rem;
-    }
-    pre code {
-        background: none;
-        padding: 0;
-    }
-
-    /* One ring, on everything, only for keyboards. */
-    :focus-visible {
-        outline: 2px solid var(--accent);
-        outline-offset: 2px;
-        border-radius: 4px;
-    }
-
-    @media (prefers-reduced-motion: no-preference) {
-        :where(a, button, select, input, tr) {
-            transition:
-                background-color 120ms,
-                border-color 120ms,
-                color 120ms;
-        }
-    }
-}
-
-@layer layout {
-    /* The bar stays while a roster scrolls, and the blur keeps it legible
-   * over whatever is underneath without a solid block of colour. */
-    header.bar {
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.75rem 1rem;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0.7rem clamp(1rem, 4vw, 2rem);
-        border-bottom: 1px solid var(--line);
-        background: light-dark(rgb(255 255 255 / 82%), rgb(21 23 29 / 82%));
-        backdrop-filter: blur(12px) saturate(140%);
-    }
-    header.bar nav {
-        display: flex;
-        gap: 0.5rem 1rem;
-        align-items: center;
-        flex-wrap: wrap;
-    }
-
-    .brand {
-        font-weight: 650;
-        letter-spacing: -0.02em;
-        text-decoration: none;
-        color: inherit;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    /* The mark: the snow flower, drawn at twice its size for sharp screens.
-   * Decorative beside the name, so its alt text is empty. */
-    .brand img {
-        inline-size: 1.75rem;
-        block-size: 1.75rem;
-    }
-
-    main {
-        max-width: 68rem;
-        margin-inline: auto;
-        padding: clamp(1.25rem, 3vw, 2.25rem) clamp(1rem, 4vw, 2rem) 4rem;
-        display: flex;
-        flex-direction: column;
-        gap: 1.1rem;
-    }
-
-    /* Every block of a page is a card. A page adds one tag and gets the
-   * spacing, the rule under the heading and the rounding for nothing. */
-    section {
-        background: var(--surface);
-        border: 1px solid var(--line);
-        border-radius: var(--radius);
-        padding: var(--pad);
-        box-shadow: var(--shadow);
-    }
-    section > h2 {
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-        padding-bottom: 0.7rem;
-        margin-bottom: 1rem;
-        border-bottom: 1px solid var(--line);
-    }
-    /* The page's own title is not a card: it introduces them. */
-    .head {
-        padding-inline: 0.25rem;
-    }
-    .head p {
-        color: var(--ink-soft);
-    }
-
-    /* Where the page sits: Courses / CS-101 2026 autumn / Warm-up. Every
-   * level but the last is a link; the separators are drawn, not typed, so a
-   * screen reader reads the names and not the slashes. */
-    nav.crumbs {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.35rem;
-        margin-bottom: 0.35rem;
-        font-size: 0.9rem;
-        color: var(--ink-soft);
-    }
-    nav.crumbs > * + *::before {
-        content: '/';
-        margin-inline-end: 0.35rem;
-        color: color-mix(in oklab, var(--ink-soft) 50%, transparent);
-    }
-    nav.crumbs a {
-        color: inherit;
-        text-decoration: none;
-    }
-    nav.crumbs a:hover {
-        color: var(--accent);
-    }
-
-    /* A page's sections. Links, not buttons: each tab is an address (see
-   * #lib/tabs.ts), so it opens in a new tab, survives a reload and needs no
-   * script. On a phone the row scrolls rather than wrapping into a pile. */
-    nav.tabs {
-        display: flex;
-        gap: 0.25rem;
-        border-bottom: 1px solid var(--line);
-        overflow-x: auto;
-        scrollbar-width: none;
-    }
-    nav.tabs a {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.45rem;
-        padding: 0.55rem 0.9rem;
-        margin-bottom: -1px;
-        border-bottom: 2px solid transparent;
-        color: var(--ink-soft);
-        font-weight: 560;
-        text-decoration: none;
-        white-space: nowrap;
-    }
-    nav.tabs a:hover {
-        color: var(--ink);
-    }
-    nav.tabs a[aria-current='page'] {
-        color: var(--accent);
-        border-bottom-color: var(--accent);
-    }
-    nav.tabs .count {
-        padding: 0 0.45rem;
-        border-radius: 999px;
-        background: var(--sunken);
-        border: 1px solid var(--line);
-        color: var(--ink-soft);
-        font-size: 0.75rem;
-        font-weight: 600;
-    }
-    nav.tabs a[aria-current='page'] .count {
-        background: var(--accent-bg);
-        color: var(--accent);
-        border-color: transparent;
-    }
-
-    /* A few figures side by side, at the top of an overview. */
-    .stats {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
-        gap: 0.75rem;
-        margin-bottom: 1rem;
-    }
-    .stats > div {
-        background: var(--sunken);
-        border-radius: var(--radius-sm);
-        padding: 0.7rem 0.9rem;
-    }
-    .stats strong {
-        display: block;
-        font-size: 1.3rem;
-        letter-spacing: -0.01em;
-    }
-    .stats span {
-        font-size: 0.82rem;
-        color: var(--ink-soft);
-    }
-
-    /* A table is wider than a phone more often than not; let it scroll on its
-   * own rather than the page sideways. */
-    .scroll {
-        overflow-x: auto;
-        margin-inline: calc(var(--pad) * -1);
-        padding-inline: var(--pad);
-    }
-
-    table {
-        border-collapse: collapse;
-        width: 100%;
-        font-size: 0.94rem;
-    }
-    th,
-    td {
-        text-align: left;
-        padding: 0.55rem 0.7rem;
-        vertical-align: baseline;
-    }
-    th {
-        font-size: 0.76rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        color: var(--ink-soft);
-        border-bottom: 1px solid var(--line);
-        white-space: nowrap;
-    }
-    td {
-        border-bottom: 1px solid color-mix(in oklab, var(--line) 60%, transparent);
-    }
-    tbody tr:last-child td {
-        border-bottom: 0;
-    }
-    tbody tr:hover td {
-        background: var(--sunken);
-    }
-    :is(th, td):first-child {
-        padding-inline-start: 0;
-    }
-    :is(th, td):last-child {
-        padding-inline-end: 0;
-    }
-    /* A cell holding a control is an action on its row, and sits at the end of
-   * it. Asking what the cell contains beats guessing from its position: the
-   * last column is a button on one table and a role on the next. */
-    td:has(> form, > button) {
-        text-align: end;
-    }
-}
-
-@layer controls {
+    /* Controls take the page's type, in the base layer so every yk- control (a button's semibold label, a primary
+       button's colour) still sets its own. */
     input,
     select,
     button,
@@ -355,124 +43,439 @@
         color: inherit;
     }
 
+    /* A type scale that holds on a phone without a media query. */
+    h1 {
+        font-size: clamp(1.45rem, 1.2rem + 1.1vw, var(--yk-font-size-2xl));
+        margin: 0 0 var(--yk-space-1);
+    }
+    h2 {
+        font-size: var(--yk-font-size-lg);
+        margin: 0 0 var(--yk-space-3);
+    }
+    h1 + p,
+    h2 + p:first-of-type {
+        margin-top: 0;
+    }
+    p {
+        margin: 0 0 var(--yk-space-3);
+    }
+    :is(h1, h2, p, table, form, ul):last-child {
+        margin-bottom: 0;
+    }
+
+    a:hover {
+        text-decoration-thickness: 2px;
+    }
+
+    code,
+    pre {
+        font-size: 0.875em;
+    }
+    code {
+        background: var(--yk-sunken);
+        border-radius: 5px;
+        padding: 0.1em 0.35em;
+    }
+    pre {
+        background: var(--yk-code-bg);
+        color: var(--yk-code-ink);
+        border: 1px solid var(--yk-line);
+        border-radius: var(--yk-radius-md);
+        padding: var(--yk-space-3);
+        overflow-x: auto;
+        /* A token is one long unbroken string and must be selectable whole. */
+        white-space: pre-wrap;
+        word-break: break-all;
+        margin: 0 0 var(--yk-space-3);
+    }
+    pre code {
+        background: none;
+        padding: 0;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        :where(a, button, select, input, tr) {
+            transition:
+                background-color var(--yk-motion-fast),
+                border-color var(--yk-motion-fast),
+                color var(--yk-motion-fast);
+        }
+    }
+}
+
+@layer layout {
+    /* The header (yk-header, #lib/AppHeader.svelte): the brand and the course switcher on the left, the avatar on the
+       right, nothing else. The bar has nothing for the package's middle column, so the avatar is placed in the last
+       column, whichever that is: three columns wide, two on a phone, and one row either way. */
+    .yk-header > .yk-header__end {
+        grid-column: -2;
+    }
+    .yk-header .start {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+    }
+    .yk-header .sep {
+        color: var(--yk-line-strong);
+    }
+    .yk-header .course {
+        min-width: 0;
+        max-width: 22rem;
+    }
+    .yk-header .course > span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .yk-header .course svg {
+        width: 14px;
+        height: 14px;
+    }
+    .avatar {
+        display: inline-grid;
+        place-items: center;
+        width: 30px;
+        height: 30px;
+        padding: 0;
+        border: 1px solid transparent;
+        border-radius: var(--yk-radius-pill);
+        background: var(--yk-chip-teal-bg);
+        color: var(--yk-chip-teal-fg);
+        font: var(--yk-font-weight-bold) var(--yk-font-size-sm) / 1 var(--yk-font-family-body);
+        text-transform: uppercase;
+        cursor: pointer;
+    }
+    .avatar:hover {
+        border-color: var(--yk-line-strong);
+    }
+
+    /* A menu that opens from a button: a popover in the top layer, so no scrolling box clips it; the button places it
+       (#lib/popover.ts). */
+    .menu {
+        position: fixed;
+        inset: auto;
+        margin: 0;
+        min-width: 12rem;
+        max-width: min(24rem, calc(100vw - 2rem));
+        padding: var(--yk-space-1);
+        border: 1px solid var(--yk-line);
+        border-radius: var(--yk-radius-md);
+        background: var(--yk-surface);
+        color: var(--yk-ink);
+        box-shadow: 0 12px 30px -16px oklch(20% 0.03 260 / 0.45);
+    }
+    .menu :is(a, button) {
+        display: block;
+        width: 100%;
+        padding: 6px 10px;
+        border: 0;
+        border-radius: var(--yk-radius-sm);
+        background: none;
+        color: var(--yk-ink);
+        font: inherit;
+        font-size: var(--yk-font-size-sm);
+        text-align: start;
+        text-decoration: none;
+        cursor: pointer;
+    }
+    .menu :is(a, button):hover {
+        background: var(--yk-sunken);
+    }
+    .menu a[aria-current] {
+        font-weight: var(--yk-font-weight-bold);
+        background: var(--yk-sunken);
+    }
+    .menu .who {
+        padding: 6px 10px;
+        color: var(--yk-soft);
+        font-size: var(--yk-font-size-xs);
+        overflow-wrap: anywhere;
+    }
+    .menu .group {
+        padding: 8px 10px 2px;
+        color: var(--yk-soft);
+        font-size: var(--yk-font-size-xs);
+        font-weight: var(--yk-font-weight-bold);
+    }
+    .menu hr {
+        margin: var(--yk-space-1) 0;
+        border: 0;
+        border-top: 1px solid var(--yk-line);
+    }
+
+    main {
+        max-width: 68rem;
+        margin-inline: auto;
+        padding: clamp(1.25rem, 3vw, 2.25rem) clamp(1rem, 4vw, 2rem) 4rem;
+        display: flex;
+        flex-direction: column;
+        gap: var(--yk-space-4);
+    }
+
+    /* Every block of a page is a card. A page adds one tag and gets the spacing and the rounding for nothing. */
+    section {
+        background: var(--yk-surface);
+        border: 1px solid var(--yk-line);
+        border-radius: var(--yk-radius-lg);
+        padding: clamp(1rem, 0.6rem + 1.6vw, 1.5rem);
+    }
+    section > h2 {
+        display: flex;
+        align-items: center;
+        gap: var(--yk-space-2);
+    }
+    /* The page's own title is not a card: it introduces them. */
+    .head {
+        padding-inline: var(--yk-space-1);
+    }
+    .head p {
+        color: var(--yk-soft);
+    }
+
+    /* Where the page sits: Courses / CS-101 2026 autumn / Warm-up. Every level but the last is a link; the separators
+       are drawn, not typed, so a screen reader reads the names and not the slashes. */
+    nav.crumbs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        margin-bottom: var(--yk-space-1);
+        font-size: var(--yk-font-size-sm);
+        color: var(--yk-soft);
+    }
+    nav.crumbs > * + *::before {
+        content: '/';
+        margin-inline-end: 0.35rem;
+        color: var(--yk-line-strong);
+    }
+    nav.crumbs a {
+        color: inherit;
+        text-decoration: none;
+    }
+    nav.crumbs a:hover {
+        color: var(--yk-ink);
+        text-decoration: underline;
+    }
+
+    /* A page's sections (yk-tabs, #lib/Tabs.svelte). Links, not buttons: each tab is an address (see #lib/tabs.ts).
+       On a phone the row scrolls rather than wrapping into a pile. The label, not the link, reserves the width of its
+       bold self, so the count beside it never moves. */
+    .yk-tabs {
+        overflow-x: auto;
+        scrollbar-width: none;
+        /* Room for the first tab's focus ring (below), which the scroller would otherwise clip. */
+        padding-inline: var(--yk-space-1);
+        margin-inline: calc(-1 * var(--yk-space-1));
+    }
+    .yk-tabs > a {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+    }
+    .yk-tabs > a::after {
+        content: none;
+    }
+    /* The scroller clips whatever leaves it, the focus ring included, so a focused tab draws its ring inside itself,
+       and takes a little room on either side for it from the gap (a margin that cancels the padding, so nothing moves). */
+    .yk-tabs > a:focus-visible {
+        padding-inline: var(--yk-space-1);
+        margin-inline: calc(-1 * var(--yk-space-1));
+        outline-offset: calc(-1 * var(--yk-focus-width));
+    }
+    .yk-tabs .label {
+        display: inline-grid;
+    }
+    .yk-tabs .label::after {
+        content: attr(data-label);
+        font-weight: var(--yk-font-weight-bold);
+        height: 0;
+        visibility: hidden;
+        overflow: hidden;
+    }
+    .yk-tabs .yk-chip {
+        padding-inline: 7px;
+    }
+
+    /* A few figures side by side, at the top of an overview. */
+    .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+        gap: var(--yk-space-3);
+        margin-bottom: var(--yk-space-4);
+    }
+    .stats > div {
+        background: var(--yk-sunken);
+        border-radius: var(--yk-radius-md);
+        padding: var(--yk-space-3) var(--yk-space-4);
+    }
+    .stats strong {
+        display: block;
+        font: var(--yk-font-weight-heading) var(--yk-font-size-lg) / 1.3 var(--yk-font-family-heading);
+        letter-spacing: -0.01em;
+    }
+    .stats span {
+        font-size: var(--yk-font-size-sm);
+        color: var(--yk-soft);
+    }
+
+    /* A table is wider than a phone more often than not; let it scroll on its own rather than the page sideways. A
+       scroller clips what is drawn outside it, and its first and last cells have no padding at their outer side, so it
+       reaches out by a focus ring's width and offset, into the card's padding: a control at either end keeps all of
+       its ring, and the table stays where it was. */
+    .scroll {
+        --ring: calc(var(--yk-focus-width) + var(--yk-focus-offset));
+        overflow-x: auto;
+        padding-inline: var(--ring);
+        margin-inline: calc(-1 * var(--ring));
+    }
+
+    /* Tables are yk-table. Inside a card the card is already the frame, so the table drops its own, and with it the
+       clipping that kept rows inside its rounded corners, which would cut the focus ring of a control at either end. */
+    section .yk-table {
+        border: 0;
+        border-radius: 0;
+        background: none;
+        overflow: visible;
+    }
+    .yk-table :is(th, td) {
+        vertical-align: baseline;
+    }
+    .yk-table th {
+        font-weight: var(--yk-font-weight-bold);
+        white-space: nowrap;
+    }
+    section .yk-table :is(th, td):first-child {
+        padding-inline-start: 0;
+    }
+    section .yk-table :is(th, td):last-child {
+        padding-inline-end: 0;
+    }
+    /* Only a row that is a link (#lib/row-link.ts) answers the pointer, and it does so all along the row. A checked
+       row (yk-check) keeps the package's fill under the pointer: this layer is above the package's, so a hover here
+       that did not step aside would win over it. */
+    .yk-table tbody tr:hover {
+        cursor: auto;
+    }
+    .yk-table tbody tr:hover:not(:has(.yk-check:checked)) {
+        background: none;
+    }
+    .yk-table tbody tr[data-href] {
+        cursor: pointer;
+    }
+    .yk-table tbody tr[data-href]:hover:not(:has(.yk-check:checked)) {
+        background: var(--yk-sunken);
+    }
+    /* A cell holding a control is an action on its row, and sits at the end of it. */
+    .yk-table td:has(> form, > button) {
+        text-align: end;
+    }
+}
+
+@layer controls {
+    /* A form is a stack of fields: each label on top, bold and small, the outlined control under it (yk-field, written
+       as a label that holds its control, so no field needs an id). */
     form.stack {
         display: grid;
-        gap: 0.85rem;
+        gap: var(--yk-space-3);
         max-width: 30rem;
     }
     form.stack label {
         display: grid;
-        gap: 0.3rem;
-        font-size: 0.9rem;
-        font-weight: 550;
+        gap: var(--yk-space-1);
+        font-size: var(--yk-font-size-sm);
+        font-weight: var(--yk-font-weight-bold);
     }
-    form.stack button {
+    form.stack label > .yk-input {
+        font-size: var(--yk-font-size-md);
+        font-weight: var(--yk-font-weight-regular);
+    }
+    form.stack > .yk-btn {
         justify-self: start;
+    }
+    form.stack:not(:last-child) {
+        margin-bottom: var(--yk-space-3);
     }
     form.inline {
         display: inline;
     }
-
-    :is(input, select):not([type='file'], [type='submit']) {
-        padding: 0.5rem 0.65rem;
-        border: 1px solid var(--line);
-        border-radius: var(--radius-sm);
-        background: var(--surface);
-        font-weight: 400;
+    .yk-input {
         width: 100%;
     }
-    :is(input, select):hover:not(:disabled) {
-        border-color: color-mix(in oklab, var(--accent) 45%, var(--line));
-    }
-    /* A control in a table row is as wide as what it holds; the full width of
-   * a form field would be the full width of the column. */
-    /* Wide enough to read its own value: squeezed into a narrow column on a
-   * phone, a select shrank to nothing but its arrow, and the roster stopped
-   * saying what anybody's role was. */
-    td :is(input, select) {
+    /* A control in a table row is as wide as what it holds, but wide enough to read its own value. */
+    td .yk-input {
         width: auto;
         min-width: 9ch;
-        padding-block: 0.25rem;
-        font-size: 0.85rem;
+        padding-block: 3px;
+        font-size: var(--yk-font-size-sm);
     }
-    input::placeholder {
-        color: var(--ink-soft);
+    .yk-input::placeholder {
+        color: var(--yk-soft);
     }
-
-    /* The file input is the one control browsers will not style; give it a
-   * dropped-on area instead of fighting its button. */
-    input[type='file'] {
-        width: 100%;
-        padding: 0.7rem;
-        border: 1px dashed color-mix(in oklab, var(--accent) 35%, var(--line));
-        border-radius: var(--radius-sm);
-        background: var(--sunken);
-        font-size: 0.9rem;
+    /* The file input is the one control browsers will not style; give it a dropped-on area instead of fighting its
+       button. */
+    input[type='file'].yk-input {
+        padding: var(--yk-space-3);
+        border-style: dashed;
+        background: var(--yk-sunken);
+        font-size: var(--yk-font-size-sm);
     }
 
-    button {
-        padding: 0.5rem 0.95rem;
-        border: 1px solid transparent;
-        border-radius: var(--radius-sm);
-        background: var(--accent);
-        color: light-dark(#fff, #0c0d11);
-        font-weight: 600;
-        font-size: 0.92rem;
-        cursor: pointer;
+    /* A button that is working shows the spinner inside itself, and stays its own size. */
+    .yk-btn:disabled:has(.yk-spinner) {
+        cursor: progress;
+        opacity: 0.8;
     }
-    button:hover {
-        background: color-mix(in oklab, var(--accent) 88%, black);
-    }
-    button:active {
-        transform: translateY(1px);
-    }
-
-    /* Inside a table a button is an action on one row, not the point of the
-   * page, so it recedes until it is wanted. */
-    td button,
-    button.quiet {
-        background: transparent;
-        color: var(--ink-soft);
-        border-color: var(--line);
-        padding: 0.25rem 0.6rem;
-        font-size: 0.85rem;
-    }
-    button.quiet:hover {
-        background: var(--sunken);
-        color: var(--ink);
-    }
-    /* Every button in a row of this app takes something away — Remove, Revoke —
-   * so the row's own buttons say so on hover. A gentler one elsewhere would
-   * want a class of its own rather than a change here. */
-    td button:hover {
-        background: var(--bad-bg);
-        color: var(--bad);
+    /* A row's button that takes something away says so on hover. */
+    .yk-btn--remove:hover {
+        background: var(--yk-danger-bg);
+        color: var(--yk-danger);
         border-color: currentcolor;
+    }
+
+    /* Asking first, only for what cannot come back (#lib/Confirm.svelte). */
+    dialog.confirm {
+        max-width: min(26rem, calc(100vw - 2rem));
+        padding: var(--yk-space-6);
+        border: 1px solid var(--yk-line);
+        border-radius: var(--yk-radius-lg);
+        background: var(--yk-surface);
+        color: var(--yk-ink);
+        text-align: start;
+        white-space: normal;
+        box-shadow: 0 20px 50px -20px oklch(10% 0.03 260 / 0.6);
+    }
+    dialog.confirm::backdrop {
+        background: oklch(15% 0.02 260 / 0.45);
+    }
+    dialog.confirm .buttons {
+        display: flex;
+        justify-content: flex-end;
+        gap: var(--yk-space-2);
+        margin-top: var(--yk-space-4);
     }
 }
 
 @layer bits {
     .muted {
-        color: var(--ink-soft);
+        color: var(--yk-soft);
     }
+    /* A line that stays on the page: what worked, with what it made (a hash, a count), or what went wrong where it
+       happened. A tinted box with its sign aside, like a callout. */
     .error,
     .ok {
         display: flex;
-        gap: 0.5rem;
-        padding: 0.7rem 0.9rem;
-        border-radius: var(--radius-sm);
-        border: 1px solid;
-        font-size: 0.94rem;
+        gap: var(--yk-space-2);
+        align-items: baseline;
+        padding: 10px 14px;
+        border-radius: var(--yk-radius-md);
     }
     .error {
-        color: var(--bad);
-        background: var(--bad-bg);
-        border-color: color-mix(in oklab, var(--bad) 30%, transparent);
+        color: var(--yk-danger);
+        background: var(--yk-danger-bg);
     }
     .ok {
-        color: var(--ok);
-        background: var(--ok-bg);
-        border-color: color-mix(in oklab, var(--ok) 30%, transparent);
+        color: var(--yk-ok);
+        background: var(--yk-accent-bg);
     }
     .error::before {
         content: '⚠';
@@ -481,114 +484,81 @@
         content: '✓';
     }
 
-    /* Toasts: failures, one line each, bottom right, above everything. */
+    /* Messages (yk-toast, #lib/Toasts.svelte): bottom centre, one line each, stacked when there are several. */
     .toasts {
         position: fixed;
-        inset-inline-end: 1rem;
-        inset-block-end: 1rem;
-        z-index: 10;
+        left: 50%;
+        bottom: 20px;
+        translate: -50% 0;
+        z-index: 20;
         display: grid;
-        gap: 0.5rem;
-        max-width: min(28rem, calc(100vw - 2rem));
+        /* The column may shrink below its toast's longest line, and each toast fits its content up to the column: the
+           package's width: max-content would hold a long message at full length and push Dismiss off a phone. */
+        grid-template-columns: minmax(0, auto);
+        justify-items: center;
+        gap: var(--yk-space-2);
+        width: max-content;
+        max-width: calc(100vw - 32px);
     }
-    .toast {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        padding: 0.7rem 0.6rem 0.7rem 0.9rem;
-        border-radius: var(--radius-sm);
-        border: 1px solid color-mix(in oklab, var(--bad) 35%, transparent);
-        background: var(--surface);
-        color: var(--bad);
-        box-shadow: var(--shadow);
-        font-size: 0.94rem;
+    .toasts .yk-toast {
+        position: static;
+        translate: none;
+        width: auto;
+        max-width: 100%;
+        white-space: normal;
     }
-    .toast::before {
-        content: '⚠';
+    @media (prefers-reduced-motion: no-preference) {
+        .toasts .yk-toast {
+            animation: yk-fade-in var(--yk-motion-fast) var(--yk-motion-ease);
+        }
     }
-    .toast span {
-        flex: 1;
-    }
-    .toast button {
-        padding: 0.1rem 0.5rem;
+    @keyframes yk-fade-in {
+        from {
+            opacity: 0;
+        }
     }
     /* A notice with an incident wraps: its folded details take a line of their own. */
-    .toast {
+    .yk-toast:has(details) {
         flex-wrap: wrap;
+        border-radius: var(--yk-radius-lg);
     }
-    .toast details {
+    .yk-toast details {
         flex-basis: 100%;
         order: 3;
-        color: var(--ink);
+        font-weight: var(--yk-font-weight-regular);
     }
-    .toast details pre {
+    .yk-toast details pre {
         max-height: 14rem;
-        margin: 0.4rem 0 0;
-        font-size: 0.78rem;
+        margin: 6px 0 0;
+        font-size: var(--yk-font-size-xs);
     }
     /* An incident on the error page: a stack is long, and scrolls rather than pushes. */
     pre.incident {
         max-height: 24rem;
         overflow-y: auto;
-        font-size: 0.8rem;
+        font-size: var(--yk-font-size-xs);
     }
 
-    /* A role, a state, a kind: a word that is a value rather than prose. */
-    .chip {
-        display: inline-block;
-        padding: 0.1rem 0.5rem;
-        border-radius: 999px;
-        background: var(--sunken);
-        border: 1px solid var(--line);
-        color: var(--ink-soft);
-        font-size: 0.78rem;
-        font-weight: 600;
-        letter-spacing: 0.01em;
-        white-space: nowrap;
-    }
-    .chip.good {
-        background: var(--ok-bg);
-        border-color: color-mix(in oklab, var(--ok) 25%, transparent);
-        color: var(--ok);
-    }
-    .chip.live {
-        background: var(--accent-bg);
-        border-color: color-mix(in oklab, var(--accent) 25%, transparent);
-        color: var(--accent);
-    }
-    .chip.late {
-        background: var(--bad-bg);
-        border-color: color-mix(in oklab, var(--bad) 25%, transparent);
-        color: var(--bad);
+    /* A chip whose word is bad news: late, past the deadline. It carries an icon too, never colour alone. */
+    .yk-chip--danger {
+        --yk-chip-bg: var(--yk-danger-bg);
+        --yk-chip-fg: var(--yk-danger);
     }
 
-    /* Something to look at, not something wrong: a submission built on an
-   * older starter. Amber, so it is never read as the red of "late". */
-    .chip.warn {
-        background: light-dark(#fff4e0, #33250c);
-        border-color: light-dark(#f0c36d, #6b4d14);
-        color: light-dark(#8a5300, #ffc66b);
+    /* An empty list (yk-empty, #lib/Empty.svelte), inside a card. */
+    .yk-empty > b {
+        font: var(--yk-font-weight-heading) var(--yk-font-size-lg) / 1.3 var(--yk-font-family-heading);
     }
-
-    /* What a section says when it has nothing in it. Said once, here, so no
-   * page invents its own way of being empty. */
-    .empty {
-        margin: 0;
-        padding: 1.4rem;
-        border: 1px dashed var(--line);
-        border-radius: var(--radius-sm);
-        background: var(--sunken);
-        color: var(--ink-soft);
-        text-align: center;
-        font-size: 0.94rem;
+    .yk-empty > p {
+        max-width: 46ch;
     }
 
     .note {
-        font-size: 0.88rem;
-        color: var(--ink-soft);
+        font-size: var(--yk-font-size-sm);
+        color: var(--yk-soft);
     }
     .small {
-        font-size: 0.82rem;
+        font-size: var(--yk-font-size-sm);
     }
     .sr-only {
         position: absolute;
@@ -599,43 +569,17 @@
         white-space: nowrap;
     }
 
-    /* A link that does what a button does: open the IDE, download, submit. */
-    a.button {
-        display: inline-block;
-        padding: 0.35rem 0.75rem;
-        border-radius: var(--radius-sm);
-        border: 1px solid transparent;
-        background: var(--accent);
-        color: light-dark(#fff, #0c0d11);
-        font-size: 0.85rem;
-        font-weight: 600;
-        text-decoration: none;
-        white-space: nowrap;
-    }
-    a.button:hover {
-        background: color-mix(in oklab, var(--accent) 88%, black);
-    }
-    a.button.quiet {
-        background: transparent;
-        color: var(--ink-soft);
-        border-color: var(--line);
-    }
-    a.button.quiet:hover {
-        background: var(--sunken);
-        color: var(--ink);
-    }
-    /* A flex container inside the cell, never the cell itself: a cell that is
-   * display: flex stops being a table cell, and its row borders no longer
-   * line up with the rest of the row. */
+    /* A flex container inside the cell, never the cell itself: a cell that is display: flex stops being a table
+       cell, and its row borders no longer line up with the rest of the row. */
     .actions {
         display: flex;
         flex-wrap: wrap;
-        gap: 0.4rem;
+        gap: 6px;
         justify-content: flex-end;
     }
 
-    /* A student's projects on a phone: one card per project rather than a
-   * table four columns wide, so the buttons are never off the edge. */
+    /* A student's projects on a phone: one card per project rather than a table four columns wide, so the buttons
+       are never off the edge. */
     @media (max-width: 40rem) {
         table.tasks thead {
             display: none;
@@ -647,39 +591,39 @@
             display: block;
         }
         table.tasks tr {
-            padding-block: 0.75rem;
-            border-bottom: 1px solid var(--line);
+            padding-block: var(--yk-space-3);
+            border-bottom: 1px solid var(--yk-line);
         }
         table.tasks td {
             border: 0;
-            padding: 0.15rem 0;
+            padding: 2px 0;
         }
         table.tasks .actions {
             justify-content: flex-start;
-            padding-top: 0.4rem;
+            padding-top: 6px;
         }
     }
 
-    /* Reordering projects: a grip to hold, a faded row while it travels, and
-   * a line where it will land. */
+    /* Reordering projects: a grip to hold, a faded row while it travels, and a line where it will land. */
     table.projects td.grip {
         width: 2rem;
         padding-inline-end: 0;
     }
     button.handle {
         background: transparent;
-        color: var(--ink-soft);
+        color: var(--yk-soft);
         border: 1px solid transparent;
-        padding: 0.1rem 0.35rem;
+        border-radius: var(--yk-radius-sm);
+        padding: 2px 6px;
         font-size: 1rem;
         line-height: 1;
         cursor: grab;
     }
     button.handle:hover,
     button.handle:focus-visible {
-        background: var(--sunken);
-        color: var(--ink);
-        border-color: var(--line);
+        background: var(--yk-sunken);
+        color: var(--yk-ink);
+        border-color: var(--yk-line);
     }
     tr[draggable='true'] {
         cursor: grab;
@@ -688,25 +632,24 @@
         opacity: 0.45;
     }
     tr.over td {
-        box-shadow: inset 0 2px 0 var(--accent);
+        box-shadow: inset 0 2px 0 var(--yk-ink);
     }
     .row {
         display: flex;
         flex-wrap: wrap;
-        gap: 0.5rem 1rem;
+        gap: var(--yk-space-2) var(--yk-space-4);
         align-items: center;
     }
 
-    /* The login page: one narrow card, centred, and nothing else. Every
-   * button in it is the whole width, so the two ways in read as a choice
-   * of equals rather than a primary and an afterthought. */
+    /* The login page: one narrow card, centred. Every button in it is the whole width, so the two ways in read as a
+       choice of equals rather than a primary and an afterthought. */
     section.login {
         width: 100%;
         max-width: 25rem;
         margin: clamp(0.5rem, 6vh, 4rem) auto 0;
         padding: clamp(1.5rem, 1rem + 2vw, 2.25rem);
         display: grid;
-        gap: 1rem;
+        gap: var(--yk-space-4);
         text-align: center;
     }
     section.login .mark {
@@ -721,54 +664,55 @@
         max-width: none;
         text-align: start;
     }
-    section.login form button {
+    section.login form > .yk-btn,
+    section.login > a.yk-btn {
         width: 100%;
-        display: inline-flex;
-        align-items: center;
         justify-content: center;
-        gap: 0.55rem;
-        padding-block: 0.65rem;
+        padding-block: 9px;
+        font-size: var(--yk-font-size-md);
+    }
+    section.login .again .yk-btn {
+        width: auto;
+        padding-block: 6px;
+        font-size: var(--yk-font-size-sm);
     }
     /* GitHub's own colours, inverted in the dark, as its sign-in buttons are. */
-    button.github {
+    .yk-btn.github {
         background: light-dark(#1f2328, #f0f3f6);
         color: light-dark(#fff, #1f2328);
     }
-    button.github:hover {
+    .yk-btn.github:hover {
         background: light-dark(#3a4048, #d1d9e0);
     }
     /* A rule with a word in it. */
     .or {
         display: flex;
         align-items: center;
-        gap: 0.75rem;
-        color: var(--ink-soft);
-        font-size: 0.85rem;
+        gap: var(--yk-space-3);
+        color: var(--yk-soft);
+        font-size: var(--yk-font-size-sm);
     }
     .or::before,
     .or::after {
         content: '';
         flex: 1;
-        border-top: 1px solid var(--line);
+        border-top: 1px solid var(--yk-line);
     }
     /* Six digits, read off another screen: big, spaced, and in columns. */
     input.code {
-        font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, monospace;
-        font-size: 1.5rem;
+        font-family: var(--yk-font-family-mono);
+        font-variant-ligatures: none;
+        font-size: var(--yk-font-size-xl);
         letter-spacing: 0.35em;
         text-align: center;
     }
     section.login .again {
         display: flex;
         flex-wrap: wrap;
-        gap: 0.5rem 1rem;
+        gap: var(--yk-space-2) var(--yk-space-4);
         align-items: center;
         justify-content: space-between;
-        font-size: 0.9rem;
-    }
-    section.login .again button {
-        width: auto;
-        padding: 0.35rem 0.75rem;
+        font-size: var(--yk-font-size-sm);
     }
 
     /* The staff's Submissions tab (#lib/hand-ins/HandInsTable.svelte). */
@@ -776,49 +720,30 @@
         .toolbar {
             display: flex;
             flex-wrap: wrap;
-            gap: 0.6rem 1rem;
+            gap: var(--yk-space-2) var(--yk-space-4);
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 0.9rem;
+            margin-bottom: var(--yk-space-3);
         }
         input[type='search'] {
             flex: 1 1 16rem;
             max-width: 22rem;
         }
-        .toolbar + :is(.ok, .error) {
-            margin-bottom: 0.9rem;
+        .toolbar + .error {
+            margin-bottom: var(--yk-space-3);
         }
         tr.missing td {
-            background: light-dark(#fafbfc, #121419);
+            color: var(--yk-soft);
         }
         select {
             max-width: 19rem;
-            font-size: 0.88rem;
-        }
-        /* Download is the row's point, not a removal: the accent, not the
-         * red every other row button turns on hover. */
-        button.download {
-            padding: 0.35rem 0.75rem;
-            background: var(--accent);
-            color: light-dark(#fff, #0c0d11);
-            border-color: transparent;
-            font-size: 0.85rem;
-            white-space: nowrap;
-        }
-        button.download:hover {
-            background: color-mix(in oklab, var(--accent) 88%, black);
-            color: light-dark(#fff, #0c0d11);
-        }
-        button.download:disabled {
-            opacity: 0.7;
-            cursor: progress;
         }
         .actions {
             align-items: center;
             flex-wrap: nowrap;
         }
-        /* The last cell holds the downloads: as narrow as they are, never
-         * wrapped, so nothing in it pokes out of the table. */
+        /* The last cell holds the downloads: as narrow as they are, never wrapped, so nothing in it pokes out of the
+           table. */
         tr:not(.assembly) td:last-child {
             width: 1%;
             white-space: nowrap;
@@ -830,79 +755,42 @@
             padding-top: 0;
             text-align: start;
         }
-        /* The button, and the plain download behind an arrow joined to it. */
+        /* The button, and the plain download behind an arrow joined to it: one control in two halves, which share a
+           height and a pair of outer corners. */
         .split-button {
             display: inline-flex;
             align-items: stretch;
         }
-        /* One control in two halves: the halves share a height, a border and
-         * a pair of outer corners, and a press moves neither on its own. */
-        .split-button > button,
-        .split-button > button:hover,
-        .split-button > button:active {
-            margin: 0;
-            border: 1px solid transparent;
-            transform: none;
+        .split-button > .yk-btn:first-child {
+            border-start-end-radius: 0;
+            border-end-end-radius: 0;
         }
-        .split-button button.download {
-            border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+        /* The halves overlap by their border, so the line between them is one hairline, not two. */
+        .split-button > .yk-btn.menu-toggle {
+            margin-inline-start: -1px;
+            padding-inline: 6px;
+            border-start-start-radius: 0;
+            border-end-start-radius: 0;
         }
-        /* The ring of a focused half sits inside it: outside, it would wrap one
-         * half with corners of its own and bulge past the other. Closing the
-         * menu returns focus to the arrow, so this is what most people see. */
-        .split-button > button:focus-visible {
-            outline: 2px solid currentcolor;
-            outline-offset: -4px;
-        }
-        .split-button button.menu-toggle,
-        .split-button button.menu-toggle:hover {
-            padding: 0 0.5rem;
-            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-            border-inline-start-color: color-mix(in oklab, white 35%, var(--accent));
-            background: var(--accent);
-            color: light-dark(#fff, #0c0d11);
-            font-size: 0.8rem;
-        }
-        .split-button button.menu-toggle:hover {
-            background: color-mix(in oklab, var(--accent) 88%, black);
-        }
-        /* A popover in the top layer, so no scrolling box clips it; the row
-         * places it by its button (#lib/hand-ins/popover). */
-        .menu-items {
-            position: fixed;
-            inset: auto;
-            margin: 0;
-            border: 1px solid var(--line);
-            color: var(--ink);
-            border-radius: var(--radius-sm);
-            background: var(--surface);
-            box-shadow: var(--shadow);
-            min-width: max-content;
-            padding: 0.3rem;
-        }
-        .menu-items a {
-            display: block;
-            padding: 0.4rem 0.6rem;
-            border-radius: 6px;
-            color: var(--ink);
-            font-size: 0.88rem;
-            text-decoration: none;
-        }
-        .menu-items a:hover {
-            background: var(--sunken);
+        /* A focused half has the ink ring every control has, drawn above its neighbour, which it overlaps by a
+           border and which would otherwise cover the ring's inner edge. */
+        .split-button > .yk-btn:focus-visible {
+            position: relative;
+            z-index: 1;
         }
         /* What an assembly changed: a strip with an amber edge, quieter than a box. */
         ul.note-strip {
             margin: 0;
-            padding: 0.4rem 0.8rem;
+            padding: 6px 12px;
             list-style: none;
-            border-inline-start: 3px solid light-dark(#e0a43a, #c98a1e);
-            background: light-dark(#fffaf0, #241b0b);
-            font-size: 0.87rem;
-            color: light-dark(#6e4300, #f5c77a);
+            border-inline-start: 3px solid var(--yk-warn);
+            border-radius: 0 var(--yk-radius-sm) var(--yk-radius-sm) 0;
+            background: var(--yk-warn-bg);
+            font-size: var(--yk-font-size-sm);
         }
         ul.note-strip li::before {
             content: '⚠ ';
+            color: var(--yk-warn);
         }
     }
 }

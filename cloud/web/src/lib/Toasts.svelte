@@ -1,23 +1,30 @@
 <script lang="ts">
   import CopyButton from './CopyButton.svelte';
+  import Icon from './Icon.svelte';
   import { dismiss, toasts } from './toast.svelte';
-  /** Where `toast` draws: one region for the whole site, announced to screen
-   *  readers as it changes. A notice with details (an incident) shows them
-   *  folded, to be read or copied. */
+  /** Where `toast` and `notify` draw: one region for the whole site, bottom centre, announced to screen readers as it
+   *  changes. A notice with details (an incident) shows them folded, to be read or copied. */
 </script>
 
 <div class="toasts" role="status" aria-live="assertive">
   {#each toasts as t (t.id)}
-    <div class="toast">
+    <div class="yk-toast" class:yk-toast--error={t.kind === 'error'}>
+      <Icon name={t.kind === 'error' ? 'alert' : 'check'} />
       <span>{t.message}</span>
       {#if t.details !== null}
         <details>
           <summary>Details</summary>
           <pre>{t.details}</pre>
         </details>
-        <CopyButton text={t.details} />
+        <CopyButton text={t.details} plain />
       {/if}
-      <button type="button" class="quiet" aria-label="Dismiss" onclick={() => dismiss(t.id)}>×</button>
+      {#if t.retry !== null}
+        {@const retry = t.retry}
+        <button type="button" onclick={() => (dismiss(t.id), retry())}>Retry</button>
+      {/if}
+      {#if t.kind === 'error'}
+        <button type="button" aria-label="Dismiss" onclick={() => dismiss(t.id)}><Icon name="x" /></button>
+      {/if}
     </div>
   {/each}
 </div>

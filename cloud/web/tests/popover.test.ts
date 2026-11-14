@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest';
-import { menuPosition } from '../src/lib/hand-ins/popover';
+import { menuPosition } from '../src/lib/popover';
 
 const button = (top: number) => ({ top, bottom: top + 30, left: 900, right: 1000 });
 

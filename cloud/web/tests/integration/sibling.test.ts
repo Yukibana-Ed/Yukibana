@@ -132,7 +132,9 @@ function routes(values: Record<string, string>): Route[] {
             const source = readFileSync(join(dir, file), 'utf8');
             for (const m of source.matchAll(/export const (GET|POST|PUT|PATCH|DELETE)\b/g)) requests.push({ method: m[1] ?? '', query: '' });
             const actions = source.split(/export const actions\b/)[1];
-            if (actions !== undefined) for (const m of actions.matchAll(/^ {2}(\w+): async/gm)) requests.push({ method: 'POST', query: `?/${m[1] ?? ''}` });
+            // An action is a key of `actions`, indented four spaces. This matched two spaces until the repository was reformatted, after which it
+            // found no action at all and the suite kept passing on GETs and +server.ts alone.
+            if (actions !== undefined) for (const m of actions.matchAll(/^ {4}(\w+): async/gm)) requests.push({ method: 'POST', query: `?/${m[1] ?? ''}` });
         }
         if (requests.length > 0) found.push({ path, requests });
         for (const f of files) if (statSync(join(dir, f)).isDirectory()) walk(join(dir, f));
@@ -150,7 +152,8 @@ async function seeded(): Promise<Record<string, string>> {
         const [r] = await tx<{ id: string }[]>`select release_id as id from project_release where project_id = ${p.project_id} limit 1`;
         const [s] = await tx<{ id: string }[]>`select submission_id as id from submission where project_id = ${p.project_id} limit 1`;
         const none = '00000000-0000-4000-8000-000000000000';
-        return { edition: p.edition_id, project: p.project_id, release: r?.id ?? none, submission: s?.id ?? none, archive: 'starter' };
+        // A well-formed invite secret that no invite has, so that the page and its form are reached.
+        return { edition: p.edition_id, project: p.project_id, release: r?.id ?? none, submission: s?.id ?? none, archive: 'starter', secret: `yk_invite_${'0'.repeat(64)}` };
     });
 }
 
@@ -194,6 +197,10 @@ test('a page on a sibling subdomain cannot act as the person viewing it, through
     expect(
         all.some(r => r.requests.some(q => q.method !== 'GET')),
         'found no route that writes',
+    ).toBe(true);
+    expect(
+        all.some(r => r.requests.some(q => q.query.startsWith('?/'))),
+        'found no form action',
     ).toBe(true);
     const before = await fingerprint();
     const letThrough: string[] = [];
