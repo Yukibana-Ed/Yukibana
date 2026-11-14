@@ -1,10 +1,9 @@
 /** The person's colour theme, shared by the Yukibana sites: the system's scheme, or always light, or always dark.
  *
- *  The choice is kept twice, as `yk-theme`: in localStorage, and in a cookie for Domain=yukibana.dev. localStorage
- *  belongs to one origin, so the cookie is what makes yukibana.dev and cloud.yukibana.dev share it; on any other host
- *  (localhost, a preview) the browser drops that cookie and localStorage alone keeps it. Any value but `system`,
- *  `light` or `dark` counts as nothing. Nothing may read it for anything but the theme: any site under yukibana.dev
- *  can set it.
+ *  The choice is kept twice, as `yk-theme`: in localStorage, and in a cookie on the site's registrable domain.
+ *  localStorage belongs to one origin, so the cookie is what makes yukibana.dev and cloud.yukibana.dev (or a
+ *  self-hoster's own pair) share it. Any value but `system`, `light` or `dark` counts as nothing. Nothing may read it
+ *  for anything but the theme: any site under that domain can set it.
  *
  *  This file is compiled to js/theme.js and js/theme.d.ts by `pnpm --filter @yukibana/design build`, and both are
  *  committed, like the generated CSS, so that an app installing the package from git builds nothing. */
@@ -13,10 +12,11 @@ export const THEMES = ['system', 'light', 'dark'];
 /** The cookie and the localStorage key that hold the choice. */
 export const THEME_KEY = 'yk-theme';
 const valid = (value) => (value === 'system' || value === 'light' || value === 'dark' ? value : undefined);
+const cookieTheme = () => valid(/(?:^|;\s*)yk-theme=([^;]*)/.exec(document.cookie)?.[1]);
 /** The choice: the cookie's, else localStorage's, else "system". Anything unreadable or garbled counts as nothing. */
 export function readTheme() {
     try {
-        const theme = valid(/(?:^|;\s*)yk-theme=([^;]*)/.exec(document.cookie)?.[1]);
+        const theme = cookieTheme();
         if (theme)
             return theme;
     }
@@ -28,10 +28,21 @@ export function readTheme() {
         return 'system';
     }
 }
-/** Keeps the choice in both places. A browser that refuses one still has the other, or the page until it closes. */
+/** Keeps the choice in localStorage and in the cookie. The cookie goes on the broadest parent domain the browser
+ *  accepts: browsers refuse public suffixes (`dev`, `github.io`, `co.uk`), so it lands on the site's registrable domain,
+ *  whoever hosts it. Where none sticks (localhost, an IP address) it belongs to the host alone. */
 export function writeTheme(theme) {
     try {
-        document.cookie = `${THEME_KEY}=${theme}; Domain=yukibana.dev; Path=/; Max-Age=31536000; SameSite=Lax; Secure`;
+        const cookie = `${THEME_KEY}=${theme}; Path=/; Max-Age=31536000; SameSite=Lax; Secure`;
+        const labels = location.hostname.split('.');
+        let n = 2;
+        for (; n <= labels.length; n++) {
+            document.cookie = `${cookie}; Domain=${labels.slice(-n).join('.')}`;
+            if (cookieTheme() === theme)
+                break;
+        }
+        if (n > labels.length)
+            document.cookie = cookie;
     }
     catch { }
     try {

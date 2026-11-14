@@ -41,9 +41,10 @@ one is the person's choice, kept by the theme module below.
 ## The theme choice
 
 `@yukibana/design/theme` (`src/theme.ts`, no framework, no dependencies) keeps the person's choice of System, Light or
-Dark, as `yk-theme`, in localStorage and in a cookie with `Domain=yukibana.dev`. localStorage is per origin, so the
-cookie is what makes yukibana.dev and cloud.yukibana.dev share it; on other hosts (localhost, a preview) the browser
-drops the cookie and localStorage alone works.
+Dark, as `yk-theme`, in localStorage and in a cookie. localStorage is per origin, so the cookie is what makes
+yukibana.dev and cloud.yukibana.dev share it. `writeTheme` sets it on the broadest parent domain the browser accepts,
+which is the site's registrable domain since browsers refuse public suffixes, so a self-hosted pair shares it with no
+change to the code; on localhost or an IP address it belongs to the host alone.
 
 | Export | What it does |
 | --- | --- |
@@ -59,7 +60,7 @@ its output and tests that it still matches, as the cloud's `app.html` does. Its 
 mounts, and `writeTheme(choice)` then `applyTheme(choice)` when the person picks one. Every cookie, localStorage and
 `matchMedia` access is inside `try`, so a browser that blocks them gets the system's scheme, never an error.
 
-The value carries no authority: any page under yukibana.dev can set the cookie, Light's included, which runs programs
+The value carries no authority: any page under the same domain can set the cookie, Light's included, which runs programs
 people paste into it. Nothing may read it for anything but the theme.
 
 **Browsers.** Every colour is a `light-dark()` pair, which needs Chrome and Edge 123, Firefox 120 or Safari 17.5 (all
