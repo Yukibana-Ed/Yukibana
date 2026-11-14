@@ -54,8 +54,8 @@ change to the code; on localhost or an IP address it belongs to the host alone.
 | `applyTheme(choice)` | Shows it: `data-theme` on `<html>`, removed for `'system'`. |
 
 An app puts the boot script at the top of `<head>`, before any stylesheet. A page rendered by a framework inlines
-`themeBoot()` itself (React: `<script dangerouslySetInnerHTML={{ __html: themeBoot() }} />`); a server fills it into its
-template (the cloud's `hooks.server.ts` replaces `%yk.theme%` in `app.html`). Its switcher calls `readTheme` when it
+`themeBoot()` itself (React: `<script dangerouslySetInnerHTML={{ __html: themeBoot() }} />`); Svelte the same in
+`{@html \`<script>${themeBoot()}</script>\`}` in `<svelte:head>`, as the cloud's root layout does). Its switcher calls `readTheme` when it
 mounts, and `writeTheme(choice)` then `applyTheme(choice)` when the person picks one. Every cookie and localStorage access
 is inside `try`, so a browser that blocks them gets the system's scheme, never an error.
 

@@ -7,6 +7,7 @@
   import { toast } from '#lib/toast.svelte.ts';
   import { viewer } from '#lib/viewer.svelte.ts';
   import { browserZone } from '#lib/wall-time.ts';
+  import { THEME_SCRIPT } from '#lib/theme-script.ts';
   import type { LayoutData } from './$types';
   let { data, children }: { data: LayoutData; children: import('svelte').Snippet } = $props();
   // Every page is live: the layout listens to what the person's enrolments
@@ -31,6 +32,10 @@
     if (typeof why === 'string') toast(why);
   });
 </script>
+
+<svelte:head>
+  {@html THEME_SCRIPT}
+</svelte:head>
 
 <AppHeader user={data.user} memberships={data.memberships} />
 <main>
