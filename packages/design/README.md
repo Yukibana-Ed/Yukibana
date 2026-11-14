@@ -59,9 +59,6 @@ Its switcher calls `readTheme` when it mounts and `chooseTheme(choice)` when the
 site data gets the cookie's choice or the system's scheme, never an error. A Vite app that renders on the server and
 installs the package into node_modules lists it in `ssr.noExternal`, since Node will not strip the types there.
 
-The value carries no authority: any page under the same domain can set the cookie, Light's included, which runs programs
-people paste into it. Nothing may read it for anything but the theme.
-
 **Browsers.** Every colour is a `light-dark()` pair, which needs Chrome and Edge 123, Firefox 120 or Safari 17.5 (all
 from 2024), and the segmented control and selected table rows use `:has()`, which Firefox has from 121. There is no
 fallback: an older browser drops every colour and shows the page unstyled, black on white.
@@ -218,5 +215,3 @@ and commit the submodule's new commit (and `package-lock.json`, if it changed).
 
 The apps do not use this package yet. The cloud (`cloud/web/src/app.css`), the docs site and Light each move over in
 their own change, replacing their own variables with `--yk-*` and their components with the `yk-` classes.
-
-Light does not use the theme module yet; moving it onto the `yk-theme` cookie is its own change.
