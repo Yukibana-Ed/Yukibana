@@ -2,17 +2,17 @@
   import { onMount } from 'svelte';
   import Icon, { type IconName } from './Icon.svelte';
   import { THEMES, applyTheme, readTheme, writeTheme, type Theme } from '@yukibana/design/theme';
-  import { LEGACY_THEME_KEY } from './theme';
 
   /** The theme, in the account menu: System, Light or Dark, as one segmented control. Native radio buttons, so the
-   *  arrow keys move between them and a screen reader hears one choice of three. The choice is shared with every site
-   *  under yukibana.dev (#lib/theme); app.html applied it before the page painted, and this only reads it back. */
+   *  arrow keys move between them and a screen reader hears one choice of three. The choice is shared with the other
+   *  Yukibana sites by the design system (@yukibana/design/theme); app.html applied it before the page painted, and this
+   *  only reads it back. */
   const LABEL: Record<Theme, string> = { system: 'System', light: 'Light', dark: 'Dark' };
   const ICON: Record<Theme, IconName> = { system: 'monitor', light: 'sun', dark: 'moon' };
 
   let theme = $state<Theme>('system');
   onMount(() => {
-    theme = readTheme({ legacyKey: LEGACY_THEME_KEY });
+    theme = readTheme();
   });
 
   function choose(next: Theme) {
