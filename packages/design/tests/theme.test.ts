@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { runInNewContext } from 'node:vm';
-import { applyTheme, onSystemChange, readTheme, themeBoot, writeTheme } from '../src/theme.ts';
+import { applyTheme, readTheme, themeBoot, writeTheme } from '../src/theme.ts';
 
 /** The public suffixes the fake browser refuses a cookie for, as a real one does from the Public Suffix List. */
 const PUBLIC_SUFFIXES = new Set(['dev', 'io', 'github.io', 'uk', 'co.uk', 'example']);
@@ -33,6 +33,7 @@ function browser(options: { host?: string; cookie?: string; stored?: string; coo
             domain = wanted;
         },
         documentElement: {
+            getAttribute: (k: string) => attributes.get(k) ?? null,
             setAttribute: (k: string, v: string) => void attributes.set(k, v),
             removeAttribute: (k: string) => void attributes.delete(k),
         },
@@ -60,35 +61,38 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
+/** What a page on `b` shows once its boot script ran: the switcher's reading of it. */
+function booted(b: ReturnType<typeof browser>): string {
+    runInNewContext(themeBoot(), b.globals);
+    b.install();
+    return readTheme();
+}
+
 describe('the choice', () => {
-    test('is written to the shared cookie and to localStorage, and read back', () => {
+    test('is written to the shared cookie and to localStorage, and the next page shows it', () => {
         const b = browser();
-        b.install();
-        expect(readTheme()).toBe('system');
+        expect(booted(b)).toBe('system');
         for (const theme of ['dark', 'light', 'system'] as const) {
+            b.install();
             writeTheme(theme);
             expect(b.stored()).toBe(theme);
-            expect(readTheme()).toBe(theme);
+            expect(booted(browser({ cookie: b.cookie() }))).toBe(theme);
         }
         expect(b.cookie()).toBe('yk-theme=system');
     });
 
     test('the cookie wins over localStorage, which is used without one', () => {
-        browser({ cookie: 'a=1; yk-theme=dark; b=2', stored: 'light' }).install();
-        expect(readTheme()).toBe('dark');
-        browser({ cookie: 'a=1', stored: 'light' }).install();
-        expect(readTheme()).toBe('light');
+        expect(booted(browser({ cookie: 'a=1; yk-theme=dark; b=2', stored: 'light' }))).toBe('dark');
+        expect(booted(browser({ cookie: 'yk-theme=system', stored: 'light' }))).toBe('system');
+        expect(booted(browser({ cookie: 'a=1', stored: 'light' }))).toBe('light');
     });
 
     test('a garbled value counts as nothing', () => {
-        for (const junk of ['Dark', 'darker', '"dark"', '']) {
-            browser({ cookie: `yk-theme=${junk}`, stored: junk }).install();
-            expect(readTheme(), junk).toBe('system');
-            browser({ cookie: `yk-theme=${junk}`, stored: 'dark' }).install();
-            expect(readTheme(), junk).toBe('dark');
+        for (const junk of ['Dark', 'darker', '"dark"', '', '=;;']) {
+            expect(booted(browser({ cookie: `yk-theme=${junk}`, stored: junk })), junk).toBe('system');
+            expect(booted(browser({ cookie: `yk-theme=${junk}`, stored: 'dark' })), junk).toBe('dark');
         }
-        browser({ cookie: 'xyk-theme=dark; yk-themes=dark' }).install();
-        expect(readTheme()).toBe('system');
+        expect(booted(browser({ cookie: 'xyk-theme=dark; yk-themes=dark' }))).toBe('system');
     });
 
     test('the cookie goes on the broadest domain the browser accepts, else the host alone', () => {
@@ -104,84 +108,38 @@ describe('the choice', () => {
             b.install();
             writeTheme('dark');
             expect(b.domain(), host).toBe(domain);
-            expect(readTheme(), host).toBe('dark');
+            expect(b.cookie(), host).toBe('yk-theme=dark');
         }
     });
 
     test('a browser that drops every cookie keeps the choice in localStorage', () => {
-        browser({ cookies: 'refuse' }).install();
+        const b = browser({ cookies: 'refuse' });
+        b.install();
         writeTheme('dark');
-        expect(readTheme()).toBe('dark');
+        expect(booted(browser({ stored: b.stored() ?? '' }))).toBe('dark');
     });
 
-    test('blocked cookies or storage never throw', () => {
+    test('blocked cookies or storage never throw, and show the system scheme', () => {
         for (const cookies of ['keep', 'refuse', 'throw'] as const)
             for (const storage of ['keep', 'refuse', 'throw'] as const) {
-                browser({ cookies, storage, cookie: 'yk-theme=dark', stored: 'dark' }).install();
+                const b = browser({ cookies, storage, cookie: 'yk-theme=dark', stored: 'dark' });
+                expect(() => booted(b)).not.toThrow();
                 expect(() => writeTheme('light')).not.toThrow();
-                expect(['light', 'dark', 'system']).toContain(readTheme());
             }
-        browser({ cookies: 'throw', storage: 'throw' }).install();
-        expect(readTheme()).toBe('system');
+        expect(booted(browser({ cookies: 'throw', storage: 'throw', cookie: 'yk-theme=dark', stored: 'dark' }))).toBe('system');
     });
 });
 
-test('a fixed theme sets data-theme, and System removes it', () => {
+test('a fixed theme sets data-theme, System removes it, and the switcher reads it back', () => {
     const b = browser();
     b.install();
-    applyTheme('dark');
-    expect(b.theme()).toBe('dark');
-    applyTheme('light');
-    expect(b.theme()).toBe('light');
-    applyTheme('system');
-    expect(b.theme()).toBeNull();
+    for (const theme of ['dark', 'light', 'system'] as const) {
+        applyTheme(theme);
+        expect(b.theme()).toBe(theme === 'system' ? null : theme);
+        expect(readTheme()).toBe(theme);
+    }
 });
 
-describe('the system scheme', () => {
-    test('tells the listener when it changes, until it is stopped', () => {
-        const listeners = new Set<(event: { matches: boolean }) => void>();
-        vi.stubGlobal('matchMedia', () => ({
-            addEventListener: (_: string, l: (event: { matches: boolean }) => void) => void listeners.add(l),
-            removeEventListener: (_: string, l: (event: { matches: boolean }) => void) => void listeners.delete(l),
-        }));
-        const heard: string[] = [];
-        const stop = onSystemChange(scheme => heard.push(scheme));
-        for (const l of listeners) l({ matches: true });
-        for (const l of listeners) l({ matches: false });
-        stop();
-        expect(listeners.size).toBe(0);
-        expect(heard).toEqual(['dark', 'light']);
-    });
-
-    test('a browser without matchMedia, or with an old media query list, never throws', () => {
-        for (const matchMedia of [undefined, () => ({})]) {
-            vi.stubGlobal('matchMedia', matchMedia);
-            let stop = (): void => {};
-            expect(() => (stop = onSystemChange(() => {}))).not.toThrow();
-            expect(stop).not.toThrow();
-        }
-    });
-});
-
-describe('the boot script', () => {
-    test('does exactly what applyTheme(readTheme()) does, and never throws', () => {
-        for (const cookie of [undefined, 'yk-theme=dark', 'yk-theme=light', 'yk-theme=system', 'a=1; yk-theme=junk', 'yk-theme', '=;;'])
-            for (const stored of [undefined, 'dark', 'light', 'system', 'junk'])
-                for (const cookies of ['keep', 'throw'] as const)
-                    for (const storage of ['keep', 'throw'] as const) {
-                        const situation = { cookies, storage, ...(cookie === undefined ? {} : { cookie }), ...(stored === undefined ? {} : { stored }) };
-                        const inline = browser(situation);
-                        expect(() => {
-                            runInNewContext(themeBoot(), inline.globals);
-                        }, JSON.stringify(situation)).not.toThrow();
-                        const expected = browser(situation);
-                        expected.install();
-                        applyTheme(readTheme());
-                        expect(inline.theme(), JSON.stringify(situation)).toBe(expected.theme());
-                    }
-    });
-
-    test('is plain old JavaScript that cannot close the script element it sits in', () => {
-        expect(themeBoot()).not.toMatch(/=>|\blet\b|\bconst\b|`|<\//);
-    });
+test('the boot script is plain old JavaScript that cannot close the script element it sits in', () => {
+    expect(themeBoot()).not.toMatch(/=>|\blet\b|\bconst\b|`|<\//);
 });

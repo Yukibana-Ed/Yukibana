@@ -6,3 +6,5 @@ css/**/*.css text eol=lf
 fonts/**/*.woff2 binary
 # The compiled theme module is compared byte for byte too, and TypeScript writes LF (tsconfig.theme.json).
 js/** text eol=lf
+# Its source is LF too: the boot script is a template literal, and takes the line ends of the file it is written in.
+src/theme.ts text eol=lf
