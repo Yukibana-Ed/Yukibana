@@ -6,9 +6,10 @@
   import type { Membership } from './memberships';
 
   /** The cloud's bar (yk-header): the brand, the course switcher, the avatar, and nothing else. The switcher names the
-   *  edition the page is in, or "Courses", and lists the person's editions; the avatar opens who they are signed in as,
-   *  the theme (ThemeSwitch) and Log out. Signed out, the bar holds the brand and Log in. */
-  let { user, memberships }: { user: { readonly email: string | null } | null; memberships: readonly Membership[] } = $props();
+   *  edition the page is in, or "Courses", and lists the person's editions; the avatar (their profile picture, or the
+   *  first letter of their address) opens who they are signed in as, their account page, the theme (ThemeSwitch) and
+   *  Log out. Signed out, the bar holds the brand and Log in. */
+  let { user, memberships }: { user: { readonly email: string | null; readonly picture: string | null } | null; memberships: readonly Membership[] } = $props();
 
   const here = $derived(memberships.find((m) => m.edition_id === page.params['edition']) ?? null);
   const active = $derived(memberships.filter((m) => !m.archived));
@@ -42,9 +43,12 @@
   </div>
   <div class="yk-header__end">
     {#if user}
-      <button type="button" class="avatar" popovertarget="account-menu" aria-label="Account: {user.email ?? 'signed in'}">{initial}</button>
+      <button type="button" class="avatar" popovertarget="account-menu" aria-label="Account: {user.email ?? 'signed in'}"
+        >{#if user.picture !== null}<img src={user.picture} alt="" width="30" height="30" />{:else}{initial}{/if}</button
+      >
       <div class="menu" id="account-menu" popover ontoggle={(e) => placeMenu(e)}>
         <div class="who">Signed in as {user.email ?? 'an account without an address'}</div>
+        <a href="/account" onclick={close} aria-current={page.url.pathname === '/account' ? 'page' : undefined}>Account and picture</a>
         <hr />
         <ThemeSwitch />
         <hr />

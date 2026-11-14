@@ -44,11 +44,13 @@ holds **projects**, a project has **releases** and **submissions**.
   sizes and SHA-256s; `project_token` is a hash of a publishing secret.
 * `submission` is one append-only row per version handed in, pointing at one
   object.
+* `profile_picture` names a person's current picture, at most one; having
+  none is having no row.
 * `audit_log` is a row for every write a `security definer` function made.
 
 Object keys are `starters/<project>/<uuid>.tar.gz`,
-`teacher/<project>/<uuid>.tar.gz` and `submissions/<submission>.tar.gz`
-(`cloud/web/src/lib/ids.ts`).
+`teacher/<project>/<uuid>.tar.gz`, `submissions/<submission>.tar.gz` and
+`pictures/<user>/<picture>.webp` (`cloud/web/src/lib/ids.ts`).
 
 ### Inside the Worker
 
@@ -180,6 +182,19 @@ as the caller, and redirects to a presigned URL for its key. No row, no URL.
 With `?inline`, the last two answer with the bytes instead, piped through
 the Worker unread (next to no CPU): a script on the site's own pages cannot
 read a cross-origin redirect's answer from a bucket that has no CORS.
+
+**Profile pictures.** The account page crops and encodes in the browser:
+`createImageBitmap` decodes any image the browser can show, a canvas draws
+the chosen square at 256 pixels and encodes it as WebP. Safari's canvas
+cannot encode WebP, so there, and only there, libwebp in WebAssembly
+(`@jsquash/webp`) is fetched to do it. The cropper and the encoder are a
+dynamic import, fetched when someone chooses a file. The Worker transforms
+nothing: it checks the bytes are a small square still WebP
+(`lib/picture/webp.ts`), stores them under a fresh id, and lets
+`app.set_profile_picture` make it the person's, deleting the object it
+replaced. `GET /api/users/<user>/pictures/<picture>` pipes the bytes to
+whoever `profile_picture_read` lets see them, cacheable by that browser for
+good, since a new picture is a new address.
 
 **Grading.** `yukibana download --assemble` fetches submissions and the
 newest teacher archive and, on the teacher's machine, puts back every
