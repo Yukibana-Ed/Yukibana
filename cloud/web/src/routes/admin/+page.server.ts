@@ -18,9 +18,9 @@ export const load: PageServerLoad = async event => {
             const [me] = await tx<{ admin: boolean }[]>`select app.is_admin() as admin`;
             if (me?.admin !== true) error(403, 'Admins only.');
             const staff = await tx<{ user_id: string; full_name: string | null; github_login: string | null; role: string }[]>`
-        select user_id, full_name, github_login, role::text as role from app_user where role <> 'user' order by role, github_login`;
+        select user_id, app.visible_name(user_id) as full_name, github_login, role::text as role from app_user where role <> 'user' order by role, github_login`;
             const invites = await tx<{ invite_id: InviteId; label: string; created_by: string | null; created_at: Date }[]>`
-        select i.invite_id, i.label, coalesce(u.full_name, u.github_login) as created_by, i.created_at
+        select i.invite_id, i.label, coalesce(app.visible_name(u.user_id), u.github_login) as created_by, i.created_at
           from teacher_invite i join app_user u on u.user_id = i.created_by
          order by i.created_at desc`;
             const audit = await tx<{ at: Date; actor: string | null; action: string; subject: unknown }[]>`

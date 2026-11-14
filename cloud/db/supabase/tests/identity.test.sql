@@ -29,8 +29,8 @@ select throws_ok(
   '42501', null,
   'nor call the function that changes it');
 select lives_ok(
-  $$ update public.app_user set full_name = 'Rear Admiral Hopper' where user_id = tests.uid('grace@example.com') $$,
-  'but may change their own display name');
+  $$ select app.set_profile('Rear Admiral Hopper', 'courses', 'courses') $$,
+  'but may change their own display name, through app.set_profile (profile_visibility.test.sql)');
 
 -- An admin can, and it is written down.
 select tests.authenticate(tests.uid('ada@example.com'));

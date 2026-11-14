@@ -59,7 +59,8 @@ select tests.authenticate(tests.uid('teacher@example.com'));
 select isnt_empty($$ select 1 from public.profile_picture where user_id = tests.uid('student@example.com') $$,
   'the student''s teacher does');
 select tests.authenticate(tests.uid('ada@example.com'));
-select isnt_empty($$ select 1 from public.profile_picture where user_id = tests.uid('student@example.com') $$, 'and so does an admin');
+select is_empty($$ select 1 from public.profile_picture where user_id = tests.uid('student@example.com') $$,
+  'an admin outside the student''s courses does not: who sees a picture is its owner''s choice (profile_visibility.test.sql)');
 
 -- Removing: only one's own, and removing nothing is fine.
 select tests.authenticate(tests.uid('teacher@example.com'));
@@ -67,7 +68,7 @@ select is(app.clear_profile_picture(), null, 'a teacher with no picture removes 
 select tests.clear_auth();
 select is((select count(*) from public.profile_picture), 1::bigint, 'and the student''s picture is still there');
 select is(
-  (select count(*) from public.audit_log where action = 'clear_profile_picture'),
+  (select count(*) from public.audit_log where action = 'clear_profile_picture' and actor = tests.uid('teacher@example.com')),
   0::bigint,
   'removing nothing audits nothing');
 select tests.authenticate(tests.uid('student@example.com'));

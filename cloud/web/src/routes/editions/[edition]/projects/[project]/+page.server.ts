@@ -122,7 +122,7 @@ export const load: PageServerLoad = async event => {
             const staff = p.role === 'owner' || p.role === 'assistant';
             const owner = p.role === 'owner';
             const rows = await tx<SubmissionRow[]>`
-        select s.submission_id, s.submitted_at, s.byte_size, encode(s.sha256, 'hex') as sha256, s.author_id, u.full_name, u.github_login,
+        select s.submission_id, s.submitted_at, s.byte_size, encode(s.sha256, 'hex') as sha256, s.author_id, app.visible_name(u.user_id) as full_name, u.github_login,
                coalesce(s.submitted_at > ${p.deadline}::timestamptz, false) as late, s.base_release_id as base_id
         from submission s
         left join app_user u on u.user_id = s.author_id
@@ -131,7 +131,7 @@ export const load: PageServerLoad = async event => {
             const releases = staff
                 ? await tx<ReleaseRow[]>`
             select r.release_id, r.label, r.commit_sha, r.starter_size, r.teacher_size, r.uploaded_at,
-                   coalesce(u.github_login, u.full_name) as uploader, r.token_id is not null as via_token
+                   coalesce(u.github_login, app.visible_name(u.user_id)) as uploader, r.token_id is not null as via_token
             from project_release r left join app_user u on u.user_id = r.uploaded_by
             where r.project_id = ${project} order by r.seq desc limit 20`
                 : [];
@@ -146,7 +146,7 @@ export const load: PageServerLoad = async event => {
             const students = staff
                 ? (
                       await tx<StudentRow[]>`
-            select en.email, en.user_id, u.full_name, u.github_login
+            select en.email, en.user_id, app.visible_name(u.user_id) as full_name, u.github_login
             from enrollment en left join app_user u on u.user_id = en.user_id
             where en.edition_id = ${p.edition_id} and en.role = 'student'
             order by en.email`

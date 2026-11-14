@@ -64,7 +64,7 @@ export const load: PageServerLoad = async event => {
             const mine = head.role === 'student' ? await studentProjects(tx, claims, edition) : [];
             const roster = staff
                 ? await tx<RosterRow[]>`
-            select en.email, en.role::text as role, en.source::text as source, en.user_id is not null as linked, u.full_name, u.github_login
+            select en.email, en.role::text as role, en.source::text as source, en.user_id is not null as linked, app.visible_name(u.user_id) as full_name, u.github_login
             from enrollment en left join app_user u on u.user_id = en.user_id
             where en.edition_id = ${edition}
             order by en.role desc, en.email`

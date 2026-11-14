@@ -45,7 +45,11 @@ holds **projects**, a project has **releases** and **submissions**.
 * `submission` is one append-only row per version handed in, pointing at one
   object.
 * `profile_picture` names a person's current picture, at most one; having
-  none is having no row.
+  none is having no row. Who sees a person's name and picture is theirs to
+  choose, each on its own (`app_user.name_audience`, `picture_audience`):
+  only them, the people who share an edition with them, or everyone signed
+  in. The name is not readable from the table; `app.visible_name(user)`
+  answers with it, or null, as its owner chose.
 * `audit_log` is a row for every write a `security definer` function made.
 
 Object keys are `starters/<project>/<uuid>.tar.gz`,

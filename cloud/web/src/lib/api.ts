@@ -110,7 +110,7 @@ export interface SubmissionJson {
     readonly author: {
         /** The author's user id; always present, even when the rest is hidden. */
         readonly userId: string;
-        /** The author's name; null when they have none or the caller may not see their profile. */
+        /** The author's name; null when they have none, or chose not to show it to the caller (`app.visible_name`). */
         readonly fullName: string | null;
         /** The author's GitHub login; null when they have none or the caller may not see their profile. */
         readonly githubLogin: string | null;
@@ -165,7 +165,7 @@ export interface MemberJson {
     readonly source: string;
     /** Null until the address has logged in. */
     readonly userId: string | null;
-    /** The person's name; null before they log in or when they have none. */
+    /** The person's name; null before they log in, when they have none, or when they chose not to show it to the caller. */
     readonly fullName: string | null;
     /** The person's GitHub login; null before they log in or when they have none. */
     readonly githubLogin: string | null;
