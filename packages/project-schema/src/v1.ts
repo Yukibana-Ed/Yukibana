@@ -2,7 +2,7 @@
  *  student's IDE reads it for which widgets show, which files open and which are read-only; the CLI reads it for the
  *  build system, what a student must never receive and what a submission holds.
  *
- *  Frozen once released (`released.json`): from then on this file only gains comments, and a change in what the file
+ *  Frozen once released (`RELEASED`): from then on this file only gains comments, and a change in what the file
  *  means is version 2, with a migration from this one. Every field is required and no other is allowed, so a file
  *  says everything it means and a misspelt `"hiden"` is refused instead of shipping the hidden tests. `yukibana
  *  config init` (to come) writes a complete one. There are no defaults and no transforms: what a file says is what
@@ -11,10 +11,9 @@
 import * as z from 'zod';
 import { globsSchema } from './brands.js';
 
-/** Where version 1's JSON Schema is served, and so what a version 1 file's `$schema` is, exactly. Served by the
- *  website (yukibana.dev), whose build copies the files of `schemas/` from this package; a released version's file
- *  never changes. */
-export const SCHEMA_URL_V1 = 'https://yukibana.dev/schema/yukibana/v1.json';
+/** Where version 1's JSON Schema is served, and so what a version 1 file's `$schema` is, exactly. The registry serves
+ *  this package's `schemas/yukibana/v1.json` there; a released version's file never changes. */
+export const SCHEMA_URL_V1 = 'https://cloud.yukibana.dev/schema/yukibana/v1.json';
 
 /** Every project kind version 1 knows: the build system a project uses, which decides its build output and the
  *  manifest checks of a build. A new kind changes what files mean, so it is a new version. */

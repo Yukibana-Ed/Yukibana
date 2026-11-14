@@ -11,11 +11,11 @@ import { format } from '../src/versions.js';
 // field is added.
 const v2 = projectFileV1
     .omit({ $schema: true, version: true, hidden: true })
-    .extend({ $schema: z.literal('https://yukibana.dev/schema/yukibana/v2.json'), version: z.literal(2), secret: globsSchema, motd: z.string() });
+    .extend({ $schema: z.literal('https://cloud.yukibana.dev/schema/yukibana/v2.json'), version: z.literal(2), secret: globsSchema, motd: z.string() });
 type V2 = z.output<typeof v2>;
 
 const fromV1: Migration<ProjectFileV1, V2> = ({ hidden, ...rest }) =>
-    exact<V2>()({ ...rest, $schema: 'https://yukibana.dev/schema/yukibana/v2.json', version: 2, secret: hidden, motd: '' });
+    exact<V2>()({ ...rest, $schema: 'https://cloud.yukibana.dev/schema/yukibana/v2.json', version: 2, secret: hidden, motd: '' });
 
 const chain = format('yukibana.json', [projectFileV1, v2], [fromV1]);
 
@@ -31,7 +31,7 @@ test('a file at an older version is read through every step to the latest, and k
 
 test('a file at the latest version is not migrated', () => {
     const { hidden, ...rest } = NO_PROJECT_FILE;
-    const latest = { ...rest, $schema: 'https://yukibana.dev/schema/yukibana/v2.json', version: 2, secret: hidden, motd: 'hi' };
+    const latest = { ...rest, $schema: 'https://cloud.yukibana.dev/schema/yukibana/v2.json', version: 2, secret: hidden, motd: 'hi' };
     const read = chain.read(JSON.stringify(latest));
     assert.ok(read.ok);
     assert.deepEqual(read.file, latest);

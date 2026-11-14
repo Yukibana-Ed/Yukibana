@@ -1,13 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://yukibana.dev/schema/yukibana/v1.json",
+  "$id": "https://cloud.yukibana.dev/schema/yukibana/v1.json",
   "title": "yukibana.json",
   "type": "object",
   "properties": {
     "$schema": {
       "type": "string",
-      "const": "https://yukibana.dev/schema/yukibana/v1.json",
-      "description": "The URL of this schema, https://yukibana.dev/schema/yukibana/v1.json, for an editor to check the file with. Names the version too, so it must match version."
+      "const": "https://cloud.yukibana.dev/schema/yukibana/v1.json",
+      "description": "The URL of this schema, https://cloud.yukibana.dev/schema/yukibana/v1.json, for an editor to check the file with. Names the version too, so it must match version."
     },
     "version": {
       "type": "number",

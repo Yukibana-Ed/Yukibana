@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://yukibana.dev/schema/yukibana-release/v1.json",
+  "$id": "https://cloud.yukibana.dev/schema/yukibana-release/v1.json",
   "title": "yukibana.release.json",
   "type": "object",
   "properties": {

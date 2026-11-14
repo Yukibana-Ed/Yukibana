@@ -1,14 +1,13 @@
 {
   "private": true,
   "name": "@yukibana/project-schema",
-  "description": "Every version of yukibana.json and yukibana.release.json: strict zod schemas, compiler-checked migrations to the latest, and the JSON Schema of each version that yukibana.dev serves.",
+  "description": "Every version of yukibana.json and yukibana.release.json: strict zod schemas, compiler-checked migrations to the latest, and the JSON Schema of each version that cloud.yukibana.dev serves.",
   "version": "0.0.0-dev",
   "license": "MIT",
   "type": "module",
   "files": [
     "lib",
-    "schemas",
-    "released.json"
+    "schemas"
   ],
   "exports": {
     ".": {
@@ -16,7 +15,6 @@
       "default": "./lib/index.js"
     },
     "./schemas/*": "./schemas/*",
-    "./released.json": "./released.json",
     "./package.json": "./package.json"
   },
   "scripts": {

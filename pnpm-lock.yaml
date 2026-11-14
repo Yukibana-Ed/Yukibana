@@ -521,6 +521,9 @@ importers:
       '@yukibana/client':
         specifier: 'catalog:'
         version: link:../../packages/client
+      '@yukibana/project-schema':
+        specifier: 'catalog:'
+        version: link:../../packages/project-schema
       aws4fetch:
         specifier: 'catalog:'
         version: 1.0.20

@@ -98,7 +98,7 @@ test('a $schema that names another version than the file is refused', () => {
                 f['$schema'] = SCHEMA_URL.replace('v1', 'v2');
             }),
         ),
-        /"\$schema" must be https:\/\/yukibana\.dev\/schema\/yukibana\/v1\.json/,
+        /"\$schema" must be https:\/\/cloud\.yukibana\.dev\/schema\/yukibana\/v1\.json/,
     );
 });
 

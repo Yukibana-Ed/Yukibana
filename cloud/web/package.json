@@ -37,6 +37,7 @@
     "@supabase/ssr": "catalog:",
     "@supabase/supabase-js": "catalog:",
     "@yukibana/client": "catalog:",
+    "@yukibana/project-schema": "catalog:",
     "aws4fetch": "catalog:",
     "jose": "catalog:",
     "postgres": "catalog:"
