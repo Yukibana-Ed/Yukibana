@@ -5,48 +5,53 @@
  *  self-hoster's own pair) share it. Any value but `system`, `light` or `dark` counts as nothing. Nothing may read it
  *  for anything but the theme: any site under that domain can set it.
  *
+ *  It is read in one place, the boot script (`themeBoot`), which shows it before the first paint. After that the page
+ *  itself says what is chosen, so `readTheme` reads `data-theme` back instead of parsing the stores a second time.
+ *
  *  This file is compiled to js/theme.js and js/theme.d.ts by `pnpm --filter @yukibana/design build`, and both are
  *  committed, like the generated CSS, so that an app installing the package from git builds nothing. */
 /** The choices, in the order a switcher offers them. */
 export const THEMES = ['system', 'light', 'dark'];
-/** The cookie and the localStorage key that hold the choice. */
-export const THEME_KEY = 'yk-theme';
-const valid = (value) => (value === 'system' || value === 'light' || value === 'dark' ? value : undefined);
-const cookieTheme = () => valid(/(?:^|;\s*)yk-theme=([^;]*)/.exec(document.cookie)?.[1]);
-/** The choice: the cookie's, else localStorage's, else "system". Anything unreadable or garbled counts as nothing. */
+const KEY = 'yk-theme';
+/** The inline script for the top of `<head>`: shows the stored choice before the first paint, so a page never flashes
+ *  the other scheme. It takes the cookie's choice, else localStorage's; anything unreadable or garbled is the system's.
+ *  Old JavaScript with no imports, and nothing that could close the script element it sits in. */
+export function themeBoot() {
+    return `(function () {
+    var t;
+    try {
+        t = (/(?:^|;\\s*)${KEY}=([^;]*)/.exec(document.cookie) || [])[1];
+    } catch (e) {}
+    if (t !== 'system' && t !== 'light' && t !== 'dark') {
+        try {
+            t = localStorage.getItem('${KEY}');
+        } catch (e) {}
+    }
+    if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+})();`;
+}
+/** The choice the page shows. Requires: the page ran `themeBoot()`, and changes the theme only through `applyTheme`. */
 export function readTheme() {
-    try {
-        const theme = cookieTheme();
-        if (theme)
-            return theme;
-    }
-    catch { }
-    try {
-        return valid(localStorage.getItem(THEME_KEY)) ?? 'system';
-    }
-    catch {
-        return 'system';
-    }
+    const shown = document.documentElement.getAttribute('data-theme');
+    return shown === 'light' || shown === 'dark' ? shown : 'system';
 }
 /** Keeps the choice in localStorage and in the cookie. The cookie goes on the broadest parent domain the browser
  *  accepts: browsers refuse public suffixes (`dev`, `github.io`, `co.uk`), so it lands on the site's registrable domain,
  *  whoever hosts it. Where none sticks (localhost, an IP address) it belongs to the host alone. */
 export function writeTheme(theme) {
     try {
-        const cookie = `${THEME_KEY}=${theme}; Path=/; Max-Age=31536000; SameSite=Lax; Secure`;
-        const labels = location.hostname.split('.');
-        let n = 2;
-        for (; n <= labels.length; n++) {
-            document.cookie = `${cookie}; Domain=${labels.slice(-n).join('.')}`;
-            if (cookieTheme() === theme)
-                break;
-        }
-        if (n > labels.length)
-            document.cookie = cookie;
+        localStorage.setItem(KEY, theme);
     }
     catch { }
     try {
-        localStorage.setItem(THEME_KEY, theme);
+        const cookie = `${KEY}=${theme}; Path=/; Max-Age=31536000; SameSite=Lax; Secure`;
+        const labels = location.hostname.split('.');
+        for (let n = 2; n <= labels.length; n++) {
+            document.cookie = `${cookie}; Domain=${labels.slice(-n).join('.')}`;
+            if (document.cookie.split('; ').includes(`${KEY}=${theme}`))
+                return;
+        }
+        document.cookie = cookie;
     }
     catch { }
 }
@@ -56,33 +61,4 @@ export function applyTheme(theme) {
         document.documentElement.removeAttribute('data-theme');
     else
         document.documentElement.setAttribute('data-theme', theme);
-}
-/** Calls `listener` with the system's scheme whenever it changes, and returns the function that stops it. Where the
- *  browser cannot tell (no `matchMedia`, Safari before 14), it never calls it. */
-export function onSystemChange(listener) {
-    const changed = (event) => listener(event.matches ? 'dark' : 'light');
-    try {
-        const query = matchMedia('(prefers-color-scheme: dark)');
-        query.addEventListener('change', changed);
-        return () => query.removeEventListener('change', changed);
-    }
-    catch {
-        return () => { };
-    }
-}
-/** The inline script for the top of `<head>` that does `applyTheme(readTheme())` before the first paint, so a page
- *  never flashes the other scheme: the same logic in the oldest JavaScript, with no imports. */
-export function themeBoot() {
-    return `(function () {
-    var t;
-    try {
-        t = (/(?:^|;\\s*)yk-theme=([^;]*)/.exec(document.cookie) || [])[1];
-    } catch (e) {}
-    if (t !== 'system' && t !== 'light' && t !== 'dark') {
-        try {
-            t = localStorage.getItem('yk-theme');
-        } catch (e) {}
-    }
-    if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
-})();`;
 }

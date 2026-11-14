@@ -28,8 +28,7 @@ function compileTheme(): [string, string][] {
         // `bin` puts it.
         const tsc = join(dirname(createRequire(import.meta.url).resolve('typescript/package.json')), 'bin', 'tsc');
         execFileSync(process.execPath, [tsc, '-p', at('tsconfig.theme.json'), '--outDir', out], { stdio: 'inherit' });
-        // LF throughout, the boot script's template literal included, which takes the line ends of a CRLF checkout.
-        return ['theme.js', 'theme.d.ts'].map(f => [`js/${f}`, readFileSync(join(out, f), 'utf8').replace(/\r\n/g, '\n')]);
+        return ['theme.js', 'theme.d.ts'].map(f => [`js/${f}`, readFileSync(join(out, f), 'utf8')]);
     } finally {
         rmSync(out, { recursive: true, force: true });
     }

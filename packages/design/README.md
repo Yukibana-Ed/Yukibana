@@ -48,17 +48,16 @@ change to the code; on localhost or an IP address it belongs to the host alone.
 
 | Export | What it does |
 | --- | --- |
-| `readTheme()` | The choice: the cookie's, else localStorage's, else `'system'`. Anything but `system`, `light` or `dark` counts as nothing. |
-| `writeTheme(choice)` | Keeps it in both. |
+| `themeBoot()` | The inline script that shows the stored choice before the first paint: the cookie's, else localStorage's. Anything but `system`, `light` or `dark` counts as nothing. |
+| `readTheme()` | The choice the page shows, read back from `data-theme`. |
+| `writeTheme(choice)` | Keeps it in both stores. |
 | `applyTheme(choice)` | Shows it: `data-theme` on `<html>`, removed for `'system'`. |
-| `onSystemChange(listener)` | Calls `listener('light' \| 'dark')` when the system's scheme changes; returns the function that stops it. |
-| `themeBoot()` | The inline script that does `applyTheme(readTheme())` before the first paint, as a string. |
 
 An app puts the boot script at the top of `<head>`, before any stylesheet. A page rendered by a framework inlines
-`themeBoot()` itself (React: `<script dangerouslySetInnerHTML={{ __html: themeBoot() }} />`); a static template pastes
-its output and tests that it still matches, as the cloud's `app.html` does. Its switcher calls `readTheme` when it
-mounts, and `writeTheme(choice)` then `applyTheme(choice)` when the person picks one. Every cookie, localStorage and
-`matchMedia` access is inside `try`, so a browser that blocks them gets the system's scheme, never an error.
+`themeBoot()` itself (React: `<script dangerouslySetInnerHTML={{ __html: themeBoot() }} />`); a server fills it into its
+template (the cloud's `hooks.server.ts` replaces `%yk.theme%` in `app.html`). Its switcher calls `readTheme` when it
+mounts, and `writeTheme(choice)` then `applyTheme(choice)` when the person picks one. Every cookie and localStorage access
+is inside `try`, so a browser that blocks them gets the system's scheme, never an error.
 
 The value carries no authority: any page under the same domain can set the cookie, Light's included, which runs programs
 people paste into it. Nothing may read it for anything but the theme.
