@@ -7,5 +7,5 @@ import { readFileSync } from 'node:fs';
 test('every page has a place for the theme boot script, before anything paints', () => {
     const html = readFileSync(new URL('../src/app.html', import.meta.url), 'utf8');
     expect(html.split('%yk.theme%')).toHaveLength(2);
-    expect(html).toMatch(/<head>[\s\S]*<script>%yk\.theme%<\/script>[\s\S]*%sveltekit\.head%/);
+    expect(html).toMatch(/<head>[\s\S]*<script>\s*%yk\.theme%\s*<\/script>[\s\S]*%sveltekit\.head%/);
 });
