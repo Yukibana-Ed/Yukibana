@@ -1,0 +1,325 @@
+# Releases one package, by hand: Actions, Release, Run workflow, with its tag, `client-v<version>`, `cli-v<version>` or
+# `ide-v<version>`, from main (any other branch, or a fork, is a dry run that builds and publishes nothing). The client
+# and the CLI go to npm, the IDE's installers to a GitHub release, the only kind of GitHub release made. The versions in
+# git stay 0.0.0-dev: the run writes the tag's version into the package's manifest before it builds.
+#
+# The tag is the lock. `.github/scripts/release-tag.mts` checks, before the builds and again before publishing, that it
+# is new or already on this run's commit and higher than every release of the package; the publish job, which runs only
+# once every build passed, makes the tag on the commit built and then publishes. Tags and releases are immutable (a tag
+# ruleset and GitHub's immutable releases), so every version out has its tag, and a failed publish is finished by fixing
+# what failed and re-running the run's jobs. CONTRIBUTING.md's Releasing section says how to release.
+#
+# npm publishing uses trusted publishing (OIDC), with no token: each package names this repository, workflow
+# release.yml and environment `release` as its trusted publisher on npmjs.com, and pnpm exchanges the job's OIDC token
+# for a one-time publish token, which also signs the provenance. Renaming this file, the environment or the repository
+# breaks publishing until those settings follow.
+name: Release
+run-name: ${{ format('Release {0}{1}', inputs.tag, (github.ref != 'refs/heads/main' || github.repository != 'Yukibana-Ed/Yukibana') && format(' (dry run of {0})', github.ref_name) || '') }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'The release, as its tag: client-vX.Y.Z, cli-vX.Y.Z or ide-vX.Y.Z'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check the tag
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      kind: ${{ steps.check.outputs.kind }}
+      version: ${{ steps.check.outputs.version }}
+      name: ${{ steps.check.outputs.name }}
+      dir: ${{ steps.check.outputs.dir }}
+      publish: ${{ github.ref == 'refs/heads/main' && github.repository == 'Yukibana-Ed/Yukibana' }}
+    steps:
+      # With the tags, which say what is released.
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+
+      - name: Install pnpm and Node.js
+        uses: ./.github/actions/setup
+        with:
+          cache: false
+
+      - name: Check
+        id: check
+        run: node .github/scripts/release-tag.mts
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+
+  npm:
+    name: Build and smoke-test ${{ needs.check.outputs.name }}
+    needs: check
+    if: needs.check.outputs.kind == 'client' || needs.check.outputs.kind == 'cli'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install pnpm and Node.js
+        uses: ./.github/actions/setup
+
+      # Before the install, whose prepare scripts build the packages.
+      - name: Set the version
+        run: node -e 'const fs = require("fs"); const f = process.argv[1]; const m = JSON.parse(fs.readFileSync(f, "utf8")); m.version = process.argv[2]; fs.writeFileSync(f, JSON.stringify(m, null, 2) + "\n");' "$DIR/package.json" "$VERSION"
+        env:
+          DIR: ${{ needs.check.outputs.dir }}
+          VERSION: ${{ needs.check.outputs.version }}
+
+      # The CLI and what it uses (the client among them); each package's prepare script compiles it into lib/.
+      - name: Install and build
+        run: pnpm --filter @yukibana/cli... install --frozen-lockfile --fetch-timeout 100000
+
+      # pnpm writes the versions that catalog: stands for into the packed manifest, so this tarball is exactly what the
+      # registry gets.
+      - name: Pack
+        run: pnpm --dir "$DIR" pack --pack-destination "$RUNNER_TEMP/packs"
+        env:
+          DIR: ${{ needs.check.outputs.dir }}
+
+      # Installed from the tarball alone, outside the workspace, the way someone installs it from npm: no catalog:,
+      # nothing missing from `files`. The CLI runs without the client beside it, on a course repository as git archive
+      # makes it.
+      - name: Smoke test
+        working-directory: ${{ runner.temp }}
+        env:
+          KIND: ${{ needs.check.outputs.kind }}
+        run: |
+          set -euo pipefail
+          if tar -xOzf packs/*.tgz package/package.json | grep -E '"(workspace|catalog):'; then
+            echo "::error::The tarball still has a workspace: or catalog: dependency in its manifest."
+            exit 1
+          fi
+          mkdir smoke repo
+          tar -xzf "$GITHUB_WORKSPACE/packages/fixtures/repo.tar.gz" -C repo --strip-components=1
+          cd smoke
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund ../packs/*.tgz
+          if [ "$KIND" = cli ]; then
+            test ! -e node_modules/@yukibana/client
+            npx --no-install yukibana --help > /dev/null
+            npx --no-install yukibana check ../repo
+            npx --no-install yukibana build ../repo --out ../built
+            test -s ../built/starter.tar.gz && test -s ../built/teacher.tar.gz
+          else
+            node --input-type=module -e "import('@yukibana/client').then(m => { if (Object.keys(m).length === 0) process.exit(1); })"
+          fi
+
+      - name: Upload the tarball
+        uses: actions/upload-artifact@v7
+        with:
+          name: npm
+          path: ${{ runner.temp }}/packs/*.tgz
+          if-no-files-found: error
+          retention-days: 7
+
+  # Adapted from https://github.com/eclipse-theia/theia-ide/blob/74bd976ef60102bdbaf754817c88d00811465e72/.github/workflows/build.yml
+  ide:
+    name: Build the IDE (${{ matrix.artifact }})
+    needs: check
+    if: needs.check.outputs.kind == 'ide'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-2022, artifact: windows }
+          - { os: ubuntu-22.04, artifact: linux }
+          - { os: macos-15, artifact: mac-arm64 }
+          - { os: macos-15-intel, artifact: mac-x64 }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install pnpm and Node.js
+        uses: ./.github/actions/setup
+
+      # The IDE and what it uses, as `pnpm setup:ide` installs it: not the cloud's Supabase CLI, squawk or workerd.
+      - name: Install dependencies
+        shell: bash
+        run: pnpm --filter "{ide/**}..." install --frozen-lockfile --fetch-timeout 100000
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cache Theia plugins
+        uses: actions/cache@v6
+        with:
+          # With the stamp that pnpm -C ide download:plugins compares the plugin list with.
+          path: |
+            ide/plugins
+            node_modules/.plugins-download-inputs
+          key: plugins-v2-${{ runner.os }}-${{ hashFiles('ide/package.json') }}
+
+      - name: Cache Electron / electron-builder downloads
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+            ~/Library/Caches/electron
+            ~/Library/Caches/electron-builder
+            ~/AppData/Local/electron/Cache
+            ~/AppData/Local/electron-builder/Cache
+          key: electron-${{ runner.os }}-${{ matrix.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            electron-${{ runner.os }}-${{ matrix.os }}-
+
+      # electron-builder names the installers and writes latest.yml with this version, and it is the version the packaged
+      # app reports (About, the updater), which reads it from this manifest.
+      - name: Set the version
+        shell: bash
+        run: node -e 'const fs = require("fs"); const f = process.argv[1]; const m = JSON.parse(fs.readFileSync(f, "utf8")); m.version = process.argv[2]; fs.writeFileSync(f, JSON.stringify(m, null, 2) + "\n");' ide/electron/package.json "$VERSION"
+        env:
+          VERSION: ${{ needs.check.outputs.version }}
+
+      - name: Build the installers
+        shell: bash
+        run: pnpm -C ide package
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Without its feed (latest.yml from Windows, latest-linux.yml from Linux), the release would leave every installed IDE
+      # failing to update; upload-artifact only fails when nothing matches at all.
+      - name: Check the update feed
+        shell: bash
+        env:
+          ARTIFACT: ${{ matrix.artifact }}
+        run: |
+          case "$ARTIFACT" in
+            windows) test -f ide/electron/dist/latest.yml ;;
+            linux) test -f ide/electron/dist/latest-linux.yml ;;
+          esac
+
+      # The installers, their blockmaps (which let an updater download only the blocks that changed since the version it
+      # has) and the Windows and Linux update feeds. macOS's arm64 and x64 builds each write a latest-mac.yml of the same
+      # name, so neither goes up until they are merged; an unsigned Mac cannot install updates anyway.
+      - name: Upload the installers
+        uses: actions/upload-artifact@v7
+        with:
+          name: ide-${{ matrix.artifact }}
+          path: |
+            ide/electron/dist/*.exe
+            ide/electron/dist/*.dmg
+            ide/electron/dist/*.zip
+            ide/electron/dist/*.AppImage
+            ide/electron/dist/*.deb
+            ide/electron/dist/*.blockmap
+            ide/electron/dist/latest.yml
+            ide/electron/dist/latest-linux.yml
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish ${{ inputs.tag }}
+    needs: [check, npm, ide]
+    # Only from main of this repository, and only once the check and the package's builds all passed; the build of the
+    # other kind is skipped, which is not a failure.
+    if: >-
+      !cancelled() && needs.check.result == 'success' && needs.check.outputs.publish == 'true' &&
+      !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    # One publish at a time, none cancelled; the builds of different releases still run side by side.
+    concurrency:
+      group: release
+      cancel-in-progress: false
+    environment:
+      name: release
+    permissions:
+      # The tag and the GitHub release.
+      contents: write
+      # npm's trusted publishing and provenance.
+      id-token: write
+    env:
+      TAG: ${{ inputs.tag }}
+      VERSION: ${{ needs.check.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      # With the tags as they are now: a re-run of this job may come days after the check job ran.
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+
+      - name: Install pnpm and Node.js
+        uses: ./.github/actions/setup
+        with:
+          cache: false
+
+      # Again, so that a re-run of an old run never publishes once a newer release is out.
+      - name: Check the tag again
+        run: node .github/scripts/release-tag.mts
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+
+      # The lock: once made, nothing but this commit can release this version. A tag already here is this run's own,
+      # from an earlier attempt (the check refuses one on another commit).
+      - name: Tag
+        run: |
+          set -euo pipefail
+          if [ -z "$(git tag --list "$TAG")" ]; then
+            gh api "repos/$GH_REPO/git/refs" -f ref="refs/tags/$TAG" -f sha="$GITHUB_SHA" > /dev/null
+          fi
+
+      - name: Download the tarball
+        if: needs.check.outputs.kind != 'ide'
+        uses: actions/download-artifact@v8
+        with:
+          name: npm
+          path: ${{ runner.temp }}/packs
+
+      # The tarball the smoke test installed, unless an earlier attempt of this run published it already. Published from
+      # outside the workspace, whose devEngines would otherwise have to match this job's Node exactly.
+      - name: Publish to npm
+        if: needs.check.outputs.kind != 'ide'
+        working-directory: ${{ runner.temp }}
+        env:
+          NAME: ${{ needs.check.outputs.name }}
+        run: |
+          set -euo pipefail
+          if [ "$(curl -s -o /dev/null -w '%{http_code}' "https://registry.npmjs.org/${NAME/\//%2f}/$VERSION")" = 200 ]; then
+            echo "$NAME $VERSION is on npm already."
+          else
+            pnpm publish packs/*.tgz --access public --provenance --no-git-checks
+          fi
+
+      - name: Download the installers
+        if: needs.check.outputs.kind == 'ide'
+        uses: actions/download-artifact@v8
+        with:
+          pattern: ide-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/installers
+
+      # gh makes a draft, attaches every installer and only then publishes it (deleting the draft if that fails), marked
+      # latest, which is where installed IDEs look for updates. A release an earlier attempt published is left as it is.
+      - name: Publish the GitHub release
+        if: needs.check.outputs.kind == 'ide'
+        run: |
+          set -euo pipefail
+          if [ "$(gh release view "$TAG" --json isDraft --jq .isDraft 2> /dev/null)" = false ]; then
+            echo "$TAG is published already."
+          else
+            gh release create "$TAG" --verify-tag --latest --title "Yukibana IDE $VERSION" --generate-notes "$RUNNER_TEMP"/installers/*
+          fi

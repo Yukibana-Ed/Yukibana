@@ -1,0 +1,38 @@
+{
+  "name": "@yukibana/ide-updater-ext",
+  "version": "0.0.0-dev",
+  "license": "MIT",
+  "keywords": [
+    "theia-extension"
+  ],
+  "files": [
+    "i18n",
+    "lib",
+    "src"
+  ],
+  "dependencies": {
+    "@theia/core": "catalog:",
+    "@yukibana/ide-product-ext": "catalog:",
+    "electron-updater": "catalog:"
+  },
+  "devDependencies": {
+    "@yukibana/ide": "catalog:",
+    "rimraf": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "scripts": {
+    "prepare": "tsc --build",
+    "clean": "rimraf lib tsconfig.tsbuildinfo",
+    "lint": "oxlint",
+    "typecheck": "tsc --build",
+    "test": "vitest run"
+  },
+  "theiaExtensions": [
+    {
+      "electronMain": "lib/electron-main/updater-main-module",
+      "frontendElectron": "lib/browser/updater-frontend-module",
+      "backend": "lib/node/updater-backend-module"
+    }
+  ]
+}

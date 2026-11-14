@@ -1,10 +1,21 @@
 {
-  "private": true,
   "name": "@yukibana/cli",
   "description": "Build, publish, submit, download and assemble Yukibana course projects from a terminal: the `yukibana` command, over @yukibana/client.",
   "version": "0.0.0-dev",
   "license": "MIT",
+  "homepage": "https://github.com/Yukibana-Ed/Yukibana#readme",
+  "bugs": {
+    "url": "https://github.com/Yukibana-Ed/Yukibana/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Yukibana-Ed/Yukibana.git",
+    "directory": "packages/cli"
+  },
   "type": "module",
+  "files": [
+    "lib"
+  ],
   "exports": {
     "./package.json": "./package.json"
   },
@@ -15,21 +26,28 @@
     "node": ">=24"
   },
   "scripts": {
-    "prepare": "tsc --build tsconfig.build.json",
-    "clean": "rimraf lib tsconfig.build.tsbuildinfo",
+    "prepare": "rimraf lib && esbuild src/index.ts --bundle --platform=node --format=esm --target=node24 --outfile=lib/index.js --external:ignore --external:modern-tar --external:zod --external:uuid",
+    "clean": "rimraf lib",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint --type-aware --deny-warnings"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@yukibana/client": "catalog:",
     "@yukibana/fixtures": "catalog:",
+    "esbuild": "catalog:",
     "rimraf": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },
   "dependencies": {
-    "@yukibana/client": "catalog:",
-    "uuid": "catalog:"
+    "ignore": "catalog:",
+    "modern-tar": "catalog:",
+    "uuid": "catalog:",
+    "zod": "catalog:"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
