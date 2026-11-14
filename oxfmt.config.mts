@@ -17,6 +17,8 @@ export default {
         '**/*.md',
         // Generated, and checked byte for byte by packages/client/tests/schema.test.ts.
         'packages/client/yukibana.schema.json',
+        // Generated, and checked byte for byte by packages/project-schema/tests/json-schema.test.ts.
+        'packages/project-schema/schemas/**',
     ],
     overrides: [
         {

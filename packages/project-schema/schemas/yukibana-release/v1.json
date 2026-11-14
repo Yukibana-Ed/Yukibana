@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yukibana.dev/schema/yukibana-release/v1.json",
+  "title": "yukibana.release.json",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "number",
+      "const": 1,
+      "description": "The shape of this file: 1."
+    },
+    "projectId": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+      "description": "The registry project a submission from this folder goes to."
+    },
+    "releaseId": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "description": "The release this starter is, chosen by yukibana build before the upload so the release row has the same id. A submission sends it, so grading compares the read-only files with that release."
+    }
+  },
+  "required": [
+    "version",
+    "projectId",
+    "releaseId"
+  ],
+  "additionalProperties": false,
+  "description": "Which registry project and release a starter is. Written by yukibana build and publish into the starter's root; a course repository has none."
+}

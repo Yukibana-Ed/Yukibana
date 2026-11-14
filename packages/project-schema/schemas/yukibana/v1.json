@@ -1,0 +1,237 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yukibana.dev/schema/yukibana/v1.json",
+  "title": "yukibana.json",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "https://yukibana.dev/schema/yukibana/v1.json",
+      "description": "The URL of this schema, https://yukibana.dev/schema/yukibana/v1.json, for an editor to check the file with. Names the version too, so it must match version."
+    },
+    "version": {
+      "type": "number",
+      "const": 1,
+      "description": "The shape of this file: 1. A file in a newer shape needs a newer IDE and CLI, which say so."
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "rust-cargo",
+        "scala-sbt"
+      ],
+      "description": "The build system. Chooses the build output no archive carries and the manifest checks the build makes."
+    },
+    "hidden": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Globs of files the student never receives: removed from the starter, and from the starter's copy of this file. When a teacher assembles a submission they are put back from the teacher's version, like readOnly. A pattern naming a directory covers everything under it; * stays within a path segment, ** crosses segments, ? is one character. [] hides nothing."
+    },
+    "assignmentFile": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The file the IDE opens as the assignment, relative to the project root."
+    },
+    "features": {
+      "type": "object",
+      "properties": {
+        "codeSuggestions": {
+          "type": "boolean",
+          "description": "Code completion in the editor."
+        },
+        "squiggles": {
+          "type": "boolean",
+          "description": "Error and warning underlines in the editor."
+        },
+        "codeLenses": {
+          "type": "boolean",
+          "description": "Inline actions in the editor."
+        },
+        "ai": {
+          "type": "boolean",
+          "description": "The IDE's AI features."
+        }
+      },
+      "required": [
+        "codeSuggestions",
+        "squiggles",
+        "codeLenses",
+        "ai"
+      ],
+      "additionalProperties": false,
+      "description": "Which of the IDE's helpers are on."
+    },
+    "layout": {
+      "type": "object",
+      "properties": {
+        "widgets": {
+          "type": "object",
+          "properties": {
+            "files": {
+              "type": "boolean",
+              "description": "The file explorer."
+            },
+            "search": {
+              "type": "boolean",
+              "description": "The search view."
+            },
+            "vcs": {
+              "type": "boolean",
+              "description": "The source control view."
+            },
+            "debug": {
+              "type": "boolean",
+              "description": "The debug view."
+            },
+            "testing": {
+              "type": "boolean",
+              "description": "The test view."
+            },
+            "outline": {
+              "type": "boolean",
+              "description": "The outline view."
+            },
+            "aiChat": {
+              "type": "boolean",
+              "description": "The AI chat view."
+            }
+          },
+          "required": [
+            "files",
+            "search",
+            "vcs",
+            "debug",
+            "testing",
+            "outline",
+            "aiChat"
+          ],
+          "additionalProperties": false,
+          "description": "Which of the IDE's own views show."
+        },
+        "containers": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "boolean"
+          },
+          "description": "View containers by id, shown if true and hidden if false; one not named is left as it is. {} leaves them all."
+        },
+        "views": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "boolean"
+          },
+          "description": "Views by id, shown if true and hidden if false; one not named is left as it is. {} leaves them all."
+        }
+      },
+      "required": [
+        "widgets",
+        "containers",
+        "views"
+      ],
+      "additionalProperties": false,
+      "description": "How the IDE lays out the project's window."
+    },
+    "openFiles": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Files the IDE opens when the project opens, relative to the project root. Paths, not globs."
+    },
+    "readOnly": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Globs of files the student receives but may not change. When a teacher assembles a submission, whatever the student sent under these paths is replaced by the teacher's version, and every change is reported. [] protects nothing."
+    },
+    "submission": {
+      "type": "object",
+      "properties": {
+        "include": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Only paths matching one of these globs are submitted, and yukibana.json always. [\"**\"] submits everything the other rules allow."
+        },
+        "exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Globs never submitted, on top of the history, the IDE's state, node_modules and the kind's build output, which never are."
+        },
+        "respectGitignore": {
+          "type": "boolean",
+          "description": "Whether what the project's .gitignore files ignore is left out of a submission too, as git would leave it out of a commit."
+        },
+        "target": {
+          "type": "string",
+          "enum": [
+            "cloud",
+            "file"
+          ],
+          "description": "Where the IDE sends a submission: cloud, the registry, or file, an archive the student saves. The CLI always sends to the registry."
+        },
+        "filename": {
+          "type": "string",
+          "description": "What yukibana pack calls the archive it writes. The bytes are always a gzipped tar, whatever the name says."
+        },
+        "maxBytes": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "description": "The largest submission this project expects, in bytes. The registry has its own cap above which this cannot go."
+        }
+      },
+      "required": [
+        "include",
+        "exclude",
+        "respectGitignore",
+        "target",
+        "filename",
+        "maxBytes"
+      ],
+      "additionalProperties": false,
+      "description": "What a submission from this folder holds, and where the IDE sends it."
+    },
+    "telemetry": {
+      "type": "object",
+      "properties": {
+        "liveTypingStats": {
+          "type": "boolean",
+          "description": "Whether to send live stats about what the student is typing in the IDE."
+        }
+      },
+      "required": [
+        "liveTypingStats"
+      ],
+      "additionalProperties": false,
+      "description": "What telemetry the IDE sends."
+    }
+  },
+  "required": [
+    "$schema",
+    "version",
+    "kind",
+    "hidden",
+    "assignmentFile",
+    "features",
+    "layout",
+    "openFiles",
+    "readOnly",
+    "submission",
+    "telemetry"
+  ],
+  "additionalProperties": false,
+  "description": "A project's configuration: its build system, what the student's IDE shows, which files the student may not change, what the student never receives, and what a submission holds. Lives at the project root as yukibana.json. Every field is required."
+}

@@ -1,0 +1,40 @@
+{
+  "private": true,
+  "name": "@yukibana/project-schema",
+  "description": "Every version of yukibana.json and yukibana.release.json: strict zod schemas, compiler-checked migrations to the latest, and the JSON Schema of each version that yukibana.dev serves.",
+  "version": "0.0.0-dev",
+  "license": "MIT",
+  "type": "module",
+  "files": [
+    "lib",
+    "schemas",
+    "released.json"
+  ],
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./schemas/*": "./schemas/*",
+    "./released.json": "./released.json",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "prepare": "tsc --build tsconfig.build.json",
+    "clean": "rimraf lib tsconfig.build.tsbuildinfo",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit && node scripts/ts6.ts",
+    "lint": "oxlint --type-aware --deny-warnings",
+    "schemas": "vitest run tests/json-schema.test.ts --update"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "rimraf": "catalog:",
+    "typescript": "catalog:",
+    "typescript-6": "catalog:ts6",
+    "vitest": "catalog:"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  }
+}
