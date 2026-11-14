@@ -1,12 +1,12 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import Icon, { type IconName } from './Icon.svelte';
-  import { THEMES, applyTheme, readTheme, writeTheme, type Theme } from '@yukibana/design/theme';
+  import { THEMES, chooseTheme, readTheme, type Theme } from '@yukibana/design/theme';
 
   /** The theme, in the account menu: System, Light or Dark, as one segmented control. Native radio buttons, so the
    *  arrow keys move between them and a screen reader hears one choice of three. The choice is shared with the other
-   *  Yukibana sites by the design system (@yukibana/design/theme); app.html applied it before the page painted, and this
-   *  only reads it back. */
+   *  Yukibana sites by the design system (@yukibana/design/theme); the root layout's boot script (#lib/theme-script)
+   *  showed it before the page painted, and this only reads it back. */
   const LABEL: Record<Theme, string> = { system: 'System', light: 'Light', dark: 'Dark' };
   const ICON: Record<Theme, IconName> = { system: 'monitor', light: 'sun', dark: 'moon' };
 
@@ -17,8 +17,7 @@
 
   function choose(next: Theme) {
     theme = next;
-    writeTheme(next);
-    applyTheme(next);
+    chooseTheme(next);
   }
 </script>
 

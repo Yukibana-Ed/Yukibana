@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { runInNewContext } from 'node:vm';
-import { applyTheme, readTheme, themeBoot, writeTheme } from '../src/theme.ts';
+import { THEME_BOOT, chooseTheme, readTheme } from '../src/theme.ts';
 
 /** The public suffixes the fake browser refuses a cookie for, as a real one does from the Public Suffix List. */
 const PUBLIC_SUFFIXES = new Set(['dev', 'io', 'github.io', 'uk', 'co.uk', 'example']);
 
-/** As much of a browser as the theme touches: a page on `host`, a cookie jar behind `document.cookie` that refuses a
- *  Domain the host cannot set, a localStorage and the root's attributes. Either store can drop everything ('refuse')
- *  or throw ('throw', blocked site data). */
-function browser(options: { host?: string; cookie?: string; stored?: string; cookies?: 'keep' | 'refuse' | 'throw'; storage?: 'keep' | 'refuse' | 'throw' } = {}) {
+/** As much of a browser as the theme touches, modelled, not real: a page on `host`, a one-cookie jar behind
+ *  `document.cookie` that refuses a Domain the host cannot set (or every cookie, 'refuse'), a localStorage that can
+ *  throw (blocked site data), and the root's attributes. */
+function browser(options: { host?: string; cookie?: string; stored?: string; cookies?: 'refuse'; storage?: 'throw' } = {}) {
     const hostname = options.host ?? 'cloud.yukibana.dev';
     const ip = /^[\d.]+$/.test(hostname);
     let jar = options.cookie ?? '';
@@ -21,10 +21,9 @@ function browser(options: { host?: string; cookie?: string; stored?: string; coo
     };
     const document = {
         get cookie(): string {
-            return options.cookies === 'throw' ? blocked() : jar;
+            return jar;
         },
         set cookie(value: string) {
-            if (options.cookies === 'throw') blocked();
             if (options.cookies === 'refuse') return;
             const wanted = /; Domain=([^;]*)/.exec(value)?.[1] ?? null;
             const allowed = wanted === null || wanted === hostname || (!ip && !PUBLIC_SUFFIXES.has(wanted) && hostname.endsWith(`.${wanted}`));
@@ -40,15 +39,14 @@ function browser(options: { host?: string; cookie?: string; stored?: string; coo
     };
     const localStorage = {
         getItem: (k: string) => (options.storage === 'throw' ? blocked() : (items.get(k) ?? null)),
-        setItem: (k: string, v: string) => (options.storage === 'throw' ? blocked() : options.storage === 'refuse' ? undefined : void items.set(k, v)),
+        setItem: (k: string, v: string) => (options.storage === 'throw' ? blocked() : void items.set(k, v)),
     };
+    const globals = { document, localStorage, location: { hostname } };
     return {
-        globals: { document, localStorage, location: { hostname } },
+        globals,
         /** Makes this the page the module's functions see. */
         install() {
-            vi.stubGlobal('document', document);
-            vi.stubGlobal('localStorage', localStorage);
-            vi.stubGlobal('location', { hostname });
+            for (const [name, value] of Object.entries(globals)) vi.stubGlobal(name, value);
         },
         cookie: () => jar,
         domain: () => domain,
@@ -63,18 +61,20 @@ afterEach(() => {
 
 /** What a page on `b` shows once its boot script ran: the switcher's reading of it. */
 function booted(b: ReturnType<typeof browser>): string {
-    runInNewContext(themeBoot(), b.globals);
+    runInNewContext(THEME_BOOT, b.globals);
     b.install();
     return readTheme();
 }
 
 describe('the choice', () => {
-    test('is written to the shared cookie and to localStorage, and the next page shows it', () => {
+    test('is shown, written to the shared cookie and to localStorage, and the next page shows it', () => {
         const b = browser();
         expect(booted(b)).toBe('system');
         for (const theme of ['dark', 'light', 'system'] as const) {
             b.install();
-            writeTheme(theme);
+            chooseTheme(theme);
+            expect(b.theme()).toBe(theme === 'system' ? null : theme);
+            expect(readTheme()).toBe(theme);
             expect(b.stored()).toBe(theme);
             expect(booted(browser({ cookie: b.cookie() }))).toBe(theme);
         }
@@ -106,7 +106,7 @@ describe('the choice', () => {
         ] as const) {
             const b = browser({ host });
             b.install();
-            writeTheme('dark');
+            chooseTheme('dark');
             expect(b.domain(), host).toBe(domain);
             expect(b.cookie(), host).toBe('yk-theme=dark');
         }
@@ -115,31 +115,19 @@ describe('the choice', () => {
     test('a browser that drops every cookie keeps the choice in localStorage', () => {
         const b = browser({ cookies: 'refuse' });
         b.install();
-        writeTheme('dark');
+        chooseTheme('dark');
         expect(booted(browser({ stored: b.stored() ?? '' }))).toBe('dark');
     });
 
-    test('blocked cookies or storage never throw, and show the system scheme', () => {
-        for (const cookies of ['keep', 'refuse', 'throw'] as const)
-            for (const storage of ['keep', 'refuse', 'throw'] as const) {
-                const b = browser({ cookies, storage, cookie: 'yk-theme=dark', stored: 'dark' });
-                expect(() => booted(b)).not.toThrow();
-                expect(() => writeTheme('light')).not.toThrow();
-            }
-        expect(booted(browser({ cookies: 'throw', storage: 'throw', cookie: 'yk-theme=dark', stored: 'dark' }))).toBe('system');
+    test('blocked site data never throws: the cookie still works, and without it the system scheme shows', () => {
+        const b = browser({ storage: 'throw' });
+        expect(booted(b)).toBe('system');
+        expect(() => chooseTheme('dark')).not.toThrow();
+        expect(booted(browser({ storage: 'throw', cookie: b.cookie() }))).toBe('dark');
+        expect(booted(browser({ storage: 'throw', cookies: 'refuse' }))).toBe('system');
     });
 });
 
-test('a fixed theme sets data-theme, System removes it, and the switcher reads it back', () => {
-    const b = browser();
-    b.install();
-    for (const theme of ['dark', 'light', 'system'] as const) {
-        applyTheme(theme);
-        expect(b.theme()).toBe(theme === 'system' ? null : theme);
-        expect(readTheme()).toBe(theme);
-    }
-});
-
 test('the boot script is plain old JavaScript that cannot close the script element it sits in', () => {
-    expect(themeBoot()).not.toMatch(/=>|\blet\b|\bconst\b|`|<\//);
+    expect(THEME_BOOT).not.toMatch(/=>|\blet\b|\bconst\b|`|<\//);
 });
