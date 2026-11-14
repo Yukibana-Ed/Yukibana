@@ -1,13 +1,14 @@
 {
   "private": true,
   "name": "@yukibana/design",
-  "description": "Yukibana's design system: W3C design tokens compiled to CSS custom properties, the base styles of the shared components, the fonts, and a reference page that shows them.",
+  "description": "Yukibana's design system: W3C design tokens compiled to CSS custom properties, the base styles of the shared components, the fonts, the theme choice shared across yukibana.dev, and a reference page that shows them.",
   "version": "0.0.0-dev",
   "license": "MIT",
   "type": "module",
   "files": [
     "css",
     "fonts",
+    "js",
     "tokens",
     "README.md"
   ],
@@ -15,6 +16,10 @@
     "./tokens.css": "./css/tokens.css",
     "./base.css": "./css/base.css",
     "./fonts.css": "./css/fonts.css",
+    "./theme": {
+      "types": "./js/theme.d.ts",
+      "default": "./js/theme.js"
+    },
     "./css/*": "./css/*",
     "./fonts/*": "./fonts/*",
     "./tokens/*": "./tokens/*",

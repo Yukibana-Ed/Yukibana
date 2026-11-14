@@ -1,0 +1,14 @@
+{
+  // Compiles src/theme.ts to js/theme.js and js/theme.d.ts, which are committed (scripts/build.ts runs it).
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "allowImportingTsExtensions": false,
+    "declaration": true,
+    "rootDir": "src",
+    "outDir": "js",
+    "newLine": "lf",
+    "types": []
+  },
+  "include": ["src/theme.ts"]
+}

@@ -4,3 +4,5 @@
 css/**/*.css text eol=lf
 # The vendored fonts are binary, whatever a heuristic thinks.
 fonts/**/*.woff2 binary
+# The compiled theme module is compared byte for byte too, and TypeScript writes LF (tsconfig.theme.json).
+js/** text eol=lf
