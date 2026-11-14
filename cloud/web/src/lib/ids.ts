@@ -33,11 +33,14 @@ export type InviteId = string & { readonly [TABLE]: 'teacher_invite' };
 /** A submission's id: `submission.submission_id`, also the name of its
  *  object (`submissionKey`). */
 export type SubmissionId = string & { readonly [TABLE]: 'submission' };
+/** A profile picture's id: `profile_picture.picture_id`, also the name of its object (`pictureKey`). A new picture
+ *  gets a new id, so a picture's URL always shows the same bytes. */
+export type PictureId = string & { readonly [TABLE]: 'profile_picture' };
 
 /** Where bytes live in the bucket. Never a URL: see the submission table.
  *
  *  Invariant: a path, not a uuid, made only by `submissionKey`,
- *  `starterKey` or `teacherKey` for an object about to be stored, or by
+ *  `starterKey`, `teacherKey` or `pictureKey` for an object about to be stored, or by
  *  `trustKey` for a key the database returned (a test may cast its own). */
 export type ObjectKey = string & { readonly [TABLE]: 'object' };
 
@@ -79,3 +82,7 @@ export const starterKey = (project: ProjectId, object: string): ObjectKey => `st
 /** Returns the key for a release's teacher archive: the whole project, hidden tests
  *  included. Never served to a student. */
 export const teacherKey = (project: ProjectId, object: string): ObjectKey => `teacher/${project}/${object}.tar.gz` as ObjectKey;
+
+/** Returns the key for a profile picture: a square WebP, under its owner's id so that a listing groups a person's
+ *  objects. `picture` is fresh for every upload (see `PictureId`). */
+export const pictureKey = (user: UserId, picture: PictureId): ObjectKey => `pictures/${user}/${picture}.webp` as ObjectKey;

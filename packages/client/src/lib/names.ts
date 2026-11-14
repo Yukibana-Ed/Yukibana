@@ -13,7 +13,7 @@
 export interface Person {
     /** The account's id, unique; the folder name falls back to it when the person has no other name. */
     readonly userId: string;
-    /** The person's full name, or null when the registry has none. */
+    /** The person's full name, or null when the registry has none or they chose not to show it to the caller. */
     readonly fullName: string | null;
     /** The person's GitHub login, or null when the registry has none. */
     readonly githubLogin: string | null;

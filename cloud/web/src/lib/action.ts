@@ -8,10 +8,15 @@ import { deserialize } from '$app/forms';
 
 /** Posts `fields` to `action` (a URL such as `?tab=projects&/move`) and
  *  resolves when the action succeeded. Rejects with the action's own
- *  `error` sentence when it refused, so a caller can show it as it is. */
-export async function postAction(action: string, fields: Record<string, string>): Promise<void> {
+ *  `error` sentence when it refused, so a caller can show it as it is.
+ *  A `Blob` field is sent as a file named after the field, which makes the
+ *  body multipart, as a form with a file input would. */
+export async function postAction(action: string, fields: Record<string, string | Blob>): Promise<void> {
     const body = new FormData();
-    for (const [name, value] of Object.entries(fields)) body.set(name, value);
+    for (const [name, value] of Object.entries(fields)) {
+        if (typeof value === 'string') body.set(name, value);
+        else body.set(name, value, name);
+    }
     const res = await fetch(action, { method: 'POST', body, headers: { 'x-sveltekit-action': 'true' } });
     let result: ReturnType<typeof deserialize>;
     try {

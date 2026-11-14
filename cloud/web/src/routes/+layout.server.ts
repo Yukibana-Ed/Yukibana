@@ -4,8 +4,10 @@ import { asUser } from '#lib/server/db.ts';
 import { withContext } from '#lib/server/context.ts';
 import { workerConfig } from '#lib/server/worker.ts';
 import { topicsFor } from '#lib/topics.ts';
+import { pictureOf } from '#lib/server/pictures.ts';
+import { pictureUrl } from '#lib/picture/url.ts';
 
-/** Who is signed in, the editions they are in (for the header's course
+/** Who is signed in (with the path of their profile picture, or null), the editions they are in (for the header's course
  *  switcher), and what their pages listen to for live updates: the
  *  Realtime address, the publishable key (public by design), and the topics
  *  their enrolments give them. Whether they may actually join a topic is the
@@ -23,22 +25,26 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
     const claims = locals.claims;
     if (claims === null) return { user: null, memberships: [], live: null, sessionRefused: locals.sessionRefused };
     const config = workerConfig();
-    const memberships = await withContext(ctx =>
+    const [memberships, picture] = await withContext(ctx =>
         asUser(
             ctx.sql,
             claims,
-            tx => tx<Membership[]>`
+            async tx =>
+                [
+                    await tx<Membership[]>`
       select n.edition_id, n.role::text as role, c.code, e.label, e.archived_at is not null as archived
       from enrollment n
       join course_edition e on e.edition_id = n.edition_id
       join course c on c.course_id = e.course_id
       where n.user_id = ${claims.sub}
       order by e.archived_at nulls first, c.code, e.label desc`,
+                    await pictureOf(tx, claims.sub),
+                ] as const,
         ),
     );
     return {
         sessionRefused: null,
-        user: { id: claims.sub, email: claims.email },
+        user: { id: claims.sub, email: claims.email, picture: picture === null ? null : pictureUrl(claims.sub, picture) },
         memberships,
         live: {
             url: config.supabaseUrl,

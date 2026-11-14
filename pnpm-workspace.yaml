@@ -51,6 +51,7 @@ allowBuilds:
 # electron cannot be specified as 'catalog:' because Theia's CLI checks its version using semver.
 catalog:
   '@date-fns/tz': 1.5.0
+  '@jsquash/webp': 1.5.0
   '@playwright/test': 1.64.1
   '@supabase/ssr': 0.12.7
   '@supabase/supabase-js': 2.118.0

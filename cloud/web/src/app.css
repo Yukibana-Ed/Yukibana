@@ -148,6 +148,12 @@
     .avatar:hover {
         border-color: var(--yk-line-strong);
     }
+    .avatar img {
+        width: 100%;
+        height: 100%;
+        border-radius: inherit;
+        object-fit: cover;
+    }
 
     /* A menu that opens from a button: a popover in the top layer, so no scrolling box clips it; the button places it
        (#lib/popover.ts). */
@@ -639,6 +645,37 @@
         flex-wrap: wrap;
         gap: var(--yk-space-2) var(--yk-space-4);
         align-items: center;
+    }
+
+    /* The account page (routes/account): the picture, large, beside the name and what can be done with it. */
+    .profile {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: var(--yk-space-6);
+    }
+    .profile .picture {
+        display: grid;
+        flex: none;
+        place-items: center;
+        width: 96px;
+        height: 96px;
+        border-radius: var(--yk-radius-pill);
+        background: var(--yk-chip-teal-bg);
+        color: var(--yk-chip-teal-fg);
+        font-size: var(--yk-font-size-2xl);
+        text-transform: uppercase;
+        object-fit: cover;
+    }
+    .profile .who {
+        flex: 1 1 16rem;
+    }
+    .profile h2 {
+        margin: 0;
+    }
+    .profile .actions {
+        justify-content: flex-start;
+        gap: var(--yk-space-2);
     }
 
     /* The login page: one narrow card, centred. Every button in it is the whole width, so the two ways in read as a

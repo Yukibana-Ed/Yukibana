@@ -23,7 +23,7 @@ const iso = (d: Date | null): string | null => (d === null ? null : d.toISOStrin
 export async function me(ctx: Context, claims: Claims): Promise<MeJson> {
     return asUser(ctx.sql, claims, async tx => {
         const [u] = await tx<{ full_name: string | null; github_login: string | null; role: string }[]>`
-      select full_name, github_login, role::text as role from app_user where user_id = ${claims.sub}`;
+      select app.visible_name(user_id) as full_name, github_login, role::text as role from app_user where user_id = ${claims.sub}`;
         return { userId: claims.sub, email: claims.email, fullName: u?.full_name ?? null, githubLogin: u?.github_login ?? null, platformRole: u?.role ?? 'user' };
     });
 }
@@ -52,7 +52,7 @@ export async function members(ctx: Context, claims: Claims, edition: EditionId):
         const seen = await tx`select 1 from course_edition where edition_id = ${edition}`;
         if (seen.length === 0) error(404, 'No such edition.');
         const rows = await tx<{ email: string; role: EditionRole; source: string; user_id: string | null; full_name: string | null; github_login: string | null }[]>`
-      select en.email, en.role::text as role, en.source::text as source, en.user_id, u.full_name, u.github_login
+      select en.email, en.role::text as role, en.source::text as source, en.user_id, app.visible_name(u.user_id) as full_name, u.github_login
       from enrollment en left join app_user u on u.user_id = en.user_id
       where en.edition_id = ${edition}
       order by en.role desc, en.email`;
@@ -176,7 +176,7 @@ export async function submissions(ctx: Context, claims: Claims, id: ProjectId, f
         >`
       select * from (
         select s.submission_id, s.project_id, s.submitted_at, s.byte_size::text as byte_size, encode(s.sha256, 'hex') as sha256,
-               s.author_id, u.full_name, u.github_login, en.email, s.base_release_id,
+               s.author_id, app.visible_name(u.user_id) as full_name, u.github_login, en.email, s.base_release_id,
                coalesce(s.submitted_at > app.deadline_of(s.project_id), false) as late,
                row_number() over (partition by s.author_id order by s.submitted_at desc, s.submission_id desc) = 1 as latest
         from submission s
@@ -221,7 +221,7 @@ export async function releases(ctx: Context, claims: Claims, id: ProjectId): Pro
             }[]
         >`
       select r.release_id, r.label, r.commit_sha, r.starter_size::text as starter_size, r.teacher_size::text as teacher_size, r.uploaded_at,
-             coalesce(u.github_login, u.full_name) as uploader, r.token_id is not null as via_token
+             coalesce(u.github_login, app.visible_name(u.user_id)) as uploader, r.token_id is not null as via_token
       from project_release r left join app_user u on u.user_id = r.uploaded_by
       where r.project_id = ${id}
       order by r.seq desc`;
