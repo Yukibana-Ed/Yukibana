@@ -8,14 +8,9 @@ import { forgery } from '#lib/server/forgery.ts';
 import { identify, staleSessionCookies, supabaseFor } from '#lib/server/session.ts';
 import { report } from '#lib/report.ts';
 import { asJsonError, errorResponse, isApiPath, preferringJson, unmatched } from '#lib/server/errors.ts';
-import { themeBoot } from '@yukibana/design/theme';
-
-/** The design system's theme boot script, which every page carries where app.html says `%yk.theme%`. */
-const THEME_BOOT = themeBoot();
 
 /** Every request: refuse a write this site's pages did not send, read the
- *  configuration, find out who is asking, and hand both to the route (and
- *  the theme's boot script to the page). The
+ *  configuration, find out who is asking, and hand both to the route. The
  *  database client is created by the route that needs it (see
  *  #lib/server/context), so a page that only renders never opens a
  *  connection.
@@ -57,7 +52,7 @@ export const handle: Handle = async ({ event, resolve }) => {
         report('session', `${event.request.method} ${event.url.pathname}: the ${who.by === 'bearer' ? 'bearer token' : 'session cookie'} was refused: ${who.refused}`);
         if (who.by === 'cookie') event.locals.sessionRefused = who.refused;
     }
-    if (!api) return resolve(event, { transformPageChunk: ({ html }) => html.replace('%yk.theme%', () => THEME_BOOT) });
+    if (!api) return resolve(event);
     return asJsonError(await resolve({ ...event, request: preferringJson(event.request) }));
 };
 
