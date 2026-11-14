@@ -22,6 +22,7 @@ their implementations are located.
 - [Open project via custom URI](#open-project-via-custom-uri)
 - [Telemetry](#telemetry)
 - [Notification cleanup](#notification-cleanup)
+- [IDE updates](#ide-updates)
 
 </details>
 
@@ -171,3 +172,20 @@ at the root (in the emitter), because they may come from external extensions.
 Instead, we rebind the `MessageService` to a custom implementation in [yukibana/src/browser/yukibana-message-service.ts](../ide/extensions/yukibana/src/browser/yukibana-message-service.ts).
 This custom service can ignore notifications and auto-select actions
 without showing the choices to the user.
+
+## IDE updates
+
+The installed IDE keeps itself up to date, from the extension in [yukibana-updater](../ide/extensions/yukibana-updater).
+In Electron's main process, [updater-main-service.ts](../ide/extensions/yukibana-updater/src/electron-main/updater-main-service.ts)
+checks 30 seconds after start and every 6 hours. On Windows (the one-click, per-user NSIS install) and in a Linux
+AppImage, electron-updater downloads a newer release in the background, only the blocks that changed when the installed
+version's blockmap is in its release, and installs it when the app quits. The app never restarts by itself: once an
+update is downloaded, the status bar shows "Restart to update to X.Y.Z", which closes the windows the usual way (so
+unsaved changes are asked about) and starts the new version. On macOS, whose unsigned app cannot install updates, and
+from a Linux .deb, it only checks, and the status bar offers the new release's download page.
+
+The releases are the GitHub releases `ide-v<version>` that [release.yml](../.github/workflows/release.yml) publishes,
+as `publish` in [electron-builder.yml](../ide/electron/electron-builder.yml) tells the packaged app. A development build
+(`0.0.0-dev`) or an app that is not packaged never checks. `YUKIBANA_UPDATE_FEED`, set to the URL of a folder holding a
+`latest.yml` (or `latest-linux.yml`) and the files it lists, replaces the GitHub releases, to try an update locally.
+The command palette has **Yukibana: Check for IDE Updates**.

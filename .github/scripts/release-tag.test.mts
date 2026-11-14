@@ -1,0 +1,76 @@
+import { readFileSync } from 'node:fs';
+import { describe, expect, test } from 'vitest';
+import { PACKAGES, check, compareVersions, parseTag, releasedVersions } from './release-tag.mts';
+
+describe('parseTag', () => {
+    test('reads the package and the version of a release tag', () => {
+        expect(parseTag('client-v0.1.0')).toEqual({ kind: 'client', version: '0.1.0' });
+        expect(parseTag('cli-v1.10.0')).toEqual({ kind: 'cli', version: '1.10.0' });
+        expect(parseTag('ide-v0.3.0')).toEqual({ kind: 'ide', version: '0.3.0' });
+    });
+
+    test.each(['v0.3.0', 'ide-0.3.0', 'ide-v0.3', 'ide-v0.3.0-beta.1', 'cli-v01.0.0', 'cloud-v1.0.0', 'constructor-v1.0.0', ' cli-v1.0.0', ''])('%j is not a release tag', tag => {
+        expect(parseTag(tag)).toBeUndefined();
+    });
+});
+
+test('versions compare by number, not by text', () => {
+    expect(compareVersions('1.10.0', '1.9.0')).toBeGreaterThan(0);
+    expect(compareVersions('2.0.0', '2.0.0')).toBe(0);
+});
+
+test('the IDE counts its own tags and the old v ones; the npm packages only their own', () => {
+    const tags = ['v0.1.0', 'v0.2.0', 'ide-v0.3.0', 'cli-v1.0.0', 'client-v0.4.0', 'vscode-thing'];
+    expect(releasedVersions('ide', tags)).toEqual(['0.1.0', '0.2.0', '0.3.0']);
+    expect(releasedVersions('cli', tags)).toEqual(['1.0.0']);
+    expect(releasedVersions('client', tags)).toEqual(['0.4.0']);
+});
+
+describe('check', () => {
+    const here = 'a'.repeat(40);
+    const elsewhere = 'b'.repeat(40);
+    const tags = new Map([
+        ['v0.1.0', elsewhere],
+        ['v0.2.0', elsewhere],
+        ['cli-v1.0.0', elsewhere],
+        ['cli-v1.2.0', elsewhere],
+    ]);
+
+    test('a first release of a package, or one past its newest, may go', () => {
+        expect(check('client-v0.1.0', tags, here)).toEqual({ ok: true, kind: 'client', version: '0.1.0' });
+        expect(check('cli-v1.2.1', tags, here)).toEqual({ ok: true, kind: 'cli', version: '1.2.1' });
+        expect(check('ide-v0.3.0', tags, here)).toEqual({ ok: true, kind: 'ide', version: '0.3.0' });
+    });
+
+    test('its own tag, on the commit this run builds, may go: a re-run finishing an earlier attempt', () => {
+        expect(check('cli-v1.3.0', new Map([...tags, ['cli-v1.3.0', here]]), here)).toMatchObject({ ok: true, version: '1.3.0' });
+    });
+
+    test('its own tag on another commit is refused: the version is used', () => {
+        expect(check('cli-v1.3.0', new Map([...tags, ['cli-v1.3.0', elsewhere]]), here)).toEqual({ ok: false, reason: expect.stringContaining('released already') });
+    });
+
+    test('a release as high or higher is refused, so a re-run of an old run never publishes after a newer one', () => {
+        expect(check('cli-v1.3.0', new Map([...tags, ['cli-v1.3.0', here], ['cli-v1.4.0', elsewhere]]), here)).toEqual({
+            ok: false,
+            reason: expect.stringMatching(/1\.3\.0.*1\.4\.0/),
+        });
+        expect(check('cli-v1.1.0', tags, here)).toMatchObject({ ok: false });
+    });
+
+    test('the IDE’s old v0.2.0 counts: ide-v0.2.0 and below are refused', () => {
+        expect(check('ide-v0.2.0', tags, here)).toEqual({ ok: false, reason: expect.stringContaining('0.2.0') });
+        expect(check('ide-v0.1.5', tags, here)).toMatchObject({ ok: false });
+    });
+
+    test('a tag that is not a release tag is refused, naming the shapes allowed', () => {
+        expect(check('cli-1.3.0', tags, here)).toEqual({ ok: false, reason: expect.stringContaining('cli-vX.Y.Z') });
+    });
+});
+
+test('every package Release knows exists under its folder, with that name, at the development version', () => {
+    for (const p of Object.values(PACKAGES)) {
+        const manifest: unknown = JSON.parse(readFileSync(new URL(`../../${p.dir}/package.json`, import.meta.url), 'utf8'));
+        expect(manifest).toMatchObject({ name: p.name, version: '0.0.0-dev' });
+    }
+});
