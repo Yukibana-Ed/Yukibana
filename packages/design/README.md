@@ -12,12 +12,14 @@ why, so that nobody has to rerun them to learn it.
 | `css/base/*.css` | The shared components, `yk-` classes, drawn from the tokens only: one file per component (`buttons.css`, `fields.css`, `toast.css`, …), and `core.css` for the page and the focus ring. Edit these. |
 | `css/base.css` | Generated: the parts in `css/base/` joined into one file, in the order `src/base.ts` lists them. Committed, and the file apps import. |
 | `css/fonts.css` | `@font-face` for the three typefaces, under the names `tokens.css` uses, from `fonts/`. Optional. |
+| `src/theme.ts` | The theme choice (System, Light or Dark), shared by every site under yukibana.dev in one cookie. See [The theme choice](#the-theme-choice). |
+| `js/theme.js`, `js/theme.d.ts` | Generated: `src/theme.ts` compiled by TypeScript (`tsconfig.theme.json`). Committed, like the CSS, and the files apps import. |
 | `fonts/` | The fonts as variable WOFF2, Latin and Latin Extended, each family with its licence (`OFL.txt`, SIL Open Font License 1.1). |
 | `reference/index.html` | The living reference. Open it from this directory. |
 
 ```sh
-pnpm --filter @yukibana/design build   # tokens → css/tokens.css, css/base/*.css → css/base.css
-pnpm --filter @yukibana/design test    # both generated files are up to date, every colour pair passes WCAG, the compiler's tables
+pnpm --filter @yukibana/design build   # tokens → css/tokens.css, css/base/*.css → css/base.css, src/theme.ts → js/
+pnpm --filter @yukibana/design test    # the generated files are up to date, every colour pair passes WCAG, the compiler's tables, the theme
 ```
 
 A page loads `tokens.css` first, then `fonts.css` if it takes the fonts from here, then `base.css`, and puts
@@ -33,7 +35,55 @@ those rules change elements the app did not mark. Everything else works without 
 ring and the stroke of `svg.yk-icon`. The focus ring and the icon stroke apply anywhere, inside `:where()`, so they add
 no specificity and any rule of the app's own wins over them.
 
-A page follows the system's light or dark scheme, unless its root element says `data-theme="light"` or `"dark"`.
+A page follows the system's light or dark scheme, unless its root element says `data-theme="light"` or `"dark"`. Which
+one is the person's choice, kept by the theme module below.
+
+## The theme choice
+
+Choosing Dark on yukibana.dev makes cloud.yukibana.dev dark too. The choice lives in one cookie, and
+`@yukibana/design/theme` (`src/theme.ts`, no framework, no dependencies) reads, keeps and shows it:
+
+| Export | What it does |
+| --- | --- |
+| `readTheme({ legacyKey? })` | The choice: `'system'`, `'light'` or `'dark'`. |
+| `writeTheme(choice)` | Keeps it, in the cookie. `'system'` is kept too, rather than deleting the cookie. |
+| `applyTheme(choice)` | Shows it: `data-theme` on `<html>` (`'system'` removes it), and the `theme-color` metas to match. |
+| `onSystemChange(listener)` | Calls `listener('light' \| 'dark')` when the system's scheme changes; returns the function that stops it. |
+| `themeBoot(legacyKey?)` | The inline script that does `applyTheme(readTheme())` before the first paint, as a string. |
+| `THEMES`, `parseTheme`, `themeCookie`, … | The pieces, for switchers and tests. |
+
+An app puts two `theme-color` metas and the boot script at the top of `<head>`, before any stylesheet:
+
+```html
+<meta name="color-scheme" content="light dark" />
+<meta name="theme-color" content="#f5f7fa" media="(prefers-color-scheme: light)" data-scheme="light" />
+<meta name="theme-color" content="#0b0e15" media="(prefers-color-scheme: dark)" data-scheme="dark" />
+<script>/* themeBoot('<the app's old localStorage key>'), inlined */</script>
+```
+
+A page rendered by a framework inlines `themeBoot(…)` itself (React: `<script dangerouslySetInnerHTML={{ __html: themeBoot() }} />`).
+A static template pastes its output and tests that it still matches, as the cloud's `app.html` does. Its switcher calls
+`readTheme` when it mounts, and `writeTheme(choice)` then `applyTheme(choice)` when the person picks one.
+
+**Why a cookie.** localStorage belongs to one origin: what yukibana.dev stores there, cloud.yukibana.dev cannot read.
+A cookie with `Domain=yukibana.dev` is sent to, and readable by, every host under it. The cookie is
+
+```
+yk-theme=<system|light|dark>; Domain=yukibana.dev; Path=/; Max-Age=31536000; SameSite=Lax; Secure
+```
+
+On any host not under yukibana.dev (localhost, a preview deployment) it has no Domain, so it belongs to that host alone,
+all its ports included: the docs site and the cloud running on localhost share it. It is `Secure` there only over HTTPS.
+
+**Why it is safe, and the rule that keeps it so.** The cookie carries no authority. Any page under yukibana.dev can set
+it, Light's included, which runs programs people paste into it (see the cloud's CLAUDE.md, "A sibling subdomain is
+another person's page"), so it is deliberately not a `__Host-` cookie, and the worst a page there can do with it is
+change a visitor's colours. That holds only while nothing reads it for anything but the theme: no server reads it, and
+nothing may start to. Its value is validated strictly: anything but `light` or `dark` means the system's scheme.
+
+**Moving off localStorage.** Before the cookie, the cloud kept the choice under `yukibana-theme` and the docs site under
+next-themes' `theme`. Given that key, `readTheme` and the boot script move a `light` or `dark` found there into the
+cookie, once, and remove the key whenever there is a cookie. Nothing is written to localStorage any more.
 
 **Browsers.** Every colour is a `light-dark()` pair, which needs Chrome and Edge 123, Firefox 120 or Safari 17.5 (all
 from 2024), and the segmented control and selected table rows use `:has()`, which Firefox has from 121. There is no
@@ -118,6 +168,7 @@ other stamp in the files. What it exports:
 | `@yukibana/design/tokens.css` | `css/tokens.css` |
 | `@yukibana/design/base.css` | `css/base.css` |
 | `@yukibana/design/fonts.css` | `css/fonts.css` |
+| `@yukibana/design/theme` | `js/theme.js`, with its types in `js/theme.d.ts` |
 | `@yukibana/design/css/*` | any file in `css/`, such as one part, `css/base/segmented.css` |
 | `@yukibana/design/fonts/*` | the font files and their licences |
 | `@yukibana/design/tokens/*` | the token files, for tools |
@@ -143,7 +194,7 @@ In `package.json`, the full 40-character hash of a commit on `main`:
 ```
 
 pnpm fetches that commit, takes `packages/design` and installs only what the package's `files` lists (`css`, `fonts`,
-`tokens`, the README). It does not install the package's devDependencies, so their `catalog:` versions, which only
+`js`, `tokens`, the README). It does not install the package's devDependencies, so their `catalog:` versions, which only
 mean something inside this repository, never matter there.
 
 To move to a newer commit, once the change is merged:
@@ -190,3 +241,5 @@ and commit the submodule's new commit (and `package-lock.json`, if it changed).
 
 The apps do not use this package yet. The cloud (`cloud/web/src/app.css`), the docs site and Light each move over in
 their own change, replacing their own variables with `--yk-*` and their components with the `yk-` classes.
+
+Light does not use the theme module yet; moving it onto the `yk-theme` cookie is its own change.
