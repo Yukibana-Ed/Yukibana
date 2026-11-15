@@ -73,8 +73,8 @@ export interface Plan {
     /** `true` iff the IDE's end-to-end tests run, on every OS: a package in `IDE_PACKAGES` is among `packages`. */
     readonly ide: boolean;
     /**
-     * `true` iff the devcontainer is built and the cloud's smoke test run inside it: `.devcontainer/`, `cloud/dev/` or one of
-     * the files its install reads (`DEVCONTAINER_INPUTS`, or any package's manifest) changed.
+     * `true` iff both devcontainers are built and checked inside (the IDE builds, the stack answers): `.devcontainer/`,
+     * `cloud/dev/` or one of the files their install reads (`DEVCONTAINER_INPUTS`, or any package's manifest) changed.
      */
     readonly devcontainer: boolean;
     /** `true` iff the licenses of the npm dependencies and of the IDE's bundled plugins are checked. */
@@ -106,8 +106,8 @@ const INSTALL_INPUTS: readonly string[] = ['package.json', 'pnpm-lock.yaml', 'pn
 const DEPLOY_INPUTS: ReadonlySet<string> = new Set([...INSTALL_INPUTS, '.github/workflows/deploy-cloud.yml', '.github/scripts/production-config.mts']);
 
 /**
- * The files outside `.devcontainer/` and `cloud/dev/`, other than the packages' manifests, that the devcontainer is
- * built from: what every install reads (it installs the whole workspace), and the Supabase stack its start runs.
+ * The files outside `.devcontainer/` and `cloud/dev/`, other than the packages' manifests, that the devcontainers are
+ * built from: what every install reads (they install the whole workspace), and the Supabase stack one of them starts.
  */
 const DEVCONTAINER_INPUTS: ReadonlySet<string> = new Set([...INSTALL_INPUTS, 'cloud/db/supabase/config.toml']);
 

@@ -312,14 +312,24 @@ jobs:
           if-no-files-found: ignore
           retention-days: 5
 
-  # The devcontainer builds, installs the workspace, and the stack it starts answers, so a broken devcontainer.json
-  # fails a pull request rather than a teammate's morning.
+  # Both devcontainers build and install the workspace, the IDE builds in the one without the stack, and the stack the
+  # other one starts answers, so a broken devcontainer.json fails a pull request rather than a teammate's morning.
   devcontainer:
-    name: Devcontainer
+    name: Devcontainer (${{ matrix.config }})
     needs: plan
     if: needs.plan.outputs.devcontainer == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - config: ide
+            run: pnpm -C ide build browser --dev
+          - config: cloud
+            run: |
+              cloud/dev/scripts/preflight.sh
+              pnpm --filter @yukibana/cloud-dev run smoke
     steps:
       # As in the cloud stack job.
       - name: Keep the stack's ports out of the ephemeral range
@@ -330,12 +340,11 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Build the devcontainer and run the smoke test inside it
+      - name: Build the devcontainer and check it inside
         uses: devcontainers/ci@513af61f4de4f75d37e4438f184ba4358f0fc1ca # v0.3
         with:
-          runCmd: |
-            cloud/dev/scripts/preflight.sh
-            pnpm --filter @yukibana/cloud-dev run smoke
+          configFile: .devcontainer/${{ matrix.config }}/devcontainer.json
+          runCmd: ${{ matrix.run }}
 
   # Every npm package's license, and every plugin the IDE bundles, against the rules in .github/scripts/licenses.mts.
   licenses:

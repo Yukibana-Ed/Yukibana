@@ -8,9 +8,17 @@ need already installed, or installing the tools on your own machine.
 ### Option 1: Devcontainer (recommended)
 
 A [development container](https://containers.dev/) is a Docker container that VS Code (or another editor supporting
-them) opens the repository in. Ours, in [.devcontainer](.devcontainer), has Node.js 24, pnpm and the libraries the IDE
-compiles against, installs the whole workspace when it is created, and starts the cloud's local stack (Supabase and the
-bucket) every time it starts. You only need Docker and VS Code.
+them) opens the repository in. Ours, in [.devcontainer](.devcontainer), have Node.js 24, pnpm and the libraries the
+IDE compiles against, and install the whole workspace when they are created. There are two, and VS Code asks which one
+to open:
+
+- **Yukibana, without the local cloud** ([.devcontainer/ide](.devcontainer/ide)): the IDE, the CLI, and every
+  package's lint, typecheck and unit tests. Nothing else runs, so it is the quick one.
+- **Yukibana, with the local cloud** ([.devcontainer/cloud](.devcontainer/cloud)): the same, plus the cloud's local
+  stack (Supabase and the bucket), started every time the container starts, for working on the database, running the
+  cloud's app against it, or its integration tests. The stack needs a few gigabytes of images and of memory.
+
+You only need Docker and VS Code.
 
 #### Set up Docker
 
@@ -53,10 +61,10 @@ Docker runs inside WSL 2 on Windows.
 
 #### Clone the repository
 
-On Windows, **clone the repository inside WSL** (in a WSL terminal, e.g. under `~`), not on a Windows drive. The
-devcontainer mounts the repository at the same path it has on the host, because the Supabase CLI inside it asks the
-host's Docker to mount folders of the repository, and a `C:\` path is not one Docker can mount there. A clone on a
-Windows drive is also much slower in a container.
+On Windows, **clone the repository inside WSL** (in a WSL terminal, e.g. under `~`), not on a Windows drive. A clone on
+a Windows drive is much slower in a container, and the one with the local cloud does not work from there at all: it
+mounts the repository at the same path it has on the host, because the Supabase CLI inside it asks the host's Docker to
+mount folders of the repository, and a `C:\` path is not one Docker can mount there.
 
 ```bash
 git clone https://github.com/Yukibana-Ed/Yukibana.git
@@ -70,7 +78,8 @@ cd Yukibana
 
 1. Install the [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
    extension.
-2. Open the `Yukibana` folder, then run **Dev Containers: Reopen in Container** from the command palette.
+2. Open the `Yukibana` folder, then run **Dev Containers: Reopen in Container** from the command palette, and pick one
+   of the two containers.
 
 </details>
 
@@ -81,23 +90,23 @@ cd Yukibana
    and the [WSL](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-wsl) extensions.
 2. Run **WSL: Connect to WSL** from the command palette.
 3. Open the `Yukibana` folder in WSL (**File > Open Folder** now shows WSL's file system), not on the Windows file system.
-4. Run **Dev Containers: Reopen in Container** from the command palette.
+4. Run **Dev Containers: Reopen in Container** from the command palette, and pick one of the two containers.
 
 </details>
 
-The first time takes a while: the container installs every package of the workspace, and the cloud's stack pulls a few
-gigabytes of images. Later starts take seconds, and each one restarts the stack (keeping its data) and writes the
-Worker's `cloud/web/.dev.vars`.
+The first time takes a while, as the container installs every package of the workspace (and the stack pulls its
+images). Later starts take seconds; with the local cloud, each one restarts the stack (keeping its data) and writes the
+Worker's `cloud/web/.dev.vars`. To switch, run **Dev Containers: Switch Container** (or **Reopen in Container** again).
 
 Everything then runs from VS Code's integrated terminal, which is inside the container:
 
 ```bash
 pnpm -C ide start browser                 # the IDE, as the browser app: http://localhost:3000
-pnpm --filter @yukibana/cloud-web dev     # the cloud, against the local stack: http://localhost:5173
 pnpm test                                 # every package's unit tests
+pnpm --filter @yukibana/cloud-web dev     # with the local cloud: the cloud's app, http://localhost:5173
 ```
 
-VS Code forwards both ports to your machine. The Electron app needs a display, which the container does not have: to
+VS Code forwards the ports to your machine. The Electron app needs a display, which the container does not have: to
 work on what is specific to it, use [Option 2](#option-2-on-your-own-machine). How to use the local cloud (logging in,
 the URLs of its services, the database's scripts) is in [docs/cloud/README.md](docs/cloud/README.md).
 
@@ -109,13 +118,13 @@ If you use another editor, you can edit the sources on your machine, and build a
 ```bash
 npm install --global @devcontainers/cli
 
-devcontainer up --workspace-folder .
-devcontainer exec --workspace-folder . pnpm test
-devcontainer exec --workspace-folder . pnpm --filter @yukibana/cloud-dev smoke   # is the local stack reachable?
+devcontainer up --workspace-folder . --config .devcontainer/ide/devcontainer.json
+devcontainer exec --workspace-folder . --config .devcontainer/ide/devcontainer.json pnpm test
 ```
 
-`docker rm -f <container>` removes the container (`docker ps` names it); the stack's containers and data are on your
-machine's Docker and stay, until `pnpm --filter @yukibana/cloud-db stop` and
+`--config .devcontainer/cloud/devcontainer.json` picks the one with the local cloud instead, and
+`pnpm --filter @yukibana/cloud-dev smoke` in it says whether the stack is reachable. `docker rm -f <container>` removes
+a container (`docker ps` names it); the stack's containers and data are on your machine's Docker and stay, until `pnpm --filter @yukibana/cloud-db stop` and
 `pnpm --filter @yukibana/cloud-dev storage:stop`.
 
 ### Option 2: On your own machine
@@ -243,8 +252,8 @@ with `pnpm --filter <package> prepare`. The fixture repository their tests and t
 [@yukibana/fixtures](packages/fixtures), which each of them declares. How to run the cloud locally, publish a project and collect submissions
 is in [docs/cloud/README.md](docs/cloud/README.md), and how their code is written in [cloud/CLAUDE.md](cloud/CLAUDE.md).
 
-The [devcontainer](#option-1-devcontainer-recommended) installs all of them, and starts the local stack and writes
-`.dev.vars` on every start.
+The [devcontainer with the local cloud](#option-1-devcontainer-recommended) installs all of them, and starts the local
+stack and writes `.dev.vars` on every start.
 
 ## License headers
 

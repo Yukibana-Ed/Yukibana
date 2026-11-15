@@ -1,0 +1,25 @@
+{
+  // The IDE, the CLI and every package's unit tests, without the cloud's local
+  // stack: no Docker inside, nothing started, nothing pulled. The cloud's
+  // packages are installed too, so their lint, typecheck and unit tests run here;
+  // what needs a running Supabase is in ../cloud/devcontainer.json.
+  "name": "Yukibana, without the local cloud",
+  // Node 24 and a C++ toolchain, plus the headers the IDE's native modules need.
+  "build": { "dockerfile": "../Dockerfile" },
+
+  "remoteUser": "node",
+  // The pnpm the root's packageManager names, then the whole workspace, which
+  // pnpm runs on the root's devEngines Node. Not `npx pnpm` here: npm enforces
+  // that exact Node release itself and cannot download it, so on any other 24.x
+  // it stops before pnpm starts.
+  "postCreateCommand": "npm install --global \"$(node -p \"require('./package.json').packageManager\")\" && pnpm install --frozen-lockfile",
+
+  // The IDE's browser app, which VS Code forwards when it starts.
+  "portsAttributes": {
+    "3000": { "label": "IDE (browser app)" }
+  },
+
+  "customizations": {
+    "vscode": { "extensions": ["oxc.oxc-vscode"] }
+  }
+}

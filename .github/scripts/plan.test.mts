@@ -89,8 +89,9 @@ describe('what runs', () => {
         });
     });
 
-    test('a change to the devcontainer or the scripts its start runs builds it', () => {
-        expect(decide({ kind: 'packages', affected: ['@yukibana/cloud-dev'], files: ['.devcontainer/setup.sh'] }, names).devcontainer).toBe(true);
+    test("a change to either devcontainer or the scripts the cloud's start runs builds them", () => {
+        expect(decide({ kind: 'packages', affected: ['@yukibana/cloud-dev'], files: ['.devcontainer/cloud/setup.sh'] }, names).devcontainer).toBe(true);
+        expect(decide({ kind: 'shared', affected: [], files: ['.devcontainer/ide/devcontainer.json'] }, names).devcontainer).toBe(true);
         expect(decide({ kind: 'packages', affected: ['@yukibana/cloud-dev'], files: ['cloud/dev/scripts/smoke.mjs'] }, names).devcontainer).toBe(true);
     });
 

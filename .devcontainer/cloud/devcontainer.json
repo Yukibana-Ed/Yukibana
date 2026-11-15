@@ -1,7 +1,10 @@
 {
-  "name": "yukibana",
+  // Everything in ../ide/devcontainer.json, plus the cloud's local stack (Supabase
+  // and the bucket), started on every start. Pick this one to work on the cloud's
+  // database, its Worker against a real stack, or its integration tests.
+  "name": "Yukibana, with the local cloud",
   // Node 24 and a C++ toolchain, plus the headers the IDE's native modules need.
-  "build": { "dockerfile": "Dockerfile" },
+  "build": { "dockerfile": "../Dockerfile" },
 
   "features": {
     // moby:false is required - the base image is Debian trixie, which has no
@@ -34,7 +37,7 @@
   // Node. Not `npx pnpm` here: npm enforces that exact Node release itself and
   // cannot download it, so on any other 24.x it stops before pnpm starts.
   "postCreateCommand": "npm install --global \"$(node -p \"require('./package.json').packageManager\")\" && pnpm install --frozen-lockfile",
-  "postStartCommand": ".devcontainer/setup.sh",
+  "postStartCommand": ".devcontainer/cloud/setup.sh",
 
   // The Supabase and RustFS ports are published by the host daemon, so they are
   // already on the host's localhost. What runs in here is the SvelteKit dev

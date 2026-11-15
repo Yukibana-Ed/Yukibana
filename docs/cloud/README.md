@@ -27,13 +27,14 @@ Every command below runs from the repository's root.
 
 ## Start
 
-The repository's devcontainer has everything: open the repository in it
-as [CONTRIBUTING.md](../../CONTRIBUTING.md#option-1-devcontainer-recommended)
+The devcontainer with the local cloud (`.devcontainer/cloud`) has everything:
+open the repository in it as
+[CONTRIBUTING.md](../../CONTRIBUTING.md#option-1-devcontainer-recommended)
 says, or start it with the [devcontainer CLI](https://github.com/devcontainers/cli):
 
 ```bash
-devcontainer up --workspace-folder .
-devcontainer exec --workspace-folder . pnpm --filter @yukibana/cloud-dev smoke
+devcontainer up --workspace-folder . --config .devcontainer/cloud/devcontainer.json
+devcontainer exec --workspace-folder . --config .devcontainer/cloud/devcontainer.json pnpm --filter @yukibana/cloud-dev smoke
 ```
 
 It installs the workspace, and on every start (re)starts the
