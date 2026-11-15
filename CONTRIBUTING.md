@@ -12,8 +12,8 @@ them) opens the repository in. Ours, in [.devcontainer](.devcontainer), have Nod
 IDE compiles against, and install the whole workspace when they are created. There are two, and VS Code asks which one
 to open:
 
-- **Yukibana, without the local cloud** ([.devcontainer/ide](.devcontainer/ide)): the IDE, the CLI, and every
-  package's lint, typecheck and unit tests. Nothing else runs, so it is the quick one.
+- **Yukibana, without the local cloud** ([.devcontainer/ide](.devcontainer/ide)): building and testing the IDE and the
+  CLI, and every package's lint, typecheck and unit tests. Nothing else runs, so it is the quick one.
 - **Yukibana, with the local cloud** ([.devcontainer/cloud](.devcontainer/cloud)): the same, plus the cloud's local
   stack (Supabase and the bucket), started every time the container starts, for working on the database, running the
   cloud's app against it, or its integration tests. The stack needs a few gigabytes of images and of memory.
@@ -94,20 +94,20 @@ cd Yukibana
 
 </details>
 
-The first time takes a while, as the container installs every package of the workspace (and the stack pulls its
-images). Later starts take seconds; with the local cloud, each one restarts the stack (keeping its data) and writes the
-Worker's `cloud/web/.dev.vars`. To switch, run **Dev Containers: Switch Container** (or **Reopen in Container** again).
+The first time takes a while, but subsequent restarts should take seconds. To switch between containers,
+run **Dev Containers: Switch Container** (or **Reopen in Container** again).
 
 Everything then runs from VS Code's integrated terminal, which is inside the container:
 
 ```bash
-pnpm -C ide start browser                 # the IDE, as the browser app: http://localhost:3000
 pnpm test                                 # every package's unit tests
+pnpm -C ide build                         # build the IDE's extensions and apps
 pnpm --filter @yukibana/cloud-web dev     # with the local cloud: the cloud's app, http://localhost:5173
 ```
 
-VS Code forwards the ports to your machine. The Electron app needs a display, which the container does not have: to
-work on what is specific to it, use [Option 2](#option-2-on-your-own-machine). How to use the local cloud (logging in,
+VS Code forwards the cloud's port to your machine. To run the IDE itself, use [Option 2](#option-2-on-your-own-machine):
+the Electron app needs a display, which the container does not have, and logging in to the cloud does not work well
+from the browser app. How to use the local cloud (logging in,
 the URLs of its services, the database's scripts) is in [docs/cloud/README.md](docs/cloud/README.md).
 
 #### Opening the container from the command line

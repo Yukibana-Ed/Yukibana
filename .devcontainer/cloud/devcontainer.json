@@ -41,9 +41,8 @@
 
   // The Supabase and RustFS ports are published by the host daemon, so they are
   // already on the host's localhost. What runs in here is the SvelteKit dev
-  // server and the IDE's browser app, which VS Code forwards when they start.
+  // server, which VS Code forwards when it starts.
   "portsAttributes": {
-    "3000": { "label": "IDE (browser app)" },
     "5173": { "label": "Cloud (SvelteKit)" }
   },
 
