@@ -52,9 +52,19 @@ updates:
       prefix: ci
       include: scope
 
-  # The cloud's devcontainer: its image and features.
+  # The devcontainer's features (devcontainer.json) and its base image (the Dockerfile).
   - package-ecosystem: devcontainers
-    directory: /cloud/dev
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14
+    commit-message:
+      prefix: build
+      include: scope
+
+  - package-ecosystem: docker
+    directory: /.devcontainer
     schedule:
       interval: weekly
     cooldown:

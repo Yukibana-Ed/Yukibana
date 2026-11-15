@@ -1,6 +1,126 @@
 # Contributing to Yukibana
 
-## Prerequisites
+## Setting up the environment
+
+There are two ways to get a working environment: a devcontainer, which has everything the IDE, the cloud and the CLI
+need already installed, or installing the tools on your own machine.
+
+### Option 1: Devcontainer (recommended)
+
+A [development container](https://containers.dev/) is a Docker container that VS Code (or another editor supporting
+them) opens the repository in. Ours, in [.devcontainer](.devcontainer), has Node.js 24, pnpm and the libraries the IDE
+compiles against, installs the whole workspace when it is created, and starts the cloud's local stack (Supabase and the
+bucket) every time it starts. You only need Docker and VS Code.
+
+#### Set up Docker
+
+<details>
+<summary><b>Linux</b></summary>
+
+Install [Docker Desktop](https://docs.docker.com/desktop/setup/install/linux/), or
+[Docker Engine](https://docs.docker.com/engine/install/) along with its
+[post-installation steps](https://docs.docker.com/engine/install/linux-postinstall/), so that your user can run
+`docker` without `sudo`.
+
+</details>
+
+<details>
+<summary><b>macOS</b></summary>
+
+Install [Docker Desktop](https://docs.docker.com/desktop/setup/install/mac-install/).
+
+</details>
+
+<details>
+<summary><b>Windows</b></summary>
+
+Docker runs inside WSL 2 on Windows.
+
+1. **Install WSL 2**, following [Microsoft's guide](https://learn.microsoft.com/en-us/windows/wsl/install). In a
+   terminal running as administrator:
+
+   ```powershell
+   wsl --install
+   ```
+
+   Then restart your machine, and if prompted, create a WSL Linux user. Any distribution works; Ubuntu is the default.
+2. **Install [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/).**
+3. **Enable [WSL integration in Docker](https://docs.docker.com/desktop/features/wsl/):** in Docker Desktop, go to
+   _Settings (gear icon) > Resources > WSL Integration_, and enable it for the distribution you installed.
+4. **[Set up the Git Credential Manager in WSL](https://learn.microsoft.com/en-us/windows/wsl/tutorials/wsl-git).**
+
+</details>
+
+#### Clone the repository
+
+On Windows, **clone the repository inside WSL** (in a WSL terminal, e.g. under `~`), not on a Windows drive. The
+devcontainer mounts the repository at the same path it has on the host, because the Supabase CLI inside it asks the
+host's Docker to mount folders of the repository, and a `C:\` path is not one Docker can mount there. A clone on a
+Windows drive is also much slower in a container.
+
+```bash
+git clone https://github.com/Yukibana-Ed/Yukibana.git
+cd Yukibana
+```
+
+#### Open the container in VS Code
+
+<details>
+<summary><b>Linux and macOS</b></summary>
+
+1. Install the [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+   extension.
+2. Open the `Yukibana` folder, then run **Dev Containers: Reopen in Container** from the command palette.
+
+</details>
+
+<details>
+<summary><b>Windows</b></summary>
+
+1. Install the [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+   and the [WSL](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-wsl) extensions.
+2. Run **WSL: Connect to WSL** from the command palette.
+3. Open the `Yukibana` folder in WSL (**File > Open Folder** now shows WSL's file system), not on the Windows file system.
+4. Run **Dev Containers: Reopen in Container** from the command palette.
+
+</details>
+
+The first time takes a while: the container installs every package of the workspace, and the cloud's stack pulls a few
+gigabytes of images. Later starts take seconds, and each one restarts the stack (keeping its data) and writes the
+Worker's `cloud/web/.dev.vars`.
+
+Everything then runs from VS Code's integrated terminal, which is inside the container:
+
+```bash
+pnpm -C ide start browser                 # the IDE, as the browser app: http://localhost:3000
+pnpm --filter @yukibana/cloud-web dev     # the cloud, against the local stack: http://localhost:5173
+pnpm test                                 # every package's unit tests
+```
+
+VS Code forwards both ports to your machine. The Electron app needs a display, which the container does not have: to
+work on what is specific to it, use [Option 2](#option-2-on-your-own-machine). How to use the local cloud (logging in,
+the URLs of its services, the database's scripts) is in [docs/cloud/README.md](docs/cloud/README.md).
+
+#### Opening the container from the command line
+
+If you use another editor, you can edit the sources on your machine, and build and test in the container with the
+[devcontainer CLI](https://github.com/devcontainers/cli):
+
+```bash
+npm install --global @devcontainers/cli
+
+devcontainer up --workspace-folder .
+devcontainer exec --workspace-folder . pnpm test
+devcontainer exec --workspace-folder . pnpm --filter @yukibana/cloud-dev smoke   # is the local stack reachable?
+```
+
+`docker rm -f <container>` removes the container (`docker ps` names it); the stack's containers and data are on your
+machine's Docker and stay, until `pnpm --filter @yukibana/cloud-db stop` and
+`pnpm --filter @yukibana/cloud-dev storage:stop`.
+
+### Option 2: On your own machine
+
+#### Prerequisites
 
 - [pnpm](https://pnpm.io/installation), which runs every script on the Node.js 24 release that the root
   `package.json` names (`devEngines`), and downloads that release itself the first time
@@ -8,6 +128,7 @@
   (`pnpm --filter <package> exec <tool>`), not `npx` or `npm` at the root: there npm enforces the root's exact Node.js release
   itself, cannot download it, and stops with `EBADDEVENGINES` on any other
 - [Python 3](https://docs.python.org/3/using/index.html)
+- [Docker](https://docs.docker.com/get-started/get-docker/), for the cloud's local stack only
 
 Some additional tools and libraries are needed depending on your platform,
 see Theia's [own documentation](https://github.com/eclipse-theia/theia/blob/master/doc/Developing.md#prerequisites).
@@ -16,10 +137,10 @@ On Windows, the Visual Studio Build Tools also need the
 "MSVC v143 - VS 2022 C++ x64/x86 Spectre-mitigated libs (Latest)" component
 (Visual Studio Installer > Modify > Individual components).
 
-## Setting up the environment
+#### Installing and starting the IDE
 
 1. Download the repository
-  
+
    ```bash
    git clone https://github.com/Yukibana-Ed/Yukibana.git
    ```
@@ -27,7 +148,7 @@ On Windows, the Visual Studio Build Tools also need the
 2. Go into the project directory
 
    ```bash
-   cd yukibana
+   cd Yukibana
    ```
 
 3. Install the IDE's dependencies (which also checks that every `@theia/*` package has the same version),
@@ -122,8 +243,8 @@ with `pnpm --filter <package> prepare`. The fixture repository their tests and t
 [@yukibana/fixtures](packages/fixtures), which each of them declares. How to run the cloud locally, publish a project and collect submissions
 is in [docs/cloud/README.md](docs/cloud/README.md), and how their code is written in [cloud/CLAUDE.md](cloud/CLAUDE.md).
 
-The cloud's devcontainer is not where editors look for one (`.devcontainer/` at the root), so start it from the root
-with `devcontainer up --workspace-folder . --config cloud/dev/.devcontainer/devcontainer.json`.
+The [devcontainer](#option-1-devcontainer-recommended) installs all of them, and starts the local stack and writes
+`.dev.vars` on every start.
 
 ## License headers
 
@@ -158,9 +279,8 @@ since the base, Markdown aside, and every package depending on them) and runs th
 `build` scripts; the cloud stack and the IDE's end-to-end tests run only when their packages are affected. The CI
 workflows' scripts are a package too ([.github/scripts](.github/scripts), `@yukibana/ci-scripts`). A change to a file
 that belongs to no package (the lockfile, a root config, a workflow) runs every package's scripts, the cloud stack and
-the end-to-end tests. The devcontainer is built when `cloud/dev/`, what its install reads
-(`package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, the cloud's, the CLI's, the client's and the fixtures' `package.json`) or
-`cloud/db/supabase/config.toml` changed, and the license check runs when what it checks or its rules changed. `ci-ok` is the one required check.
+the end-to-end tests. The devcontainer is built when `.devcontainer/`, `cloud/dev/`, what its install reads
+(`pnpm-lock.yaml`, `pnpm-workspace.yaml`, any `package.json`) or `cloud/db/supabase/config.toml` changed, and the license check runs when what it checks or its rules changed. `ci-ok` is the one required check.
 
 [deploy-cloud.yml](.github/workflows/deploy-cloud.yml) deploys the cloud from `main` once CI has passed there, and
 [preview.yml](.github/workflows/preview.yml) uploads a pull request's Worker as a preview once a maintainer approves;

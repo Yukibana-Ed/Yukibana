@@ -312,8 +312,8 @@ jobs:
           if-no-files-found: ignore
           retention-days: 5
 
-  # The cloud's devcontainer builds, and the stack it starts answers, so a broken devcontainer.json fails a pull
-  # request rather than a teammate's morning.
+  # The devcontainer builds, installs the workspace, and the stack it starts answers, so a broken devcontainer.json
+  # fails a pull request rather than a teammate's morning.
   devcontainer:
     name: Devcontainer
     needs: plan
@@ -333,7 +333,6 @@ jobs:
       - name: Build the devcontainer and run the smoke test inside it
         uses: devcontainers/ci@513af61f4de4f75d37e4438f184ba4358f0fc1ca # v0.3
         with:
-          configFile: cloud/dev/.devcontainer/devcontainer.json
           runCmd: |
             cloud/dev/scripts/preflight.sh
             pnpm --filter @yukibana/cloud-dev run smoke

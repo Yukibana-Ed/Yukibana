@@ -1,7 +1,7 @@
 {
   "private": true,
   "name": "@yukibana/cloud-dev",
-  "description": "The cloud's local environment: the devcontainer, the Nix shell, the local bucket (compose.yml), and the scripts that check the local stack, write the Worker's .dev.vars and make the local database's first admin.",
+  "description": "The cloud's local environment: the Nix shell, the local bucket (compose.yml), and the scripts that check the local stack, write the Worker's .dev.vars and make the local database's first admin.",
   "version": "0.0.0-dev",
   "license": "MIT",
   "type": "module",

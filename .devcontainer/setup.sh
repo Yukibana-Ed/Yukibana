@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # postStartCommand - runs on every devcontainer start.
 set -euo pipefail
-# From the repository root, three levels up from cloud/dev/.devcontainer.
-cd "$(dirname "$0")/../../.."
+# From the repository root, one level up from .devcontainer.
+cd "$(dirname "$0")/.."
 
 # The GitHub login provider must be configured for Auth to start. Real values
 # come from cloud/dev/.env (see cloud/dev/.env.example); placeholders keep the stack bootable.

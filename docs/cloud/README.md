@@ -27,16 +27,16 @@ Every command below runs from the repository's root.
 
 ## Start
 
-The devcontainer has everything. It is in `cloud/dev/.devcontainer/`, not
-where editors look for one, so start it with the
-[devcontainer CLI](https://github.com/devcontainers/cli):
+The repository's devcontainer has everything: open the repository in it
+as [CONTRIBUTING.md](../../CONTRIBUTING.md#option-1-devcontainer-recommended)
+says, or start it with the [devcontainer CLI](https://github.com/devcontainers/cli):
 
 ```bash
-devcontainer up --workspace-folder . --config cloud/dev/.devcontainer/devcontainer.json
-devcontainer exec --workspace-folder . --config cloud/dev/.devcontainer/devcontainer.json pnpm --filter @yukibana/cloud-dev smoke
+devcontainer up --workspace-folder .
+devcontainer exec --workspace-folder . pnpm --filter @yukibana/cloud-dev smoke
 ```
 
-It installs the cloud and the CLI, and on every start (re)starts the
+It installs the workspace, and on every start (re)starts the
 Supabase stack and the bucket and writes `cloud/web/.dev.vars`. They run as
 sibling containers on the host's Docker daemon (docker-outside-of-docker).
 The first start pulls a few gigabytes of images; after that it is seconds.

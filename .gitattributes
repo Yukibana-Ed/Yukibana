@@ -1,2 +1,4 @@
 # Stores text files with LF, and checks them out with the platform's line ending.
 * text=auto
+# Run inside the devcontainer, whose shell cannot read Windows line endings, even from a clone on a Windows drive.
+*.sh text eol=lf
