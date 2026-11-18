@@ -244,7 +244,10 @@ test('an App installed on a whole organisation lists, to each person, only the r
 
     // A member of the edition's staff with no access to anything there yet,
     // or none any more: GitHub lists nothing, and so does the picker.
-    const nobody = stubGitHub({ installations: () => Promise.resolve([{ id: 55501, account: 'heig-isc' }]), installationRepositories: () => Promise.resolve({ repositories: [], total: 0 }) });
+    const nobody = stubGitHub({
+        installations: () => Promise.resolve([{ id: 55501, account: 'heig-isc' }]),
+        installationRepositories: () => Promise.resolve({ repositories: [], total: 0 }),
+    });
     expect(await pickerFor(nobody, 'ghu_newcomer')).toEqual({ repositories: [], truncated: false, failed: null });
 });
 
