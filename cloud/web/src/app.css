@@ -657,29 +657,93 @@
         border-radius: var(--yk-radius-md);
     }
 
-    /* The Releases tab's Publishing card: a few ways to publish, each a titled block, the rare parts of each folded
-       into a disclosure until someone opens it. */
+    /* The Releases tab's Publishing card: one choice after another, each a row of radio cards, and under them only the
+       panel of the card chosen. The panels are shown by the checked radio (`:has`), with no script. */
     section.publishing {
         display: grid;
-        gap: var(--yk-space-6);
+        gap: var(--yk-space-4);
     }
     section.publishing > h2 {
         margin-bottom: 0;
     }
-    .way {
+    section.publishing :is(p, form) {
+        margin: 0;
+    }
+    fieldset.choices {
         display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+        gap: var(--yk-space-2);
+        margin: 0;
+        padding: 0;
+        border: 0;
+        min-width: 0;
+    }
+    fieldset.choices > legend {
+        margin-bottom: var(--yk-space-2);
+        padding: 0;
+        color: var(--yk-soft);
+        font-size: var(--yk-font-size-sm);
+        font-weight: var(--yk-font-weight-semibold);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+    .choice {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        column-gap: var(--yk-space-2);
+        align-content: start;
+        padding: var(--yk-space-3);
+        border: 1px solid var(--yk-line-strong);
+        border-radius: var(--yk-radius-md);
+        cursor: pointer;
+    }
+    .choice:hover {
+        background: var(--yk-sunken);
+    }
+    .choice:has(input:checked) {
+        border-color: var(--yk-ink);
+        box-shadow: inset 0 0 0 1px var(--yk-ink);
+        background: var(--yk-sunken);
+    }
+    .choice:has(input:focus-visible) {
+        outline: var(--yk-focus-width) solid var(--yk-ink);
+        outline-offset: var(--yk-focus-offset);
+    }
+    .choice > input {
+        margin: 0.2em 0 0;
+        accent-color: var(--yk-ink);
+    }
+    .choice > span {
+        grid-column: 2;
+        color: var(--yk-soft);
+        font-size: var(--yk-font-size-sm);
+    }
+    /* A panel shows while its card is chosen, and only then. */
+    section.publishing .panel {
+        display: none;
         gap: var(--yk-space-3);
+        justify-items: start;
     }
-    .way + .way {
-        padding-top: var(--yk-space-6);
-        border-top: 1px solid var(--yk-line);
+    section.publishing .panel > :is(pre, .scroll, form.pick, .linked, .more, ul.templates, fieldset) {
+        justify-self: stretch;
     }
-    .way > h3 {
+    section.publishing .panel > pre {
         margin: 0;
-        font-size: var(--yk-font-size-md);
     }
-    .way :is(p, form) {
+    section.publishing ul.templates {
         margin: 0;
+    }
+    section.publishing:has(input[name='source'][value='existing']:checked) .panel[data-source='existing'],
+    section.publishing:not(:has(input[name='source'])) .panel[data-source='existing'],
+    section.publishing:has(input[name='source'][value='new']:checked) .panel[data-source='new'],
+    section.publishing:has(input[name='method'][value='github']:checked) .panel[data-method='github'],
+    section.publishing:has(input[name='method'][value='token']:checked) .panel[data-method='token'],
+    section.publishing:has(input[name='method'][value='cli']:checked) .panel[data-method='cli'] {
+        display: grid;
+    }
+    /* The panel of the second choice is set off from the cards above it. */
+    section.publishing .panel[data-method] {
+        padding-top: var(--yk-space-2);
     }
     /* The linked repository: its name and when, the owner's buttons beside it. */
     .linked {

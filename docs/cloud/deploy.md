@@ -447,7 +447,7 @@ secrets at once, so a developer can have one of their own and it can be
 revoked alone.
 
 **Check.** On a project page, as an owner, the Releases tab's Publishing
-section has Connect GitHub under GitHub repository. Connect, install the App on a test
+section offers Connect GitHub (Publish an existing project, GitHub repository). Connect, install the App on a test
 repository, link it, and push a tag there with the workflow the section
 shows: the job log lists the project, and the release says "from
 owner/name".
