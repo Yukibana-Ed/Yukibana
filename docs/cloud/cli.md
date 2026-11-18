@@ -13,13 +13,13 @@ the IDE can do the same way.
 tag (CONTRIBUTING.md, Releasing). It needs Node.js 24 or later:
 
 ```bash
-npm install --global @yukibana/cli    # or: pnpm add --global, yarn global add (Yarn 1)
+npm install --global @yukibana/cli    # or: pnpm add --global @yukibana/cli
 yukibana --help
 ```
 
 `npx @yukibana/cli <command>` runs it without installing. The website's
-`reference/cli.mdx` is the install guide users see, with a tab per package
-manager. To run the CLI from this checkout, `pnpm setup:cli` builds it into
+`reference/cli.mdx` is the install guide users see, with an npm and a pnpm
+tab. To run the CLI from this checkout, `pnpm setup:cli` builds it into
 `packages/cli/lib/index.js`.
 
 ## Logging in

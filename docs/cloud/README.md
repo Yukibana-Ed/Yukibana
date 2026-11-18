@@ -106,8 +106,8 @@ right for where you run it, and `.dev.vars` is written the same way.
 ## Publishing a project
 
 A course repository carries a `yukibana.json` ([yukibana-json.md](yukibana-json.md)).
-Install the CLI from npm (Node.js 24 or later; `pnpm add --global` and
-`yarn global add` work as well):
+Install the CLI from npm (Node.js 24 or later; `pnpm add --global` works
+as well):
 
 ```bash
 npm install --global @yukibana/cli
