@@ -79,16 +79,31 @@ export class YukibanaTypingTracker implements FrontendApplicationContribution {
                 const detailedReason = e.detailedReasons[i];
                 const origin = this.originOfChange(detailedReason);
                 const nChanges = e.detailedReasonsChangeLengths[i];
+                const editChanges = e.changes.slice(changeIdx, changeIdx + nChanges);
                 const command = origin === 'command' || origin === 'unknown' ? detailedReason.metadata?.detailedSource : undefined;
-                for (let j = 0; j < nChanges; j++) {
-                    const change = e.changes[changeIdx++];
+                const name = origin === 'unknown' ? detailedReason.metadata?.name : undefined;
+                const totalDelta = editChanges.reduce((a, b) => a + b.text.length - b.rangeLength, 0);
+
+                if (this.isMultiChangeAction(origin, command) && totalDelta === 0) {
+                    changes.push({
+                        inserted: editChanges.reduce((a, b) => a + b.text.length, 0),
+                        removed: editChanges.reduce((a, b) => a + b.rangeLength, 0),
+                        origin: origin,
+                        command: command,
+                        name: name,
+                    });
+                    continue;
+                }
+
+                editChanges.forEach(change => {
                     changes.push({
                         inserted: change.text.length,
                         removed: change.rangeLength,
                         origin: origin,
                         command: command,
+                        name: name,
                     });
-                }
+                });
             }
             const edit: TypingTelemetry.Edit = {
                 sinceLastTyped: sinceLastTyped,
@@ -118,6 +133,7 @@ export class YukibanaTypingTracker implements FrontendApplicationContribution {
                 if (detailedSource === 'editor.contrib.dragAndDrop') {
                     return 'drag-drop';
                 }
+                this.logger.debug(`Unknown command for ${JSON.stringify(detailedReason)}`);
                 return 'command';
             }
             if (kind === 'cut') {
@@ -127,7 +143,20 @@ export class YukibanaTypingTracker implements FrontendApplicationContribution {
                 return 'paste';
             }
         }
+        this.logger.debug(`Unknown change origin for ${JSON.stringify(detailedReason)}`);
         return 'unknown';
+    }
+
+    protected isMultiChangeAction(origin: TypingTelemetry.EditOrigin, command?: string): boolean {
+        if (origin === 'drag-drop') {
+            return true;
+        }
+        if (origin === 'command') {
+            if (command === 'editor.action.moveLinesUpAction' || command === 'editor.action.moveLinesDownAction') {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
