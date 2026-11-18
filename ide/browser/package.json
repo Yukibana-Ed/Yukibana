@@ -10,6 +10,7 @@
     "@theia/ai-code-completion": "catalog:",
     "@theia/ai-core": "catalog:",
     "@theia/ai-ide": "catalog:",
+    "@theia/ai-openai": "catalog:",
     "@theia/core": "catalog:",
     "@theia/debug": "catalog:",
     "@theia/editor": "catalog:",
