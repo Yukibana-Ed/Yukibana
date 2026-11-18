@@ -126,7 +126,7 @@ token (owners only).
 In the course repository's own CI, the Action does the same. Where the
 registry has a GitHub App (deploy.md, step 8), an owner links the project to
 the repository on the project page (Releases, Repository), and every tag
-then publishes to every project linked to it, with no secret
+then publishes to every project linked to it that the workflow names, with no secret
 ([github.md](github.md)):
 
 ```yaml
@@ -141,6 +141,7 @@ permissions:
 - uses: Yukibana-Ed/Yukibana/action@main
   with:
     url: https://yukibana.example.org
+    projects: 01a0b563-aeff-7c42-ae73-5aab2f2b5a01   # the linked projects this repository publishes to
     label: ${{ github.ref_name }}
 ```
 

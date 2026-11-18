@@ -18,17 +18,22 @@ What it changes, and why (docs/cloud/github.md in Yukibana-Ed/Yukibana):
 * `project` and `token` are gone. With neither, the Action runs
   `yukibana publish --ci`: the job asks GitHub for an OIDC token, the registry
   checks that this repository is linked to a project, and the release goes to
-  every project linked to it. A repository made from this template therefore
-  needs no secret and no variable, only a link on the project page, and the
-  `projectId` a template's yukibana.json may carry is ignored.
+  every project linked to it that `projects` names. A link is made on the
+  project page and the repository cannot remove it, so `projects` is the
+  repository's say in where its hidden tests go. It reads the
+  YUKIBANA_PROJECT variable repositories made from the template already
+  have, so a repository made from it needs no secret, that one variable and
+  a link on the project page; the `projectId` a template's yukibana.json may
+  carry is ignored.
 * `permissions: id-token: write` lets the job ask for that token, and
   `contents: read` keeps checkout working once a permissions block exists
   (any permission not named becomes none).
 * The tag filter stays `v*`. The registry publishes by link only from tags;
   the filter only chooses which tags.
 
-Once merged, the YUKIBANA_TOKEN secret and YUKIBANA_PROJECT variable of the
-template (and of repositories made from it) are unused and can be deleted.
+Once merged, the YUKIBANA_TOKEN secret of the template (and of repositories
+made from it) is unused and can be deleted; the YUKIBANA_PROJECT variable
+stays, and may list several project ids, separated by commas.
 Repositories already made from the template keep the old workflow until the
 same change is made in them; with their secret and variable still set, the
 old workflow keeps publishing with the token until then, for as long as the
@@ -39,13 +44,13 @@ The registry's GITHUB_TEMPLATE can name this template once this is merged
 
 --- a/.github/workflows/publish.yml
 +++ b/.github/workflows/publish.yml
-@@ -5,14 +5,19 @@
+@@ -5,14 +5,20 @@
      tags:
        - 'v*'
  
-+# Publishes to every project linked to this repository on its Yukibana
-+# project page (Releases, Repository), with GitHub's OIDC token: no secret
-+# or variable to set. Only tags publish.
++# Publishes to the projects linked to this repository on their Yukibana
++# project page (Releases, Repository) that the YUKIBANA_PROJECT variable
++# names, with GitHub's OIDC token: no secret to set. Only tags publish.
 +permissions:
 +  contents: read
 +  id-token: write
@@ -61,4 +66,5 @@ The registry's GITHUB_TEMPLATE can name this template once this is merged
            url: https://cloud.yukibana.dev
 -          project: ${{ vars.YUKIBANA_PROJECT }}
 -          token: ${{ secrets.YUKIBANA_TOKEN }}
++          projects: ${{ vars.YUKIBANA_PROJECT }}
            label: ${{ github.ref_name }}

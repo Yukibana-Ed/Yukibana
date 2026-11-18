@@ -28,7 +28,7 @@ is how the code inside them is written.
 | **The pages** | everyone | Browse editions and projects, enrol, set dates, publish a release by hand, download, submit by upload. Served by the Worker. |
 | **The CLI**, `yukibana` | teachers, students, CI | `check` and `build` turn a course repository into the two archives of a release; `publish`, `download` and `assemble` for staff; `login`, `projects`, `starter`, `submit` for students. |
 | **The library** | the IDE | `packages/client/src/library.ts`: the same login, API client and submission packing as the CLI, headless, for the Theia extensions. |
-| **The GitHub Action** | a course repository's CI | `action/action.yml`: builds the archives with the CLI and publishes them, to every project linked to the repository with GitHub's OIDC token (`yukibana publish --ci`), or to one project with a project token. |
+| **The GitHub Action** | a course repository's CI | `action/action.yml`: builds the archives with the CLI and publishes them, to the projects linked to the repository that its `projects` input names, with GitHub's OIDC token (`yukibana publish --ci`), or to one project with a project token. |
 
 ### What is stored
 
@@ -182,7 +182,9 @@ the Worker asks GitHub for its ids with the teacher's token and calls
 repository's workflow, whose Action runs `yukibana publish --ci`: the CLI
 asks GitHub for an OIDC token per request, asks `GET /api/ci/projects`
 which projects the repository publishes to and why any would be refused
-(`app.ci_projects`), and builds and publishes once per project. The
+(`app.ci_projects`), and builds and publishes once per project that the
+workflow's `projects` also names, since the repository has no other say in
+which projects link it. The
 Worker verifies the token, takes the repository, ref and commit from it
 and nothing from the body, checks the project before storing a byte, and
 records the release with `app.publish_release_with_repository`, which

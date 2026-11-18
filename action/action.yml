@@ -4,7 +4,11 @@
 #
 # Linked on the project page (Releases, Repository), with no secret: the job
 # proves which repository and tag it runs at with GitHub's OIDC token, and
-# publishes to every project linked to the repository. Only tags publish.
+# publishes to the projects linked to the repository that `projects` names.
+# Only tags publish. A link is made by a project's owner, and the repository
+# cannot remove it, so `projects` is the repository's say: a linked project
+# it does not name (one linked by somebody who has since lost access to the
+# repository, say) is sent nothing.
 #
 #   on:
 #     push:
@@ -17,6 +21,7 @@
 #     - uses: Yukibana-Ed/Yukibana/action@main
 #       with:
 #         url: https://yukibana.example.org
+#         projects: 01a0b563-aeff-7c42-ae73-5aab2f2b5a01
 #         label: ${{ github.ref_name }}
 #
 # With a project token, made on the project page, which publishes to that
@@ -38,7 +43,11 @@ inputs:
     description: The registry, like https://yukibana.example.org
     required: true
   project:
-    description: The project id, from the project page; with `token`. Without either, the release goes to every project linked to the repository.
+    description: The project id, from the project page; with `token`. Without either, the release goes by the link, to the projects `projects` names.
+    required: false
+    default: ''
+  projects:
+    description: Without `project` and `token`, the ids of the linked projects this repository publishes to, separated by commas, spaces or new lines. A linked project not named here is sent nothing.
     required: false
     default: ''
   token:
@@ -90,6 +99,7 @@ runs:
         YUKIBANA_URL: ${{ inputs.url }}
         YUKIBANA_PROJECT: ${{ inputs.project }}
         YUKIBANA_TOKEN: ${{ inputs.token }}
+        PROJECTS: ${{ inputs.projects }}
         LABEL: ${{ inputs.label }}
         FOLDER: ${{ inputs.folder }}
         DIRECTORY: ${{ inputs.directory }}
@@ -107,7 +117,7 @@ runs:
             echo "::error title=Yukibana::No project token was given, so this publishes by the repository's link, which needs GitHub's OIDC token. Add 'permissions: id-token: write' to the workflow (or to this job), or give the action 'project' and 'token'."
             exit 1
           fi
-          node "$cli" publish "$DIRECTORY" --ci --folder "$folder" --label "$label"
+          node "$cli" publish "$DIRECTORY" --ci --projects "$PROJECTS" --folder "$folder" --label "$label"
         else
           # With a token, exactly as before links existed: the project is
           # `project`, else the projectId in yukibana.json, and an empty

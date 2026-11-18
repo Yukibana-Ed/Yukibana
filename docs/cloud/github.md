@@ -49,13 +49,18 @@ link:
          - uses: Yukibana-Ed/Yukibana/action@main
            with:
              url: https://cloud.yukibana.dev
+             projects: 01a0b563-aeff-7c42-ae73-5aab2f2b5a01
              label: ${{ github.ref_name }}
    ```
 
-   A repository made from a template that already has it needs nothing.
+   `projects` is the project's id, which the page's snippet fills in; a
+   repository linked to projects of several editions lists their ids,
+   separated by commas. A template's workflow can read it from a repository
+   variable instead (`projects: ${{ vars.YUKIBANA_PROJECT }}`), so that a
+   repository made from it needs only that variable.
 4. Pushing a tag (`git tag v1 && git push origin v1`) runs that workflow on
    GitHub's runners, which builds the archives with the CLI and publishes
-   them to every project linked to the repository. The release list on the
+   them to every project linked to the repository that `projects` names. The release list on the
    project page says "from owner/name" for a release published by link, and
    the Repository section shows the last one.
 
@@ -65,24 +70,28 @@ tokens and `yukibana publish` as a logged-in person work exactly as before,
 and a project may have a link and tokens at once.
 
 The job log names the repository, the ref and the commit, then every project
-linked to the repository, published or skipped with the reason:
+linked to the repository, with its id, published or skipped with the reason:
 
 ```
-Yukibana-Ed/intro-exercises at refs/tags/v3 (4f0c2d9a1b7e) is linked to 2 projects
-  publishes to ex1 "Hello, Scala" (Introduction to Programming, 2026 autumn)
-  skips ex1 "Hello, Scala" (Introduction to Programming, 2025 autumn): The person who linked this repository is no longer an owner of this edition; an owner must link it again.
+Yukibana-Ed/intro-exercises at refs/tags/v3 (4f0c2d9a1b7e) is linked to 3 projects
+  publishes to ex1 "Hello, Scala" (Introduction to Programming, 2026 autumn, 01a0…5a01)
+  skips ex1 "Hello, Scala" (Introduction to Programming, 2025 autumn, 01a0…5a02): The person who linked this repository is no longer an owner of this edition; an owner must link it again.
+  skips ex1 "Hello, Scala" (Algorithms, 2026 autumn, 01a0…5a03): this repository does not name it
 ```
 
-A skipped project fails the job once the others have published, so a green
-job never means fewer releases than the log suggests. The reasons a job
-reads, in the registry's own words:
+A project `projects` names that is skipped fails the job once the others
+have published, so a green job never means fewer releases than the log
+suggests; a linked project it does not name is a warning, and is sent
+nothing. The reasons a job reads, in the registry's own words:
 
 | The job says | Because | What to do |
 | --- | --- | --- |
 | Only tags publish; this run is at refs/heads/main. | the run is not at a tag (a push to a branch, or a manual run started on one) | push a tag, or start the manual run on a tag |
-| The person who linked this repository is no longer an owner of this edition; an owner must link it again. | the link lasts as long as its maker owns the edition | an owner presses Change and picks the same repository |
+| The person who linked this repository is no longer an owner of this edition; an owner must link it again. | the link lasts as long as its maker owns the edition | an owner presses Change and picks the same repository, or the repository stops naming the project |
 | This repository moved to another owner; link it again on the project page. | the repository was transferred, so its owner id changed | an owner of the project links it again, which needs admin or maintain under the new owner |
 | this repository is linked to no project, so there is nothing to publish to | no link, or it was removed | link it on the project page |
+| this repository names no project to publish to | the workflow has no `projects` | give it the ids the log lists for the projects it publishes to |
+| … is linked to this repository, which does not name it (a warning) | somebody linked the repository to a project the workflow does not list | nothing, if the project is not yours; otherwise add its id to `projects` |
 | CI token refused: this token is for https://x; this registry expects https://y | the Action's `url` is not the registry's canonical address | use the address the project page's snippet shows |
 | … add 'permissions: id-token: write' … | the workflow cannot ask GitHub for a token | add the `permissions` block above |
 
@@ -173,10 +182,24 @@ stranger could link somebody's private course repository to a project of
 their own, and that repository's CI would push its hidden tests into the
 stranger's project. Linking therefore asks GitHub, with the teacher's own
 token, for the repository, and requires `permissions.admin` or
-`permissions.maintain`. The job log lists every project it publishes to, so
-a repository's administrators can see the links. On a public repository the
-job log is public, and so are the titles of the projects and editions it
-names.
+`permissions.maintain`.
+
+That proof is asked once, when the link is made, and a link outlives it:
+it survives its maker losing access to the repository, and only an owner
+of the project can remove it, never the repository's administrators. So
+**the repository names the projects it publishes to** as well, in the
+Action's `projects` input (`--projects`), and a release goes only where
+the link and the repository agree. Without that, an assistant briefly
+given admin on the course repository could link it to a project of their
+own and, removed from the repository, keep receiving every teacher archive
+it built, hidden tests and all, with nobody on the repository's side able
+to stop it. A linked project the repository does not name is listed and
+warned about in the job log, with its id, and sent nothing; one it names
+that the registry refuses fails the job, and the repository ends that by no
+longer naming it, which matters for a link nobody can remove any more (its
+maker no longer an owner, and no owner left to relink or unlink). On a
+public repository the job log is public, and so are the titles of the
+projects and editions it names.
 
 ## How it is built
 
@@ -241,8 +264,12 @@ names.
 * `GET /api/ci/projects` (a CI token only) answers
   `{ repository, ref, sha, moved, projects: [{ id, slug, title, edition, refused }] }`.
 * `POST /api/projects/{id}/releases` checks for a CI token before anything
-  else. For one, it asks `app.ci_projects` about the project before a byte
-  is stored, and records with `app.publish_release_with_repository`. The
+  else (a JWT from any issuer but Supabase Auth, so that another issuer is
+  told which one is accepted). For one, it asks `app.ci_projects` about the
+  project before a byte is stored, and records with
+  `app.publish_release_with_repository`; for a moved repository, whose old
+  links `app.ci_projects` does not name, that function alone decides, and its
+  refusal deletes both objects. The
   commit, ref, repository and ids come from the token; a form `commit` that
   differs from the token's is a 400 and stores nothing. The label stays a
   form value: it is display text, not provenance.
@@ -318,17 +345,19 @@ names.
 
 * `YukibanaClient.ciProjects()` asks `GET /api/ci/projects`;
   `publishRelease` takes the OIDC token as its bearer like any other.
-* `yukibana publish [dir] --ci` (`packages/cli/src/commands/release.ts`, with
+* `yukibana publish [dir] --ci --projects <ids>` (`packages/cli/src/commands/release.ts`, with
   its decisions in `src/lib/publish.ts`): CI mode is only ever explicit, and
-  `--ci` with `--token` or `--project` is refused. It ignores, with a
+  `--ci` with `--token` or `--project` is refused, as is `--projects`
+  without `--ci`. It ignores, with a
   warning, `YUKIBANA_TOKEN`, `YUKIBANA_PROJECT` and the `projectId` in
   `yukibana.json`: a repository made from a template may well name the
   template's project. It asks GitHub for a token (`src/oidc.ts`) with the
   registry's origin as the audience, a fresh one for every request and never
   printed, prints the plan above, then builds and publishes once per
-  project, each with its own release id and the token's commit.
+  project it lists that `--projects` names, each with its own release id
+  and the token's commit.
 * `action/action.yml`: with neither `token` nor `project`, it runs
-  `publish --ci`, and says first, as an error annotation, when the job has no
+  `publish --ci --projects` with its `projects` input, and says first, as an error annotation, when the job has no
   `id-token: write`. With either, it runs the token command as before. Every
   input reaches bash through `env:`; the comment above the step says why.
 
@@ -493,3 +522,24 @@ Each was decided while building, for the reason given:
   token's commit**; the release records the token's commit either way.
 * **The page's snippet names the canonical origin**, not the address the
   page was opened at, since the audience is the canonical origin.
+
+## Review of the build, 2026-11-18
+
+* **The repository names its projects** (`projects`, `--projects`), and a
+  linked project it does not name is sent nothing. Before, `--ci` published
+  to every project linked to the repository, and a link outlived its
+  maker's access to the repository, which could not remove it: see "Many
+  projects, one repository". It also lets a repository stop a dead link
+  from failing every tag.
+* **A key set GitHub cannot serve is a 503, reported**, whatever jose calls
+  the failure. Only its timeout had been; a 502 from GitHub's key set was
+  answered "401 CI token refused: it could not be verified" and reported
+  nothing.
+* **The Worker's pre-check leaves a moved repository to the database.**
+  `app.ci_projects` cannot say which project a moved link was for, and the
+  pre-check answered "moved" for a project that was never linked; now the
+  database answers, after the upload, whose objects its refusal deletes.
+* **Connect GitHub pressed while changing a link comes back to the
+  picker** (the state cookie carries `relink`); it came back to the old link.
+* **Any JWT not from Supabase Auth takes the CI path**, so a GitHub
+  Enterprise job is told which issuer is accepted rather than to log in.

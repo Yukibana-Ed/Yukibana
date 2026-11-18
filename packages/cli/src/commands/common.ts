@@ -20,9 +20,13 @@ export interface Options {
     /** `--token`: a project token to publish with, before `YUKIBANA_TOKEN`. */
     readonly token?: string | undefined;
     /** `--ci`: `true` iff `publish` publishes by the repository's link, with
-     *  the GitHub Actions job's OIDC token, to every project the registry
-     *  lists for it (`lib/publish.ts`). Only ever explicit. */
+     *  the GitHub Actions job's OIDC token, to the projects the registry
+     *  lists for it and `--projects` names (`lib/publish.ts`). Only ever
+     *  explicit. */
     readonly ci?: boolean | undefined;
+    /** `--projects`: under `--ci`, the ids of the linked projects the
+     *  repository publishes to, separated by commas or white space. */
+    readonly projects?: string | undefined;
     /** `--project`: the project id, after a positional and before `YUKIBANA_PROJECT`. */
     readonly project?: string | undefined;
     /** `--edition`: the edition id `projects` and `members` are narrowed to. */

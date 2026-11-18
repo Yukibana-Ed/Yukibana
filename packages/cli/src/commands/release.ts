@@ -26,6 +26,7 @@ export async function release(command: 'check' | 'build' | 'publish', inv: Invoc
             ci: inv.options.ci === true,
             token: inv.options.token,
             project: inv.options.project,
+            projects: inv.options.projects,
             envToken: inv.env['YUKIBANA_TOKEN'],
             envProject: inv.env['YUKIBANA_PROJECT'],
             configProject: inv.options.ci === true ? await configProjectOf(dir) : null,
@@ -33,7 +34,7 @@ export async function release(command: 'check' | 'build' | 'publish', inv: Invoc
         if (mode.kind === 'refused') fail(...mode.problems);
         if (mode.kind === 'ci') {
             for (const w of mode.warnings) console.error(`warning: ${w}`);
-            await publishCi(inv, dir, folder);
+            await publishCi(inv, dir, folder, mode.named);
             return;
         }
     }
@@ -83,7 +84,7 @@ export async function release(command: 'check' | 'build' | 'publish', inv: Invoc
 }
 
 /** `publish --ci`: one build and one release per project the registry links
- *  to the job's repository, each with a fresh release id, the job's OIDC
+ *  to the job's repository and `named` (`--projects`) names, each with a fresh release id, the job's OIDC
  *  token as the bearer (asked of GitHub again for every request, for the
  *  audience `client.origin`, and never printed) and the token's commit.
  *  Prints the repository and every project, published or skipped with its
@@ -92,7 +93,7 @@ export async function release(command: 'check' | 'build' | 'publish', inv: Invoc
  *  published and why, or that the repository publishes to nothing. A build
  *  that fails fails at once: its problems are the directory's, the same for
  *  every project. */
-async function publishCi(inv: Invocation, dir: string, folder: string): Promise<void> {
+async function publishCi(inv: Invocation, dir: string, folder: string, named: readonly string[]): Promise<void> {
     const url = await registryUrl(inv);
     const fetchFn = inv.fetch ?? fetch;
     // The audience is the registry's origin, whatever path or trailing slash
@@ -100,7 +101,7 @@ async function publishCi(inv: Invocation, dir: string, folder: string): Promise<
     // canonical origin): a mismatch is refused with the one it expected.
     const client: YukibanaClient = new YukibanaClient({ url, accessToken: () => requestOidcToken(inv.env, client.origin, fetchFn), fetch: fetchFn });
     const answer = await client.ciProjects().catch((e: unknown) => fail(sentenceOf(e)));
-    const plan = ciPlanOf(answer);
+    const plan = ciPlanOf(answer, named);
     for (const line of plan.lines) console.log(line);
     for (const w of plan.warnings) console.error(`warning: ${w}`);
 

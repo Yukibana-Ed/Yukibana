@@ -85,15 +85,20 @@ async function starterProject(form: FormData): Promise<unknown> {
 
 test('a registry URL with a trailing slash asks GitHub for a token for its origin', async () => {
     const { seen, fetchFn } = world([{ id: LINKED[0] ?? '', slug: 'a', refused: null }]);
-    await publishIn(await course(), { ci: true, url: 'https://cloud.yukibana.dev/' }, CI_ENV, fetchFn);
+    await publishIn(await course(), { ci: true, projects: LINKED[0], url: 'https://cloud.yukibana.dev/' }, CI_ENV, fetchFn);
     assert.equal(seen.audiences.length, seen.requests.length, 'a fresh token for every request to the registry');
     assert.equal(seen.requests.length, 2);
     assert.deepEqual(new Set(seen.audiences), new Set(['https://cloud.yukibana.dev']));
 });
 
-test("a yukibana.json naming a project still fans out under --ci, to every linked project, with each one's own id in its starter", async () => {
+test("a yukibana.json naming a project still fans out under --ci, to every linked project --projects names, with each one's own id in its starter", async () => {
     const { seen, fetchFn } = world(LINKED.map((id, i) => ({ id, slug: `p${i}`, refused: null })));
-    const { out, err } = await publishIn(await course(), { ci: true, url: 'https://cloud.yukibana.dev', label: 'v1' }, { ...CI_ENV, YUKIBANA_PROJECT: '' }, fetchFn);
+    const { out, err } = await publishIn(
+        await course(),
+        { ci: true, projects: LINKED.join(','), url: 'https://cloud.yukibana.dev', label: 'v1' },
+        { ...CI_ENV, YUKIBANA_PROJECT: '' },
+        fetchFn,
+    );
     assert.ok(
         err.some(l => /projectId in yukibana\.json .* is ignored/.test(l)),
         err.join('\n'),
@@ -129,8 +134,45 @@ test('--ci with --token is refused before anything is built or sent', async () =
 
 test('--ci with --project is refused too', async () => {
     const { seen, fetchFn } = world([]);
-    await assert.rejects(publishIn(await course(), { ci: true, project: CONFIG_PROJECT, url: 'https://cloud.yukibana.dev' }, CI_ENV, fetchFn), /drop --project/);
+    await assert.rejects(publishIn(await course(), { ci: true, project: CONFIG_PROJECT, url: 'https://cloud.yukibana.dev' }, CI_ENV, fetchFn), /instead of --project/);
     assert.deepEqual(seen.requests, []);
+});
+
+test('a project linked to the repository that the repository does not name is sent nothing, and the job says so without failing', async () => {
+    const [mine = '', theirs = ''] = LINKED;
+    const { seen, fetchFn } = world([
+        { id: mine, slug: 'course', refused: null },
+        { id: theirs, slug: 'stranger', refused: null },
+    ]);
+    const { err } = await publishIn(await course(), { ci: true, projects: mine, url: 'https://cloud.yukibana.dev' }, CI_ENV, fetchFn);
+    assert.deepEqual(
+        seen.requests.filter(r => r.method === 'POST').map(r => new URL(r.url).pathname),
+        [`/api/projects/${mine}/releases`],
+    );
+    assert.ok(
+        err.some(l => l.startsWith('warning: stranger ') && l.includes('does not name it')),
+        err.join('\n'),
+    );
+});
+
+test('a repository that names no project publishes nothing, and fails after listing the ids it could name', async () => {
+    const { seen, fetchFn } = world([{ id: LINKED[0] ?? '', slug: 'course', refused: null }]);
+    const out: string[] = [];
+    vi.spyOn(console, 'log').mockImplementation((line: string) => void out.push(line));
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const inv: Invocation = {
+        options: { folder: 'course', ci: true, url: 'https://cloud.yukibana.dev' },
+        args: [await course()],
+        env: CI_ENV,
+        store: memoryStore(),
+        fetch: fetchFn,
+    };
+    await assert.rejects(release('publish', inv), /names no project to publish to/);
+    assert.ok(
+        out.some(l => l.includes(LINKED[0] ?? '?')),
+        out.join('\n'),
+    );
+    assert.equal(seen.requests.filter(r => r.method === 'POST').length, 0);
 });
 
 test('a failure for one project does not stop the others, and the job fails naming it and every skipped one', async () => {
@@ -142,13 +184,16 @@ test('a failure for one project does not stop the others, and the job fails nami
         ],
         project => (project === LINKED[0] ? Response.json({ message: 'starter too large' }, { status: 413 }) : published()),
     );
-    await assert.rejects(publishIn(await course(), { ci: true, url: 'https://cloud.yukibana.dev' }, CI_ENV, fetchFn), (e: unknown) => {
-        assert.ok(e instanceof Failure);
-        assert.equal(e.lines.length, 2, e.message);
-        assert.match(e.message, /not published to orphan .*no longer an owner/);
-        assert.match(e.message, /not published to broken .*413: starter too large/);
-        return true;
-    });
+    await assert.rejects(
+        publishIn(await course(), { ci: true, projects: [...LINKED, CONFIG_PROJECT].join(' '), url: 'https://cloud.yukibana.dev' }, CI_ENV, fetchFn),
+        (e: unknown) => {
+            assert.ok(e instanceof Failure);
+            assert.equal(e.lines.length, 2, e.message);
+            assert.match(e.message, /not published to orphan .*no longer an owner/);
+            assert.match(e.message, /not published to broken .*413: starter too large/);
+            return true;
+        },
+    );
     assert.equal(seen.requests.filter(r => r.method === 'POST').length, 2, 'the skipped project is never sent anything');
 });
 
