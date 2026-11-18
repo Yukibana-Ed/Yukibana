@@ -446,8 +446,8 @@ For local development, the same App's callback URLs include
 secrets at once, so a developer can have one of their own and it can be
 revoked alone.
 
-**Check.** On a project page, as an owner, the Releases tab has a
-Repository section with Connect GitHub. Connect, install the App on a test
+**Check.** On a project page, as an owner, the Releases tab's Publishing
+section has Connect GitHub under GitHub repository. Connect, install the App on a test
 repository, link it, and push a tag there with the workflow the section
 shows: the job log lists the project, and the release says "from
 owner/name".

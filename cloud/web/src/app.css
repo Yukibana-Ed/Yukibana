@@ -657,6 +657,106 @@
         border-radius: var(--yk-radius-md);
     }
 
+    /* The Releases tab's Publishing card: a few ways to publish, each a titled block, the rare parts of each folded
+       into a disclosure until someone opens it. */
+    section.publishing {
+        display: grid;
+        gap: var(--yk-space-6);
+    }
+    section.publishing > h2 {
+        margin-bottom: 0;
+    }
+    .way {
+        display: grid;
+        gap: var(--yk-space-3);
+    }
+    .way + .way {
+        padding-top: var(--yk-space-6);
+        border-top: 1px solid var(--yk-line);
+    }
+    .way > h3 {
+        margin: 0;
+        font-size: var(--yk-font-size-md);
+    }
+    .way :is(p, form) {
+        margin: 0;
+    }
+    /* The linked repository: its name and when, the owner's buttons beside it. */
+    .linked {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--yk-space-3);
+        align-items: center;
+        justify-content: space-between;
+        padding: var(--yk-space-3);
+        border: 1px solid var(--yk-line);
+        border-radius: var(--yk-radius-md);
+        background: var(--yk-sunken);
+    }
+    /* A field and its button on one line, the field taking what is left. */
+    form.pick {
+        flex-wrap: nowrap;
+        max-width: 36rem;
+    }
+    form.pick > .yk-input {
+        flex: 1;
+        min-width: 0;
+    }
+    /* Disclosures stacked as one list: a row each, a chevron that turns, the body indented under the title. */
+    .more {
+        border: 1px solid var(--yk-line);
+        border-radius: var(--yk-radius-md);
+    }
+    .more:empty {
+        display: none;
+    }
+    .more > details + details {
+        border-top: 1px solid var(--yk-line);
+    }
+    .more summary {
+        display: flex;
+        gap: var(--yk-space-2);
+        align-items: baseline;
+        padding: var(--yk-space-2) var(--yk-space-3);
+        font-weight: var(--yk-font-weight-semibold);
+        cursor: pointer;
+        list-style: none;
+    }
+    .more summary::-webkit-details-marker {
+        display: none;
+    }
+    .more summary::before {
+        content: '';
+        flex: none;
+        width: 0.45em;
+        height: 0.45em;
+        border-right: 1.5px solid currentColor;
+        border-bottom: 1.5px solid currentColor;
+        transform: translateY(-0.15em) rotate(-45deg);
+        transition: transform var(--yk-motion-fast) var(--yk-motion-ease);
+    }
+    .more details[open] > summary::before {
+        transform: translateY(-0.3em) rotate(45deg);
+    }
+    .more summary:hover {
+        background: var(--yk-sunken);
+    }
+    .more summary .muted {
+        font-weight: normal;
+    }
+    .more .body {
+        display: grid;
+        gap: var(--yk-space-3);
+        justify-items: start;
+        padding: 0 var(--yk-space-3) var(--yk-space-3) calc(var(--yk-space-3) + 0.45em + var(--yk-space-2));
+    }
+    .more .body > :is(pre, .scroll, form.pick) {
+        justify-self: stretch;
+    }
+    .more .body pre {
+        margin: 0;
+    }
+
     /* The login page: one narrow card, centred. Every button in it is the whole width, so the two ways in read as a
        choice of equals rather than a primary and an afterthought. */
     section.login {

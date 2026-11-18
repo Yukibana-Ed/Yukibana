@@ -16,17 +16,20 @@ token on the project page, copy it, open the repository's settings, add the
 secret, add the variable, make sure the workflow is there, push a tag. With a
 link:
 
-1. On the project page (Releases tab, **Repository**), an owner presses
+1. On the project page (Releases tab, **Publishing**, under **GitHub
+   repository**), an owner presses
    **Connect GitHub** once. GitHub asks them to authorise the Yukibana Cloud
    GitHub App. The first time, or for a repository the App cannot see yet,
-   they press **Install the App or add repositories** and choose the
+   they open **Repository not listed?** and press **Install the App or add
+   repositories**, and choose the
    accounts or organisations, and the repositories, the App may see. In an
    organisation, an owner of the organisation may have to approve the
    installation.
 2. They **pick an existing repository** from the ones the App can see and
    they administer or maintain, or type its `owner/name` (or paste its
    `https://github.com/owner/name` address). To start from a template, they
-   press **Create a repository from it** beside one of the recommended
+   open **No repository yet? Start from a template** and press **Create a
+   repository from it** beside one of the recommended
    templates (`cloud/web/src/lib/templates.ts`; for now
    `Yukibana-Ed/scala-project-template`), which opens GitHub's own "Use this
    template" page, then come back and pick the new repository like any
