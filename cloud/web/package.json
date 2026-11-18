@@ -39,6 +39,7 @@
     "@yukibana/client": "catalog:",
     "aws4fetch": "catalog:",
     "jose": "catalog:",
-    "postgres": "catalog:"
+    "postgres": "catalog:",
+    "shiki": "catalog:"
   }
 }

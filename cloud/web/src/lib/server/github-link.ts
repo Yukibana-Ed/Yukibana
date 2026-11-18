@@ -158,7 +158,19 @@ export const MAX_INSTALLATIONS = 10;
 
 /** The repositories the holder of `token` may link: one page of up to 100
  *  of each of the first `MAX_INSTALLATIONS` installations they can see,
- *  without those whose permissions lack admin and maintain. Never throws for
+ *  without those whose permissions lack admin and maintain.
+ *
+ *  The list is the person's, not the App's. GitHub answers
+ *  `/user/installations/{id}/repositories` asked with a user's token with
+ *  only the repositories that user may access, each with that user's own
+ *  permissions, so an App installed on a whole organisation lists nothing
+ *  to a member who has no access to a repository, nor admin or maintain to
+ *  one who only reads or pushes. A repository GitHub lists without
+ *  permissions is left out (`repositoryOf`). Staff's access on GitHub need
+ *  not follow their role here, in either direction: an owner without access
+ *  sees an empty list, and an assistant with admin sees one but cannot link
+ *  (`app.link_repository`). `linkRepository` asks GitHub again, so the list
+ *  is only ever a convenience. Never throws for
  *  GitHub: a failure or a rate limit is reported and comes back as
  *  `failed`, so it never takes the project page down. */
 export async function pickerFor(github: GitHub, token: string): Promise<Picker> {
@@ -223,7 +235,7 @@ export async function linkRepository(sql: Sql, claims: Claims, project: ProjectI
         return {
             ok: false,
             status: 404,
-            message: `GitHub shows you no repository ${'id' in wanted ? 'with that id' : wanted.name} through the App. Install the App on its account, or add the repository to the installation.`,
+            message: `GitHub shows you no repository ${'id' in wanted ? 'with that id' : wanted.name}: either you have no access to it on GitHub, or the App is not installed on its account.`,
         };
     }
     if (!mayLink(repo)) return { ok: false, status: 403, message: `To link ${repo.fullName} you need admin or maintain on it, and GitHub says you have neither.` };

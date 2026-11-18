@@ -81,7 +81,8 @@ interface ReleaseRow {
     uploaded_at: Date;
     uploader: string | null;
     via_token: boolean;
-    /** The repository a release by link came from, as its token named it;
+    /** The repository a release by link came from, as its token named it (`owner/name`, which the page links the commit
+     *  on GitHub by);
      *  null for any other release. */
     published_from: string | null;
 }

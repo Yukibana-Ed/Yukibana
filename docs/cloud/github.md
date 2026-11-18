@@ -16,17 +16,19 @@ token on the project page, copy it, open the repository's settings, add the
 secret, add the variable, make sure the workflow is there, push a tag. With a
 link:
 
-1. On the project page (Releases tab, **Repository**), an owner presses
+1. On the project page (Releases tab, **Publishing**: **Publish an
+   existing project**, then **GitHub repository**), an owner presses
    **Connect GitHub** once. GitHub asks them to authorise the Yukibana Cloud
    GitHub App. The first time, or for a repository the App cannot see yet,
-   they press **Install the App or add repositories** and choose the
+   they open **Repository not listed?** and press **Install the App or add
+   repositories**, and choose the
    accounts or organisations, and the repositories, the App may see. In an
    organisation, an owner of the organisation may have to approve the
    installation.
 2. They **pick an existing repository** from the ones the App can see and
    they administer or maintain, or type its `owner/name` (or paste its
    `https://github.com/owner/name` address). To start from a template, they
-   press **Create a repository from it** beside one of the recommended
+   choose **Create a new project** instead and press **Use template** beside one of the recommended
    templates (`cloud/web/src/lib/templates.ts`; for now
    `Yukibana-Ed/scala-project-template`), which opens GitHub's own "Use this
    template" page, then come back and pick the new repository like any
@@ -63,8 +65,8 @@ link:
 4. Pushing a tag (`git tag v1 && git push origin v1`) runs that workflow on
    GitHub's runners, which builds the archives with the CLI and publishes
    them to every project linked to the repository. The release list on the
-   project page says "from owner/name" for a release published by link, and
-   the Repository section shows the last one.
+   project page links the commit of a release published by link to that
+   commit on GitHub, and the GitHub repository panel shows the last one.
 
 **Change** picks another repository (the link is replaced); **Unlink** ends
 it. Staff who are not owners see the link and cannot change it. Project
@@ -343,6 +345,20 @@ projects and editions it names.
     admin or maintain, so its requests stay well under the Worker's
     subrequest limit. A GitHub failure or rate limit is reported and shown as
     a sentence; it never fails the page.
+    The list is the person's own, wherever the App is installed: asked with
+    a user's token, GitHub lists only the repositories that user has
+    explicit access to, each with that user's permissions ("The access the
+    user has to each repository is included in the hash under the
+    permissions key"), so an App installed on a whole organisation shows a
+    member nothing they could not open themselves, and only what they
+    administer or maintain is kept. Staff's access on GitHub need not match
+    their role in the edition, either way: an owner without access, not yet
+    or not any more, sees an empty list and a refusal that says it may be
+    their access; an assistant who administers the repository sees it and
+    the database refuses the link. Unlinking needs no GitHub access, so an
+    owner who lost theirs can still end a link. A link already made keeps
+    publishing while its maker owns the edition, whatever their access on
+    GitHub since (see "Many projects, one repository").
   * `POST ?/linkRepository` asks GitHub for the repository, by id or by name,
     with the person's token, requires admin or maintain, then calls
     `app.link_repository` with the ids GitHub returned, and deletes the token
