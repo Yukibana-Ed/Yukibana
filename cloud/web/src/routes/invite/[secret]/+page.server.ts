@@ -10,7 +10,7 @@ function secretOf(params: { readonly secret: string }): string {
 }
 
 /** The invite page. Returns `{ account: null }` for a visitor who is not signed in; otherwise their `account` (address and platform role) and
- *  `open`, `true` iff the invite is still unused. Only reads, like every load: the one write is the `accept` form. */
+ *  `open`, `true` iff the invite still exists (it is not used up by being accepted, only by being removed). Only reads, like every load: the one write is the `accept` form. */
 export const load: PageServerLoad = async ({ locals, params }) => {
     const secret = secretOf(params);
     const claims = locals.claims;
@@ -29,9 +29,10 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 };
 
 export const actions: Actions = {
-    /** Accepts the invite for the signed-in account through `app.redeem_teacher_invite`, which makes it a teacher and deletes the invite.
-     *  Answers `{ accepted: true }`, or a `fail` with the database's status and sentence: 403 for an account that already has teacher rights,
-     *  404 for an invite already accepted or removed. Any other failure is a 500 with a fixed sentence, and is reported (`refusalOf`). */
+    /** Accepts the invite for the signed-in account through `app.redeem_teacher_invite`, which makes a plain user a teacher, changes nothing
+     *  for a teacher or an admin, and keeps the invite for the next person. Answers `{ accepted: true }`, or a `fail` with the database's
+     *  status and sentence: 404 for an invite an admin removed. Any other failure is a 500 with a fixed sentence, and is reported
+     *  (`refusalOf`). */
     accept: async event => {
         const claims = requireClaims(event);
         const hash = await inviteHash(secretOf(event.params));

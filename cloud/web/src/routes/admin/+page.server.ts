@@ -7,8 +7,8 @@ import type { InviteId } from '#lib/ids.ts';
 import { requireClaims, withContext } from '#lib/server/context.ts';
 
 /** Platform roles. The one thing an admin does here is make teachers, by address or by invite link.
- *  Returns everyone whose platform role is not `user`, every unused invite (newest first, with the name of the admin who created it, or null
- *  when their profile has none), and the newest 50 rows of the audit log with each `subject` as JSON text. A 403 for
+ *  Returns everyone whose platform role is not `user`, every live invite (newest first, with how many accounts it has made teachers and the name of
+ *  the admin who created it, or null when their profile has none), and the newest 50 rows of the audit log with each `subject` as JSON text. A 403 for
  *  anyone but an admin, decided by `app.is_admin`; the login page for
  *  nobody. */
 export const load: PageServerLoad = async event => {
@@ -19,8 +19,8 @@ export const load: PageServerLoad = async event => {
             if (me?.admin !== true) error(403, 'Admins only.');
             const staff = await tx<{ user_id: string; full_name: string | null; github_login: string | null; role: string }[]>`
         select user_id, full_name, github_login, role::text as role from app_user where role <> 'user' order by role, github_login`;
-            const invites = await tx<{ invite_id: InviteId; label: string; created_by: string | null; created_at: Date }[]>`
-        select i.invite_id, i.label, coalesce(u.full_name, u.github_login) as created_by, i.created_at
+            const invites = await tx<{ invite_id: InviteId; label: string; uses: number; created_by: string | null; created_at: Date }[]>`
+        select i.invite_id, i.label, i.uses::int as uses, coalesce(u.full_name, u.github_login) as created_by, i.created_at
           from teacher_invite i join app_user u on u.user_id = i.created_by
          order by i.created_at desc`;
             const audit = await tx<{ at: Date; actor: string | null; action: string; subject: unknown }[]>`
@@ -56,7 +56,8 @@ export const actions: Actions = {
     },
 
     /** Creates an invite labelled `label` through `app.create_teacher_invite`, which refuses anyone but an admin. Answers
-     *  `{ invite: { label, link } }`, where `link` carries the secret, shown this once and stored nowhere; or a `fail` as `setRole` does. */
+     *  `{ invite: { label, link } }`, where `link` carries the secret, shown this once and stored nowhere, and works for everyone who opens it
+     *  until the invite is removed; or a `fail` as `setRole` does. */
     createInvite: async event => {
         const claims = requireClaims(event);
         const label = text(await event.request.formData(), 'label');
@@ -70,9 +71,9 @@ export const actions: Actions = {
         }
     },
 
-    /** Removes the unused invite `invite_id` through `app.revoke_teacher_invite`, which refuses anyone but an admin, so that its link stops
-     *  working. Answers `{ ok: true }`; a 400 when `invite_id` is missing or not a uuid; or a `fail` as `setRole` does, a 404 for an invite
-     *  already accepted or removed. */
+    /** Removes the invite `invite_id` through `app.revoke_teacher_invite`, which refuses anyone but an admin, so that its link stops working;
+     *  the teachers it made stay teachers. Answers `{ ok: true }`; a 400 when `invite_id` is missing or not a uuid; or a `fail` as `setRole`
+     *  does, a 404 for an invite already removed. */
     revokeInvite: async event => {
         const claims = requireClaims(event);
         const invite = uuidIn<InviteId>(await event.request.formData(), 'invite_id');

@@ -77,12 +77,16 @@ and it shows in the roster. The first admin is
 
 **A teacher is made by address or by invite link.** Promoting by address
 needs an existing account. An invite link does not: an admin creates one in
-the Invites tab of the administration page and sends it, and the person who
-opens it, signs in (creating an account if needed) and accepts it becomes a
-teacher. Each link works once, and only for an account without teacher
-rights. Like a project token, its secret is shown once and only its hash is
-stored. Accepting or removing an invite deletes it, so the table is exactly
-the list of unused invites, and the audit log records what happened to each.
+the Invites tab of the administration page and shares it, and everyone who
+opens it, signs in (creating an account if needed) and accepts it has at
+least teacher rights: a plain user becomes a teacher, and a teacher or an
+admin is left as they are. One link serves a whole faculty, so a link works
+until an admin removes it rather than once; it used to be single-use, which
+meant one link per colleague. The cost is that a forwarded link makes a
+teacher of whoever it reaches, so the Invites tab shows how many teachers
+each link has made, the audit log says who, and removing a link stops it at
+once (the teachers it made stay teachers until demoted by address). Like a
+project token, its secret is shown once and only its hash is stored.
 
 **One `enrollment` table, not invitation plus membership.** A row with
 `user_id` null is an address staff enrolled that has not logged in yet. The
