@@ -63,6 +63,7 @@ catalog:
   '@theia/ai-code-completion': 1.76.0
   '@theia/ai-core': 1.76.0
   '@theia/ai-ide': 1.76.0
+  '@theia/ai-openai': 1.76.0
   '@theia/bundle-plugin': 1.76.0
   '@theia/cli': 1.76.0
   '@theia/core': 1.76.0
