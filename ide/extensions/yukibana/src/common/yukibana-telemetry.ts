@@ -13,6 +13,7 @@ export namespace TypingTelemetry {
         removed: number;
         origin: EditOrigin;
         command?: string;
+        name?: string;
     }
 
     export interface Edit {
