@@ -1,4 +1,5 @@
-import { error, fail } from '@sveltejs/kit';
+import { error, fail, redirect } from '@sveltejs/kit';
+import { TEMPLATES, type Template } from '#lib/templates.ts';
 import type { Actions, PageServerLoad } from './$types';
 import { trustId, uuidOf, type EditionId, type ProjectId, type ReleaseId, type SubmissionId, type TokenId, type UserId } from '#lib/ids.ts';
 import type { EnrolledStudent, HandIn, Release } from '#lib/hand-ins.ts';
@@ -6,6 +7,10 @@ import { asUser, refusalOf } from '#lib/server/db.ts';
 import { text } from '#lib/server/form.ts';
 import { requireClaims, withContext } from '#lib/server/context.ts';
 import { acceptSubmission } from '#lib/server/submissions.ts';
+import { workerConfig } from '#lib/server/worker.ts';
+import { siteOrigin, nonce } from '#lib/server/connect.ts';
+import { GITHUB_COOKIE, GITHUB_STATE_COOKIE, GITHUB_STATE_COOKIE_OPTIONS, openToken, sealState } from '#lib/server/github-cookie.ts';
+import { authorizeUrlOf, githubFor, installUrlOf, linkOf, linkRepository, pickerFor, unlinkRepository, wantedOf, type LinkView, type Picker } from '#lib/server/github-link.ts';
 import { instantOf, isZone, type Reading } from '#lib/wall-time.ts';
 
 interface ProjectRow {
@@ -76,6 +81,29 @@ interface ReleaseRow {
     uploaded_at: Date;
     uploader: string | null;
     via_token: boolean;
+    /** The repository a release by link came from, as its token named it;
+     *  null for any other release. */
+    published_from: string | null;
+}
+
+/** The Repository section, as the caller may see it. */
+interface GitHubSection {
+    /** The project's link; null when it has none. */
+    link: LinkView | null;
+    /** Whether this browser holds a GitHub connection for this person, so
+     *  the picker can be shown. Always false for staff who are not owners. */
+    connected: boolean;
+    /** The repositories to pick from, listed with the connection only when
+     *  the project has no link or the address asks to change it
+     *  (`?relink`); null when not listed. */
+    picker: Picker | null;
+    /** Whether the address asks to change the link (`?relink`). */
+    relink: boolean;
+    /** The recommended templates (#lib/templates), for an owner; empty for
+     *  other staff, who cannot link. */
+    templates: readonly Template[];
+    /** The App's page on GitHub, `https://github.com/apps/<slug>`. */
+    app: string;
 }
 
 interface TokenRow {
@@ -99,15 +127,22 @@ function ids(params: { edition: string; project: string }): { edition: EditionId
  *  staff), newest first (#lib/hand-ins `HandIn`), for staff the edition's
  *  students and every release by id (`allReleases`, newest first), the
  *  newest 20 releases in full for staff, and the tokens
- *  for an owner (never their secrets, which are not stored). A 404 for a
+ *  for an owner (never their secrets, which are not stored). Where the
+ *  GitHub App is configured, staff also get the Repository section
+ *  (`github`; null otherwise and for students): the link, and for an owner
+ *  holding a GitHub connection, the repositories they may link, listed
+ *  after the transaction (no transaction waits on GitHub) and only when
+ *  the project has no link or the address says `?relink`. GitHub failing
+ *  never fails the page (`pickerFor`). A 404 for a
  *  project the caller cannot see, for one that is not in the edition the
  *  address names, and for parameters that are not uuids; the login page
  *  for nobody. */
 export const load: PageServerLoad = async event => {
     const claims = requireClaims(event);
     const { edition, project } = ids(event.params);
-    return withContext(ctx =>
-        asUser(ctx.sql, claims, async tx => {
+    const app = workerConfig().github;
+    return withContext(async ctx => {
+        const page = await asUser(ctx.sql, claims, async tx => {
             const [p] = await tx<ProjectRow[]>`
         select p.project_id, p.edition_id, c.code as course_code, e.label as edition_label, p.slug, p.title, p.kind::text as kind, p.available_after, p.deadline, p.closes_at,
                app.role_in(p.edition_id)::text as role,
@@ -131,7 +166,7 @@ export const load: PageServerLoad = async event => {
             const releases = staff
                 ? await tx<ReleaseRow[]>`
             select r.release_id, r.label, r.commit_sha, r.starter_size, r.teacher_size, r.uploaded_at,
-                   coalesce(u.github_login, u.full_name) as uploader, r.token_id is not null as via_token
+                   coalesce(u.github_login, u.full_name) as uploader, r.token_id is not null as via_token, r.published_from
             from project_release r left join app_user u on u.user_id = r.uploaded_by
             where r.project_id = ${project} order by r.seq desc limit 20`
                 : [];
@@ -167,10 +202,36 @@ export const load: PageServerLoad = async event => {
                   ).map((r): Release => ({ releaseId: trustId<ReleaseId>(r.release_id), label: r.label }))
                 : [];
             const submissions = rows.map(r => handInOf(r, all));
-            return { project: p, staff, owner, submissions, students, allReleases: all, releases, tokens, origin: event.url.origin };
-        }),
-    );
+            const link = app !== null && staff ? await linkOf(tx, project) : null;
+            // The registry's address the page tells a workflow to use: the
+            // site's canonical origin, not the one this page was opened at. A
+            // CI job asks GitHub for a token whose audience is that address,
+            // and the registry accepts only its own canonical origin, so a
+            // snippet copied from the workers.dev address would publish
+            // nothing (docs/cloud/github.md).
+            const origin = siteOrigin(workerConfig().siteUrl, event.url);
+            return { project: p, staff, owner, submissions, students, allReleases: all, releases, tokens, link, origin };
+        });
+        const { link, ...rest } = page;
+        if (app === null || !page.staff) return { ...rest, github: null };
+        const relink = page.owner && event.url.searchParams.has('relink');
+        let connected = false;
+        let picker: Picker | null = null;
+        if (page.owner) {
+            const { github, key } = await githubFor(app);
+            const token = await openToken(event.cookies.get(GITHUB_COOKIE), claims.sub, key, new Date());
+            connected = token !== null;
+            if (token !== null && (link === null || relink)) picker = await pickerFor(github, token);
+        }
+        const section: GitHubSection = { link, connected, picker, relink, templates: page.owner ? TEMPLATES : [], app: `https://github.com/apps/${app.slug}` };
+        return { ...rest, github: section };
+    });
 };
+
+/** The GitHub App, or null where none is configured, for the actions. */
+const githubApp = () => workerConfig().github;
+/** What a GitHub action answers where no GitHub App is configured. */
+const noGitHub = () => fail(404, { error: 'This registry does not link projects to GitHub.' });
 
 /** A `fail` for a failure of an action's database work: the database's
  *  status and sentence for a refusal, a 500 with a fixed sentence for
@@ -215,11 +276,15 @@ function timesOf(form: FormData): { ok: true; availableAfter: Date | null; deadl
  *  sentence, reported and not shown (`refusalOf`).
  *
  *  Of the actions, only `update` checks that the project is in the edition the address
- *  names. `submit`, `createToken` and `revokeToken` check only that the
- *  `edition` parameter is a uuid and act on the project (or token) by its
- *  own id, so under another edition's address they do what they would do
- *  under the right one; `load` answers that address with a 404. Nothing is
- *  widened by it: the database decides by the project, not the address. */
+ *  names. `submit`, `createToken`, `revokeToken`, `linkRepository` and
+ *  `unlinkRepository` check only that the `edition` parameter is a uuid and
+ *  act on the project (or token) by its own id, so under another edition's
+ *  address they do what they would do under the right one; `load` answers
+ *  that address with a 404. Nothing is widened by it: the database decides
+ *  by the project, not the address. `connectGithub` decides nothing and
+ *  only remembers the address, to come back to it.
+ *
+ *  The three GitHub actions answer 404 where no GitHub App is configured. */
 export const actions: Actions = {
     /** The page's upload form: the `archive` file, through
      *  `acceptSubmission`, with no base release. Answers `{ submitted }`
@@ -308,5 +373,72 @@ export const actions: Actions = {
             return failing(e);
         }
         return { ok: true };
+    },
+    /** Connect GitHub: seals a connection in flight into the state cookie
+     *  (a fresh random state, the person's `sub`, this edition and project,
+     *  and whether a link is being changed, the field `relink=1`; ten minutes) and redirects (303) to GitHub's authorize page, or, with
+     *  the field `install=1`, to the App's installation page. Asks nobody
+     *  and decides nothing: what may be linked is decided when linking. A
+     *  POST like every cookie write, so only this site's own form can start
+     *  one. 404 where the GitHub App is not configured. */
+    connectGithub: async event => {
+        const claims = requireClaims(event);
+        const { edition, project } = ids(event.params);
+        const app = githubApp();
+        if (app === null) return noGitHub();
+        const form = await event.request.formData();
+        const state = nonce();
+        const { key } = await githubFor(app);
+        event.cookies.set(
+            GITHUB_STATE_COOKIE,
+            await sealState({ state, sub: claims.sub, edition, project, relink: text(form, 'relink') === '1' }, key, new Date()),
+            GITHUB_STATE_COOKIE_OPTIONS,
+        );
+        const to = text(form, 'install') === '1' ? installUrlOf(app.slug, state) : authorizeUrlOf(app.clientId, siteOrigin(workerConfig().siteUrl, event.url), state);
+        redirect(303, to.toString(), { external: ['https://github.com'] });
+    },
+    /** Links the project to the repository the form names (`repository_id`
+     *  from the picker, or a typed `repository`, `owner/name`), with this
+     *  browser's GitHub connection, through `linkRepository`
+     *  (#lib/server/github-link): GitHub must show the person admin or
+     *  maintain on it, and `app.link_repository` decides whether they may
+     *  link this project. Without a connection sealed for this person it is
+     *  a 400 that says to connect (and a cookie sealed for somebody else is
+     *  deleted). After a link the GitHub cookie is deleted: nothing needs
+     *  the token any more. Answers `{ linked }` with the repository's
+     *  `owner/name`. */
+    linkRepository: async event => {
+        const claims = requireClaims(event);
+        const { project } = ids(event.params);
+        const app = githubApp();
+        if (app === null) return noGitHub();
+        const form = await event.request.formData();
+        const wanted = wantedOf(text(form, 'repository_id'), text(form, 'repository'));
+        if (typeof wanted === 'string') return fail(400, { error: wanted });
+        const { github, key } = await githubFor(app);
+        const held = event.cookies.get(GITHUB_COOKIE);
+        const token = await openToken(held, claims.sub, key, new Date());
+        if (token === null) {
+            if (held !== undefined) event.cookies.delete(GITHUB_COOKIE, { path: '/' });
+            return fail(400, { error: 'Connect GitHub first: a connection lasts fifteen minutes, in the browser it was made in.' });
+        }
+        const linked = await withContext(ctx => linkRepository(ctx.sql, claims, project, github, token, wanted));
+        if (!linked.ok) return fail(linked.status, { error: linked.message });
+        event.cookies.delete(GITHUB_COOKIE, { path: '/' });
+        return { linked: linked.repository };
+    },
+    /** Unlinks the project's repository through `app.unlink_repository`,
+     *  owners only; a project with no link is a 404. Releases already
+     *  published stay. Answers `{ unlinked: true }`. */
+    unlinkRepository: async event => {
+        const claims = requireClaims(event);
+        const { project } = ids(event.params);
+        if (githubApp() === null) return noGitHub();
+        try {
+            await withContext(ctx => unlinkRepository(ctx.sql, claims, project));
+        } catch (e) {
+            return failing(e);
+        }
+        return { unlinked: true };
     },
 };

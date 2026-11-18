@@ -6,9 +6,11 @@ import { asUser, connect } from '../../src/lib/server/db.js';
 import { SESSION_COOKIE } from '../../src/lib/session-cookie.js';
 import { CONNECT_COOKIE_PREFIX, authorizeUrl, connectCookie } from '../../src/lib/connect.js';
 import { nonce, returnUrlOf } from '../../src/lib/server/connect.js';
-import { ALICE, TEACHER, claimsOf, config } from './env.js';
+import { GITHUB_COOKIE, GITHUB_STATE_COOKIE, cookieKey, sealState } from '../../src/lib/server/github-cookie.js';
+import type { EditionId, ProjectId } from '../../src/lib/ids.js';
+import { ALICE, TEACHER, claimsOf, config, uid } from './env.js';
 import { codeMailedTo } from './mail.js';
-import { startApp, type App } from './app.js';
+import { GITHUB_APP, startApp, type App } from './app.js';
 
 // Light, at light.yukibana.dev, runs programs people paste into it, and it
 // is the same site as the cloud: the browser sends the cloud's Lax cookies
@@ -169,6 +171,10 @@ const BAIT: Record<string, string> = {
     slug: 'owned',
     course_id: '',
     kind: 'exercise',
+    // Link the project to a repository of the sibling's choosing, or start a GitHub connection.
+    repository: 'mallory/collects-hidden-tests',
+    repository_id: '1',
+    install: '1',
 };
 
 const bodies = (): { type: string; body: () => BodyInit }[] => [
@@ -232,7 +238,8 @@ test('a page on a sibling subdomain that loads every route of this site changes 
         // cookies and no Origin.
         const r = await fetch(`${app.origin}${path}`, { headers: { 'sec-fetch-site': 'same-site', 'sec-fetch-mode': 'no-cors', cookie: teacher }, redirect: 'manual' });
         await r.arrayBuffer();
-        const session = setCookies(r).filter(c => c.name.startsWith(SESSION_COOKIE));
+        // The session's cookies, and the GitHub connection's: neither may be set or spent by a load.
+        const session = setCookies(r).filter(c => c.name.startsWith(SESSION_COOKIE) || c.name.startsWith(GITHUB_COOKIE));
         if (session.length > 0) touched.push(`GET ${path} set ${session.map(c => c.name).join(', ')}`);
     }
     expect(touched).toEqual([]);
@@ -312,4 +319,54 @@ test('a Domain=yukibana.dev cookie set by a light.yukibana.dev page does not cha
         .filter(c => c.value === '' && c.name.startsWith(legacy))
         .map(c => c.name);
     expect(cleared.toSorted()).toEqual(tossed.map(c => c.name).toSorted());
+});
+
+test('a page on a sibling subdomain cannot finish, cancel or spend the GitHub connection the person viewing it has in flight', { timeout: 60_000 }, async () => {
+    const { edition, project } = await seeded();
+    // The teacher's own project page has the Repository section: the GitHub
+    // App is on in this app, so the refusals below are the routes', not a 404.
+    const own = await fetch(`${app.origin}/editions/${edition}/projects/${project}?tab=releases`, { headers: { cookie: teacher } });
+    expect(await own.text()).toContain('Connect GitHub');
+
+    // The teacher pressed Connect GitHub: their browser holds the state cookie
+    // this app sealed, which a sibling can neither read nor set (__Host-).
+    const state = 'dGhlLXRlYWNoZXJzLW93bi1zdGF0ZQ';
+    const sealed = await sealState(
+        { state, sub: uid(TEACHER), edition: edition as EditionId, project: project as ProjectId, relink: false },
+        await cookieKey(GITHUB_APP.clientSecret),
+        new Date(),
+    );
+    const browser = `${teacher}; ${GITHUB_STATE_COOKIE}=${sealed}`;
+    const sibling = { 'sec-fetch-site': 'same-site', 'sec-fetch-mode': 'no-cors', cookie: browser };
+    const before = await fingerprint();
+    const answers: string[] = [];
+    for (const query of [
+        'code=c0de&state=Z3Vlc3NlZC1ieS1hLXNpYmxpbmc',
+        'code=c0de&installation_id=1&setup_action=install&state=Z3Vlc3NlZC1ieS1hLXNpYmxpbmc',
+        'code=c0de',
+        'error=access_denied',
+    ]) {
+        const r = await fetch(`${app.origin}/auth/github/return?${query}`, { headers: sibling, redirect: 'manual' });
+        await r.arrayBuffer();
+        const spent = setCookies(r)
+            .filter(c => c.name.startsWith(GITHUB_COOKIE))
+            .map(c => c.name);
+        // 400: refused before GitHub was asked (a code sent to GitHub with this App would come back a 502).
+        answers.push(`${query}: ${r.status}${spent.length > 0 ? `, set ${spent.join(', ')}` : ''}`);
+    }
+    expect(answers).toEqual([
+        'code=c0de&state=Z3Vlc3NlZC1ieS1hLXNpYmxpbmc: 400',
+        'code=c0de&installation_id=1&setup_action=install&state=Z3Vlc3NlZC1ieS1hLXNpYmxpbmc: 400',
+        'code=c0de: 400',
+        'error=access_denied: 400',
+    ]);
+    // Without a connection in flight there is nothing to finish: a page that says so, and no cookie.
+    const stateless = await fetch(`${app.origin}/auth/github/return?code=c0de&installation_id=1&setup_action=install`, {
+        headers: { 'sec-fetch-site': 'same-site', 'sec-fetch-mode': 'no-cors', cookie: teacher },
+        redirect: 'manual',
+    });
+    await stateless.arrayBuffer();
+    expect([stateless.status, stateless.headers.get('location'), setCookies(stateless).length]).toEqual([303, '/auth/github/installed', 0]);
+    expect(await fingerprint()).toEqual(before);
+    expect(await whoIs(teacher)).toBe(TEACHER);
 });

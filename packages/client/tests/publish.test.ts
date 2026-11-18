@@ -88,3 +88,33 @@ test('the release id the starter carries goes with the upload, so the row gets t
     await publish(none.fetchFn);
     assert.equal((await none.seen.request?.formData())?.get('release'), null, 'archives without an id send none');
 });
+
+test('a CI job asks which projects its repository publishes to with its OIDC token as the bearer, fresh for each request', async () => {
+    const tokens = ['first.oidc.token', 'second.oidc.token'];
+    const seen: Request[] = [];
+    const answer = { repository: 'ada/course', ref: 'refs/tags/v1', sha: 'a'.repeat(40), moved: null, projects: [] };
+    const fetchFn: typeof fetch = async (url, init) => {
+        seen.push(new Request(url, init));
+        return new Response(JSON.stringify(answer), { status: 200, headers: { 'content-type': 'application/json' } });
+    };
+    const client = new YukibanaClient({ url: 'https://cloud.yukibana.dev/', accessToken: () => tokens.shift() ?? 'none', fetch: fetchFn });
+    assert.deepEqual(await client.ciProjects(), answer);
+    await client.ciProjects();
+    assert.equal(seen[0]?.method, 'GET');
+    assert.equal(seen[0]?.url, 'https://cloud.yukibana.dev/api/ci/projects');
+    assert.deepEqual(
+        seen.map(r => r.headers.get('authorization')),
+        ['Bearer first.oidc.token', 'Bearer second.oidc.token'],
+    );
+});
+
+test("a CI job's refusal reaches the log in the registry's words, the audience it expected included", async () => {
+    const { fetchFn } = recorder(
+        new Response(JSON.stringify({ message: 'CI token refused: this token is for https://elsewhere.dev; this registry expects https://cloud.yukibana.dev' }), { status: 401 }),
+    );
+    const client = new YukibanaClient({ url: 'https://cloud.yukibana.dev', accessToken: () => 'x.y.z', fetch: fetchFn });
+    await assert.rejects(
+        client.ciProjects(),
+        (e: unknown) => e instanceof RegistryError && e.status === 401 && /this registry expects https:\/\/cloud\.yukibana\.dev/.test(e.message),
+    );
+});

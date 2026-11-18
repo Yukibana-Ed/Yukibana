@@ -152,6 +152,10 @@ export interface ReleaseJson {
     readonly uploadedBy: string | null;
     /** `true` iff it was published with a project token rather than by a person signed in. */
     readonly viaToken: boolean;
+    /** The repository (`owner/name`, as the CI job's token named it) a release
+     *  published by a linked repository came from; null for any other. Its
+     *  `uploadedBy` is then the owner who linked the repository. */
+    readonly publishedFrom: string | null;
 }
 
 /** An enrolment in an edition (`GET /api/editions/:id/members`): staff see
@@ -187,6 +191,44 @@ export interface AuthConfigJson {
      *  `/auth/connect`, and whose `/auth/connect/return` it names when it
      *  trades the code. */
     readonly siteUrl: string;
+}
+
+/** `GET /api/ci/projects`: what the CI job whose GitHub Actions OIDC token
+ *  is the bearer may publish to. Every field but the projects' own is the
+ *  verified token's claim; nothing comes from the request. A job publishes
+ *  to each project whose `refused` is null, and says why it skips the rest. */
+export interface CiProjectsJson {
+    /** The repository's `owner/name` now, the token's `repository` claim. */
+    readonly repository: string;
+    /** The git ref the job runs at, such as `refs/tags/v1`. */
+    readonly ref: string;
+    /** The commit the job runs at, lowercase hex: the commit a release by
+     *  link records, and the only one it may say. */
+    readonly sha: string;
+    /** A sentence when links of this repository were made under an owner it
+     *  no longer has (it was transferred): those links publish nothing, and
+     *  which projects they were is not said. Null when there are none. */
+    readonly moved: string | null;
+    /** The projects linked to this repository under its current owner, by
+     *  edition then slug. Empty when it is linked to none. */
+    readonly projects: readonly CiProjectJson[];
+}
+
+/** One project a repository is linked to, in `CiProjectsJson`. */
+export interface CiProjectJson {
+    /** The project's id, to publish to. */
+    readonly id: string;
+    /** The project's slug. */
+    readonly slug: string;
+    /** The project's title. */
+    readonly title: string;
+    /** The edition, for people: its title (the course name) and label, as
+     *  `Introduction to Programming, 2026 autumn`. */
+    readonly edition: string;
+    /** Why a release from this job would be refused (only tags publish; the
+     *  person who linked it is no longer an owner), or null when it would be
+     *  accepted. A sentence for the job log; a client branches on null. */
+    readonly refused: string | null;
 }
 
 /** Every refusal and failure under `/api/`, whatever the status and whatever

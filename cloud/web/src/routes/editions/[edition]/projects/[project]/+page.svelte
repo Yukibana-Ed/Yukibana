@@ -8,6 +8,7 @@
   import { viewer } from '#lib/viewer.svelte.ts';
   import { local } from '#lib/wall-time.ts';
   import { ideUrl } from '#lib/ide.ts';
+  import { useTemplateUrl } from '#lib/templates.ts';
   import { hold, live, refresh } from '#lib/live.svelte.ts';
   import { actionIn, tabOf, type Tab } from '#lib/tabs.ts';
   import { handInsOf } from '#lib/hand-ins.ts';
@@ -73,6 +74,29 @@
     editing = false;
     refresh();
   }
+
+  // The Repository section (Releases tab), present only where the GitHub App is configured.
+  const gh = $derived(data.github);
+  // Whether to show the picker: an owner whose project has no link, or who asked to change it.
+  const choosing = $derived(gh !== null && data.owner && (gh.link === null || gh.relink));
+  // The workflow a linked repository needs, to paste into .github/workflows/. Built here rather than written in the
+  // markup, where its `${{ }}` would be read as Svelte.
+  const workflow = $derived(`name: Publish to Yukibana
+on:
+  push:
+    tags: ['*']
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Yukibana-Ed/Yukibana/action@main
+        with:
+          url: ${data.origin}
+          label: \${{ github.ref_name }}`);
 </script>
 
 <div class="head">
@@ -212,7 +236,7 @@
                 <td>{when(r.uploaded_at, viewer.zone)}{#if i === 0} <Chip tone="info">live</Chip>{/if}</td>
                 <td>{r.label}</td>
                 <td><code>{r.commit_sha?.slice(0, 12) ?? '—'}</code></td>
-                <td>{r.uploader ?? ''}{#if r.via_token} <Chip>token</Chip>{/if}</td>
+                <td>{r.uploader ?? ''}{#if r.via_token} <Chip>token</Chip>{/if}{#if r.published_from !== null} <Chip>from {r.published_from}</Chip>{/if}</td>
                 <td><a href="/api/releases/{r.release_id}/starter">{kb(r.starter_size)}</a></td>
                 <td><a href="/api/releases/{r.release_id}/teacher">{kb(r.teacher_size)}</a></td>
               </tr>
@@ -222,6 +246,123 @@
       </div>
     {/if}
   </section>
+
+  {#if gh !== null}
+    <section id="repository">
+      <h2>Repository</h2>
+      {#if form?.linked}<p class="ok">Linked to {form.linked}. Push a tag there to publish a release.</p>{/if}
+      {#if form?.unlinked}<p class="ok">Unlinked. Releases already published stay.</p>{/if}
+      {#if gh.link !== null}
+        <p>
+          Linked to <a href="https://github.com/{gh.link.repository}" target="_blank" rel="noreferrer"><code>{gh.link.repository}</code></a>
+          {#if gh.link.linkedBy !== null}by {gh.link.linkedBy}{/if}, {when(gh.link.linkedAt, viewer.zone)}.
+          A tag pushed there publishes a release to this project.
+        </p>
+        {#if !gh.link.ownerCurrent}
+          <p class="error">
+            The person who linked this repository is no longer an owner of this edition, so it no longer publishes.
+            An owner must link it again.
+          </p>
+        {/if}
+        <p class="note">
+          {#if gh.link.lastPublish === null}
+            Nothing has been published from it yet.
+          {:else}
+            Last published {when(gh.link.lastPublish.at, viewer.zone)}{gh.link.lastPublish.label === '' ? '' : ` as “${gh.link.lastPublish.label}”`},
+            from <code>{gh.link.lastPublish.from}</code>.
+          {/if}
+        </p>
+        {#if data.owner && !gh.relink}
+          <p class="row">
+            <a class="yk-btn yk-btn--secondary" href="?tab=releases&relink#repository">Change</a>
+            <Confirm label="Unlink" title="Unlink {gh.link.repository}?" action={actionIn('releases', 'unlinkRepository')} fields={{}}>
+              Tags pushed to {gh.link.repository} stop publishing to this project. Releases already published stay.
+            </Confirm>
+          </p>
+        {/if}
+      {:else if !data.owner}
+        <p class="note">No repository is linked. An owner of this edition can link one.</p>
+      {/if}
+
+      {#if choosing}
+        {#if !gh.connected}
+          <p>
+            Link the project's GitHub repository, and a tag pushed there publishes a release here, with no token to copy.
+            GitHub asks you to authorise the Yukibana Cloud App first; you need admin or maintain on the repository.
+          </p>
+          <form method="POST" action={actionIn('releases', 'connectGithub')} class="row">
+            {#if gh.relink}<input type="hidden" name="relink" value="1" />{/if}
+            <button class="yk-btn yk-btn--primary">Connect GitHub</button>
+            <button class="yk-btn yk-btn--secondary" name="install" value="1">Install the App or add repositories</button>
+            {#if gh.relink}<a href="?tab=releases#repository">Keep the current link</a>{/if}
+          </form>
+        {:else}
+          {#if gh.picker !== null && gh.picker.failed !== null}
+            <p class="error">{gh.picker.failed}</p>
+          {:else if gh.picker !== null && gh.picker.repositories.length > 0}
+            <form method="POST" action={actionIn('releases', 'linkRepository')} class="stack">
+              <label>Repository
+                <select class="yk-input" name="repository_id" required>
+                  {#each gh.picker.repositories as r (r.id)}
+                    <option value={r.id}>{r.fullName}{r.private ? ' (private)' : ''}</option>
+                  {/each}
+                </select>
+              </label>
+              <button class="yk-btn yk-btn--primary">Link</button>
+            </form>
+          {/if}
+          {#if gh.picker !== null && (gh.picker.truncated || gh.picker.repositories.length === 0) && gh.picker.failed === null}
+            <p class="note">
+              {gh.picker.repositories.length === 0 ? 'The App sees no repository you administer or maintain.' : 'Not every repository is listed.'}
+              Not listed? Type its owner/name below, or install the App on its account or add it to the installation;
+              in an organisation, an owner may have to approve.
+            </p>
+          {/if}
+          <form method="POST" action={actionIn('releases', 'linkRepository')} class="stack">
+            <label>Or type owner/name <input class="yk-input" name="repository" placeholder="my-school/intro-exercise" required /></label>
+            <button class="yk-btn yk-btn--secondary">Link</button>
+          </form>
+          <form method="POST" action={actionIn('releases', 'connectGithub')} class="row">
+            {#if gh.relink}<input type="hidden" name="relink" value="1" />{/if}
+            <button class="yk-btn yk-btn--secondary" name="install" value="1">Install the App or add repositories</button>
+            <a href="?tab=releases{gh.relink ? '&relink' : ''}#repository">Refresh</a>
+            {#if gh.relink}<a href="?tab=releases#repository">Keep the current link</a>{/if}
+          </form>
+        {/if}
+        {#if gh.templates.length > 0}
+          <div id="templates">
+            <h4>Start a new repository from a template</h4>
+            <p class="note">
+              GitHub makes the repository, under your account or an organisation, with the publishing workflow already in it.
+              Then come back here, press Refresh, and pick it above. If the App is installed on selected repositories only,
+              add the new one with "Install the App or add repositories".
+            </p>
+            <ul class="templates">
+              {#each gh.templates as t (t.repository)}
+                <li>
+                  <strong>{t.name}</strong> <span class="note">{t.repository}</span>
+                  <span>{t.description}</span>
+                  <a class="yk-btn yk-btn--secondary" href={useTemplateUrl(t)} target="_blank" rel="noreferrer">Create a repository from it</a>
+                </li>
+              {/each}
+            </ul>
+          </div>
+        {/if}
+      {/if}
+
+      <details>
+        <summary>The workflow a linked repository needs</summary>
+        <p class="note">
+          Put this in <code>.github/workflows/publish.yml</code> in the repository. It proves where it runs with GitHub's
+          OIDC token (<code>id-token: write</code>), so it needs no secret, and publishes a release to every project
+          linked to the repository, this one included. A repository that should publish only to some of them gives the
+          Action <code>projects:</code>, their ids separated by commas. Anyone who can push a tag to the repository can
+          publish; protect tags with a ruleset where your plan allows it.
+        </p>
+        <pre>{workflow}</pre>
+      </details>
+    </section>
+  {/if}
 
   {#if p.can_edit}
     <section>

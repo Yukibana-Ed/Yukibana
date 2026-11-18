@@ -21,6 +21,8 @@ export const config: Config = {
     // runs before this suite; the connect tests say so when it is missing.
     oauthClientId: process.env['SUPABASE_OAUTH_CLIENT_ID'] ?? null,
     siteUrl: null,
+    // No GitHub App: the suites that need one say so (github-link.test.ts).
+    github: null,
     s3: {
         endpoint: env('S3_ENDPOINT', `http://${host}:9000`),
         publicEndpoint: env('S3_PUBLIC_ENDPOINT', `http://${host}:9000`),

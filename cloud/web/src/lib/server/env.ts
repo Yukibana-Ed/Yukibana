@@ -7,6 +7,8 @@
  *  is the error, not a signature the bucket refuses.
  */
 
+import { report } from '#lib/report.ts';
+
 /** Where the bucket is and how to sign for it: R2 in production, RustFS
  *  locally (see `s3Bucket` in #lib/server/storage). */
 export interface S3Config {
@@ -23,6 +25,26 @@ export interface S3Config {
     readonly accessKeyId: string;
     /** The access key's secret. A secret: never logged or answered with. */
     readonly secretAccessKey: string;
+}
+
+/** The GitHub App a teacher connects through to link a project to a
+ *  repository (docs/cloud/github.md, Stage 3). Everything is done with the
+ *  person's own user-to-server token, so the App needs no private key: only
+ *  its OAuth client, to trade a code for that token, and its slug, for the
+ *  installation page. */
+export interface GitHubConfig {
+    /** The App's OAuth client id (`GITHUB_APP_CLIENT_ID`), sent to GitHub's
+     *  authorize page and with the code exchange. Not a secret. */
+    readonly clientId: string;
+    /** The App's OAuth client secret (`GITHUB_APP_CLIENT_SECRET`): the code
+     *  exchange and the token revocation authenticate with it, and the
+     *  GitHub cookies' key is derived from it (#lib/server/github-cookie), so
+     *  rotating it invalidates at most fifteen minutes of cookies. A secret:
+     *  never logged or answered with. */
+    readonly clientSecret: string;
+    /** The App's slug (`GITHUB_APP_SLUG`), the last segment of
+     *  `https://github.com/apps/<slug>`, where it is installed. */
+    readonly slug: string;
 }
 
 /** Everything the Worker is configured with.
@@ -56,6 +78,12 @@ export interface Config {
     readonly siteUrl: string | null;
     /** The bucket. */
     readonly s3: S3Config;
+    /** The GitHub App, or null where none is configured: then linking a
+     *  project to a repository is off, its routes and actions answer 404,
+     *  and the project page says nothing about GitHub. Publishing from a
+     *  repository already linked (`/api/ci/projects` and the CI branch of
+     *  the releases route) does not need it and works either way. */
+    readonly github: GitHubConfig | null;
     /** The largest submission body the API accepts, in bytes, whatever the project says. */
     readonly submissionMaxBytes: number;
     /** The largest archive a release may carry, in bytes, each. Keeping two
@@ -89,13 +117,41 @@ function bytes(env: Record<string, unknown>, name: string): number {
     return n;
 }
 
+/** The GitHub App, all of it or none. All three of its values unset is
+ *  null: the feature is off, and that is not a mistake. Some set and some
+ *  not is a mistake, and is reported naming what is missing, so an operator
+ *  does not wonder why the Connect button never appears; the feature is then
+ *  off too. It used to throw, which took the whole site down with it: the
+ *  client id and slug are vars in wrangler.jsonc, so every checkout's dev
+ *  server has them, and only those who set the secret have all three. */
+function github(env: Record<string, unknown>): GitHubConfig | null {
+    const clientId = optional(env, 'GITHUB_APP_CLIENT_ID');
+    const clientSecret = optional(env, 'GITHUB_APP_CLIENT_SECRET');
+    const slug = optional(env, 'GITHUB_APP_SLUG');
+    if (clientId === null && clientSecret === null && slug === null) return null;
+    if (clientId === null || clientSecret === null || slug === null) {
+        const missing = Object.entries({ GITHUB_APP_CLIENT_ID: clientId, GITHUB_APP_CLIENT_SECRET: clientSecret, GITHUB_APP_SLUG: slug })
+            .filter(([, v]) => v === null)
+            .map(([n]) => n)
+            .join(' and ');
+        report(
+            'config',
+            `${missing} is not set, so linking to GitHub is off: the GitHub App needs GITHUB_APP_CLIENT_ID, GITHUB_APP_CLIENT_SECRET and GITHUB_APP_SLUG, or none of them`,
+        );
+        return null;
+    }
+    return { clientId, clientSecret, slug };
+}
+
 /** Returns the configuration in `env`.
  *
  *  - Requires: every value `Config` does not make optional is set and
  *    non-empty, and the two byte limits are positive whole numbers; throws
  *    an Error naming the first that is not (`S3_BUCKET is not set`). Set
  *    but empty is unset. `S3_PUBLIC_ENDPOINT` unset is `S3_ENDPOINT`;
- *    `SUPABASE_OAUTH_CLIENT_ID` and `SITE_URL` unset are null. Values are
+ *    `SUPABASE_OAUTH_CLIENT_ID` and `SITE_URL` unset are null. The GitHub
+ *    App's three values are all set, or `github` is null (reported when only
+ *    some are set). Values are
  *    not checked beyond that: an address that is not one fails where it is
  *    used. */
 export function configOf(env: Cloudflare.Env): Config {
@@ -114,6 +170,7 @@ export function configOf(env: Cloudflare.Env): Config {
             accessKeyId: text(env, 'S3_ACCESS_KEY_ID'),
             secretAccessKey: text(env, 'S3_SECRET_ACCESS_KEY'),
         },
+        github: github(env),
         submissionMaxBytes: bytes(env, 'SUBMISSION_MAX_BYTES'),
         releaseMaxBytes: bytes(env, 'RELEASE_MAX_BYTES'),
     };

@@ -19,6 +19,14 @@ export interface Options {
     readonly url?: string | undefined;
     /** `--token`: a project token to publish with, before `YUKIBANA_TOKEN`. */
     readonly token?: string | undefined;
+    /** `--ci`: `true` iff `publish` publishes by the repository's link, with
+     *  the GitHub Actions job's OIDC token, to the projects the registry
+     *  lists for it and `--projects` names (`lib/publish.ts`). Only ever
+     *  explicit. */
+    readonly ci?: boolean | undefined;
+    /** `--projects`: under `--ci`, the ids of the linked projects the
+     *  repository publishes to, separated by commas or white space. */
+    readonly projects?: string | undefined;
     /** `--project`: the project id, after a positional and before `YUKIBANA_PROJECT`. */
     readonly project?: string | undefined;
     /** `--edition`: the edition id `projects` and `members` are narrowed to. */
@@ -64,6 +72,10 @@ export interface Invocation {
     readonly env: NodeJS.ProcessEnv;
     /** Where the session lives; a test passes a memory store. */
     readonly store: SessionStore;
+    /** The fetch `publish` sends its requests with, to the registry and, under
+     *  `--ci`, to GitHub for the OIDC token; the global one when absent. A
+     *  test passes a stub. */
+    readonly fetch?: typeof fetch | undefined;
 }
 
 /** A command that cannot go on, with every reason. `index.ts` prints them
@@ -116,13 +128,18 @@ export function accessTokenFor(inv: Invocation): () => Promise<string> {
 export async function projectOf(inv: Invocation, positional: string | undefined, dir = '.'): Promise<string> {
     const given = positional ?? inv.options.project ?? inv.env['YUKIBANA_PROJECT'];
     if (given !== undefined && given !== '') return given;
+    return (await configProjectOf(dir)) ?? fail(`which project? give its id, or run this in a folder whose ${CONFIG_FILE} names one`);
+}
+
+/** Returns the `projectId` the yukibana.json in `dir` names, or null when
+ *  there is no such file, it does not parse, or it names none. */
+export async function configProjectOf(dir: string): Promise<string | null> {
     try {
         const parsed = parseConfig(await readFile(join(resolve(dir), CONFIG_FILE), 'utf8'));
-        if (parsed.ok && parsed.config.projectId !== null) return parsed.config.projectId;
+        return parsed.ok ? parsed.config.projectId : null;
     } catch {
-        // no file: fall through to the sentence below
+        return null; // no file
     }
-    return fail(`which project? give its id, or run this in a folder whose ${CONFIG_FILE} names one`);
 }
 
 /** Returns whose submissions `--student-submissions` asks for: names, logins,

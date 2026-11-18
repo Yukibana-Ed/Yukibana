@@ -31,6 +31,18 @@ const name = commit();
  *  development. The build bundles them and needs nothing. */
 const design = dirname(fileURLToPath(import.meta.resolve('@yukibana/design/package.json')));
 
+/** Where the dev server's vars and secrets come from. Normally .dev.vars
+ *  beside wrangler.jsonc, as for `pnpm dev`. With YUKIBANA_VARS_FROM_PROCESS
+ *  set to `true`, which the integration suite's app sets
+ *  (tests/integration/app.ts), from the process's environment alone, so the
+ *  suite configures the app it serves the same way locally as in CI, where
+ *  there is no .dev.vars: wrangler reads the environment
+ *  (CLOUDFLARE_INCLUDE_PROCESS_ENV) only when it loads no .dev.vars, and it
+ *  loads none when given env files, so it is given one that does not exist.
+ *  Until this, a local .dev.vars silently replaced what the suite asked
+ *  for: its SITE_URL, and the suite's GitHub App was off. */
+const envFiles = process.env['YUKIBANA_VARS_FROM_PROCESS'] === 'true' ? { envFiles: ['.env.none-yukibana-vars-from-process'] } : {};
+
 /** One Worker serves the pages and the API. In development the adapter
  *  emulates the Worker's bindings (Hyperdrive, vars, secrets from .dev.vars)
  *  from wrangler.jsonc behind `cloudflare:workers`, so the env is the same
@@ -43,7 +55,7 @@ export default {
             adapter: adapter({
                 // The Worker's configuration, beside this file, which `wrangler
                 // deploy` reads too. Development reads the same file.
-                platformProxy: { configPath: './wrangler.jsonc', persist: true },
+                platformProxy: { configPath: './wrangler.jsonc', persist: true, ...envFiles },
             }),
         }),
     ],

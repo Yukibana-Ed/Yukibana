@@ -60,4 +60,4 @@ export { matcher } from './lib/glob.js';
 export { displayName, folderNames, safeSegment, stampOf, type Person } from './lib/names.js';
 export { assembleSubmission, behind, chooseReleases, nameOf, wantedRelease, type Graded, type ReleaseRef, type Wanted } from './lib/grading.js';
 export { readArchive, writeTar, type Entry } from './lib/tar.js';
-export type { Accepted, EditionRole, Me, Project, Release, Submission } from './lib/wire.js';
+export type { Accepted, CiProject, CiProjects, EditionRole, Me, Project, Release, Submission } from './lib/wire.js';

@@ -19,6 +19,7 @@ is how the code inside them is written.
 | **Supabase Realtime** | Private broadcast topics that tell open pages "this edition changed". It carries news, never data. | the `live_signals` migration, checked by `cloud/db/ops/realtime-policies.sql` |
 | **Hyperdrive** | Cloudflare's pool in front of Postgres. The Worker opens a client per request; Hyperdrive keeps the real connections. | the `hyperdrive` binding in `wrangler.jsonc` |
 | **The bucket** | The bytes: release archives and submissions. R2 in production, RustFS locally and in CI, both spoken to over S3. | `cloud/web/src/lib/server/storage.ts`, `cloud/dev/compose.yml` |
+| **The GitHub App** (optional) | GitHub's, registered once per environment, with no permission but repository metadata and no webhook. A teacher authorises it to show the cloud, with their own token, that they administer the repository they link a project to; nothing else uses it. | its three `GITHUB_APP_*` Worker secrets, `deploy.md` step 8 |
 
 ### What people use
 
@@ -27,7 +28,7 @@ is how the code inside them is written.
 | **The pages** | everyone | Browse editions and projects, enrol, set dates, publish a release by hand, download, submit by upload. Served by the Worker. |
 | **The CLI**, `yukibana` | teachers, students, CI | `check` and `build` turn a course repository into the two archives of a release; `publish`, `download` and `assemble` for staff; `login`, `projects`, `starter`, `submit` for students. |
 | **The library** | the IDE | `packages/client/src/library.ts`: the same login, API client and submission packing as the CLI, headless, for the Theia extensions. |
-| **The GitHub Action** | a course repository's CI | `action/action.yml`: builds the archives with the CLI and publishes them with a project token. |
+| **The GitHub Action** | a course repository's CI | `action/action.yml`: builds the archives with the CLI and publishes them, to every project linked to the repository (or those its optional `projects` input names), with GitHub's OIDC token (`yukibana publish --ci`), or to one project with a project token. |
 
 ### What is stored
 
@@ -41,7 +42,12 @@ holds **projects**, a project has **releases** and **submissions**.
 * `project` carries its window: `available_after`, `deadline`, `closes_at`,
   and a `position` for ordering.
 * `project_release` is a pair of object keys (starter, teacher archive) with
-  sizes and SHA-256s; `project_token` is a hash of a publishing secret.
+  sizes and SHA-256s, and, for a release published by a linked repository,
+  that repository's name (`published_from`); `project_token` is a hash of a
+  publishing secret.
+* `repository_link` binds a project to a GitHub repository by GitHub's
+  numeric repository and owner ids, with who linked it; at most one per
+  project, any number per repository.
 * `submission` is one append-only row per version handed in, pointing at one
   object.
 * `audit_log` is a row for every write a `security definer` function made.
@@ -61,6 +67,8 @@ Object keys are `starters/<project>/<uuid>.tar.gz`,
 | `lib/server/db.ts` | `asUser` and `asPublisher`: the only two ways to run a query. |
 | `lib/server/storage.ts` | `Bucket`, the one S3 implementation, and presigned URLs. |
 | `lib/server/releases.ts`, `submissions.ts` | The two writes that touch both the bucket and the database, in a fixed order. |
+| `lib/server/oidc.ts`, `ci.ts` | A GitHub Actions job's OIDC token, verified against GitHub's keys and read into the facts the database decides from; which linked projects that job may publish to, as sentences. |
+| `lib/server/github.ts`, `github-cookie.ts`, `github-link.ts` | Linking: GitHub's API with the teacher's own token, the two sealed `__Host-` cookies that hold a connection in flight and its token, and the decisions of the connect, return, pick and link steps. |
 | `lib/server/catalogue.ts`, `student.ts` | The reads behind the API and the pages. |
 | `lib/server/env.ts`, `worker.ts` | `configOf`, the one place the Worker's environment is trusted. |
 | `routes/` | Pages and endpoints: they call the modules above and show what came back. They hold no rules. |
@@ -110,10 +118,15 @@ Object keys are `starters/<project>/<uuid>.tar.gz`,
   connect cookie names) for a PKCE-bound code, and sends the browser with
   it straight to a listener on `127.0.0.1`. The CLI trades it for a session
   of its own and sends the access token as `Authorization: Bearer`. CI
-  sends a project token instead.
-* **The Worker trusts a request only after Auth's keys say so.** The hook
-  verifies the JWT (`getClaims`) on every request; a bearer header wins over
-  cookies. Enrolling and publishing through the API demand a bearer, so a
+  sends a project token instead, or, in a repository linked to projects,
+  the OIDC token GitHub mints for the job, for the registry's canonical
+  origin as its audience.
+* **The Worker trusts a request only after Auth's keys say so**, or, for a
+  CI job, GitHub's. The hook verifies the JWT (`getClaims`) on every
+  request; a bearer header wins over cookies, which are then not read at
+  all. A bearer that is a project token or another issuer's JWT is nobody
+  to the hook, and the routes that accept one verify it themselves
+  (`oidc.ts` against GitHub's published keys). Enrolling and publishing through the API demand a bearer, so a
   cross-site form cannot make a browser's cookie do either; any other write
   without a bearer must be a form from the site's own origin, which the hook
   checks before anything else. That holds against a page on a sibling
@@ -124,7 +137,7 @@ Object keys are `starters/<project>/<uuid>.tar.gz`,
 * **The Worker reaches Postgres through Hyperdrive, as `yukibana_app`, and
   immediately becomes someone else.** Each query runs in a transaction that
   sets the role to `authenticated` with the caller's claims (`asUser`), or
-  to `yukibana_publisher` for a project token (`asPublisher`). From there
+  to `yukibana_publisher` for a project token or a CI job (`asPublisher`). From there
   the database's policies and `security definer` functions decide what the
   query may see and do. `yukibana_app` itself can read nothing.
 * **The Worker reaches the bucket with its own credentials, and clients
@@ -132,6 +145,11 @@ Object keys are `starters/<project>/<uuid>.tar.gz`,
   which hashes and sizes them itself. Downloads are a one-minute presigned
   URL, minted only after the caller's policies returned the row it belongs
   to, followed by a redirect.
+* **The Worker asks GitHub only while a teacher links a repository**, with
+  that teacher's own user token, held in a sealed cookie for fifteen minutes
+  and never stored: which repositories they may administer, and the ids of
+  the one they pick. A CI job's token is checked against GitHub's published
+  keys; nothing else crosses to GitHub, and GitHub calls nothing here.
 * **Auth feeds Postgres.** A trigger on `auth.users` creates the `app_user`
   row and links any `enrollment` rows waiting for that confirmed address.
 * **Postgres feeds Realtime, and Realtime feeds the pages back through the
@@ -155,6 +173,23 @@ asks the database whether this caller may publish (a staff member's
 both objects, then records the release through `app.publish_release` or
 `app.publish_release_with_token`. If the row is refused, both objects are
 deleted, and a failure to delete is reported as an orphan.
+
+**Publishing from a linked repository.** An owner links a project on its
+page: Connect GitHub (the App's OAuth, back to `/auth/github/return`),
+pick a repository the App shows them as administrator or maintainer, and
+the Worker asks GitHub for its ids with the teacher's token and calls
+`app.link_repository` with them. From then on a tag pushed there runs the
+repository's workflow, whose Action runs `yukibana publish --ci`: the CLI
+asks GitHub for an OIDC token per request, asks `GET /api/ci/projects`
+which projects the repository publishes to and why any would be refused
+(`app.ci_projects`), and builds and publishes once per project, or only
+for those the workflow's optional `projects` names, which is the
+repository's say in which projects link it. The
+Worker verifies the token, takes the repository, ref and commit from it
+and nothing from the body, checks the project before storing a byte, and
+records the release with `app.publish_release_with_repository`, which
+checks the link, the tag and that its maker still owns the edition.
+`docs/cloud/github.md` is the whole of it.
 
 **Submitting.** The CLI or the IDE packs the student's folder with the same
 library function into a `.tar.gz` and posts it to
@@ -223,9 +258,11 @@ repository already is, or for an assembly in the teacher's browser. *Why:* an ea
 from a GitHub App's webhooks, which needed a paid plan for the CPU, a
 webhook surface, and a copy of every teacher's repository. Moving the
 transformation out removed all three and lets a teacher without CI upload
-two files by hand. *Cost:* a teacher needs the CLI, and the registry cannot
-check that a starter builds; that check belongs in the course repository's
-CI.
+two files by hand. The GitHub App there is now (2026-11) is not that one:
+it takes no webhook and reads no repository, and only lets a teacher prove
+they administer the repository they link. *Cost:* a teacher needs the CLI,
+and the registry cannot check that a starter builds; that check belongs in
+the course repository's CI.
 
 **Authorisation lives in Postgres, and only there.** Every rule about who
 may see or do something is a row level security policy or a `security
@@ -237,13 +274,22 @@ role owns nothing and bypasses nothing, so a query outside `asUser` or
 `asPublisher` fails rather than answering as the owner; tables written by
 functions have no insert grant. *Cost:* every read pays a role switch, and a
 misconfigured connection (as `postgres`) would switch the model off
-silently, which is why `db.ts` names that case when it happens.
+silently, which is why `db.ts` names that case when it happens. What the
+database cannot check itself, a signature, is checked by the Worker at the
+boundary and passed in as facts: a Supabase JWT's claims, and a GitHub
+Actions token's repository, owner, ref and commit, from which the database
+decides which project a job may publish to.
 
-**Least power per credential.** A browser session, a CLI session and a
-project token each reach exactly what their holder may. A project token is
-stored only as a hash, and `yukibana_publisher` can call two functions and
-read no table, so a leaked token can publish to one project and do nothing
-else. Presigned URLs live a minute because a URL is a bearer token that
+**Least power per credential.** A browser session, a CLI session, a
+project token and a CI job's OIDC token each reach exactly what their holder
+may. A project token is stored only as a hash, and `yukibana_publisher` can
+call four functions (two for a token, two for a linked repository's job)
+and read no table, so a leaked token can publish to one project and do
+nothing else. A CI job's token is minted by GitHub per request, lives
+minutes, and is never stored; a link binds GitHub's immutable ids, not
+names, so a repository renamed keeps its link and one transferred or
+recreated loses it. The GitHub App asks for repository metadata and nothing
+more. Presigned URLs live a minute because a URL is a bearer token that
 outlives the check that made it.
 
 **The schema changes only through migrations, and migrations only add.**

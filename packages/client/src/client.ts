@@ -13,6 +13,7 @@ import type { SubmissionBundle } from './bundle.js';
 import {
     Unexpected,
     decodeAccepted,
+    decodeCiProjects,
     decodeEdition,
     decodeList,
     decodeMe,
@@ -22,6 +23,7 @@ import {
     decodeRelease,
     decodeSubmission,
     type Accepted,
+    type CiProjects,
     type Edition,
     type EditionRole,
     type Me,
@@ -37,7 +39,10 @@ export interface ClientOptions {
     /** The registry, like https://cloud.yukibana.dev */
     readonly url: string;
     /** An access token for the person, asked for before every request so a
-     *  provider can refresh it. */
+     *  provider can refresh it. In a CI job publishing by a linked repository
+     *  it is the job's GitHub Actions OIDC token instead, which the registry
+     *  accepts as a bearer like any other; asking for a fresh one each time
+     *  keeps a long build from outliving the token's few minutes. */
     readonly accessToken: () => Promise<string> | string;
     /** The fetch to send requests with; the global one when absent. */
     readonly fetch?: typeof fetch;
@@ -197,8 +202,10 @@ export class YukibanaClient {
     }
 
     /** Uploads `starter` and `teacher`, the two gzipped tars a release is made of, as one release of `project`, and
-     *  returns what the registry recorded. The credentials may be a person's (an owner or assistant of the project) or a
-     *  project token (`yk_…`, from CI), which publishes only to the project it names. `label` is for people (a tag, a
+     *  returns what the registry recorded. The credentials may be a person's (an owner or assistant of the project), a
+     *  project token (`yk_…`, from CI), which publishes only to the project it names, or a GitHub Actions OIDC token,
+     *  which publishes only to a project linked to the job's repository, from a tag, and with `commit` either null or
+     *  the token's own commit (`CiProjects.sha`), anything else being a 400. `label` is for people (a tag, a
      *  branch; may be ''); `commit` is the commit the archives were built from, or null outside git; `release` is the id
      *  the starter carries (see the CLI's `build`), which the release row is given, or null for archives that carry
      *  none and let the registry choose. A taken id is refused with 409 and nothing is stored. */
@@ -210,6 +217,17 @@ export class YukibanaClient {
         if (commit !== null) form.set('commit', commit);
         if (release !== null) form.set('release', release);
         return this.#json('POST', `/api/projects/${seg(project)}/releases`, decodePublished, { form });
+    }
+
+    /** Returns the projects the CI job whose GitHub Actions OIDC token is the
+     *  bearer may publish to, as the registry read them from that verified
+     *  token: the repository, ref and commit the token names, and each
+     *  project linked to the repository with the sentence it would be
+     *  refused with, or null. Only such a token is accepted: a person's
+     *  session or a project token gets a 401, as does a token minted for
+     *  another registry (its message names the audience expected). */
+    ciProjects(): Promise<CiProjects> {
+        return this.#json('GET', '/api/ci/projects', decodeCiProjects);
     }
 
     /** Returns a submission's archive, as sent (a `.tar.gz`). */

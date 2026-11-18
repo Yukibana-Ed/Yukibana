@@ -640,6 +640,22 @@
         gap: var(--yk-space-2) var(--yk-space-4);
         align-items: center;
     }
+    /* The recommended templates on a project page: one bordered card each, its name, the repository and a sentence,
+       and the button that sends the teacher to GitHub. */
+    ul.templates {
+        display: grid;
+        gap: var(--yk-space-3);
+        padding: 0;
+        list-style: none;
+    }
+    ul.templates li {
+        display: grid;
+        gap: var(--yk-space-1);
+        justify-items: start;
+        padding: var(--yk-space-3);
+        border: 1px solid var(--yk-line);
+        border-radius: var(--yk-radius-md);
+    }
 
     /* The login page: one narrow card, centred. Every button in it is the whole width, so the two ways in read as a
        choice of equals rather than a primary and an afterthought. */

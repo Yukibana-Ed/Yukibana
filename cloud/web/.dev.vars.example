@@ -21,3 +21,12 @@ S3_PUBLIC_ENDPOINT=http://localhost:9000
 S3_REGION=us-east-1
 S3_ACCESS_KEY_ID=rustfsadmin
 S3_SECRET_ACCESS_KEY=rustfsadmin
+
+# The GitHub App teachers link a project's repository through (docs/cloud/github.md).
+# Its client id and slug are vars in wrangler.jsonc (the Yukibana-Ed App, whose callback
+# URLs include http://127.0.0.1:5173/auth/github/return); with its client secret here,
+# linking is on locally. Without it, linking is off and the log says so. To use an App
+# of your own instead, set all three.
+# GITHUB_APP_CLIENT_SECRET=
+# GITHUB_APP_CLIENT_ID=
+# GITHUB_APP_SLUG=

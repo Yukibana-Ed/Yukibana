@@ -1,6 +1,6 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { Unexpected, decodeList, decodeProject, decodeSubmission } from '../src/lib/wire.js';
+import { Unexpected, decodeCiProjects, decodeList, decodeProject, decodeRelease, decodeSubmission } from '../src/lib/wire.js';
 
 const project = {
     projectId: 'p',
@@ -61,4 +61,24 @@ test('an error inside a list names the item and the field', () => {
     assert.equal(list([submission])[0]?.author.fullName, null);
     assert.throws(() => list([submission, { ...submission, author: { userId: 7 } }]), /submissions\[1\]\.author\.userId as number, not text/);
     assert.throws(() => list({}), /submissions as something other than a list/);
+});
+
+test("a CI job's projects are read with the reason each is skipped, and a moved repository with no project at all", () => {
+    const answer = {
+        repository: 'ada/course',
+        ref: 'refs/heads/main',
+        sha: 'a'.repeat(40),
+        moved: 'This repository moved to another owner; link it again on the project page.',
+        projects: [{ id: 'p', slug: 'warmup', title: 'Warm up', edition: 'Intro, 2026', refused: 'Only tags publish; this run is at refs/heads/main.' }],
+    };
+    assert.deepEqual(decodeCiProjects(answer), answer);
+    assert.deepEqual(decodeCiProjects({ ...answer, moved: null, projects: [] }).projects, []);
+    assert.throws(() => decodeCiProjects({ ...answer, projects: [{ ...answer.projects[0], refused: false }] }), /ci projects\.projects\[0\]\.refused as boolean/);
+});
+
+test('a release by a linked repository says which repository, and a registry from before links reads as none', () => {
+    const release = { releaseId: 'r', label: 'v1', commit: null, starterSize: 1, teacherSize: 2, uploadedAt: '2026-11-18T09:00:00Z', uploadedBy: 'ada', viaToken: false };
+    assert.equal(decodeRelease({ ...release, publishedFrom: 'ada/course' }).publishedFrom, 'ada/course');
+    assert.equal(decodeRelease(release).publishedFrom, null);
+    assert.throws(() => decodeRelease({ ...release, publishedFrom: 7 }), /release\.publishedFrom as number/);
 });
