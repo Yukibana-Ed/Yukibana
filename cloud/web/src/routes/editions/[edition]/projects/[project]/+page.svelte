@@ -4,7 +4,7 @@
   import Chip from '#lib/Chip.svelte';
   import Confirm from '#lib/Confirm.svelte';
   import Empty from '#lib/Empty.svelte';
-  import CopyButton from '#lib/CopyButton.svelte';
+  import CodeBlock from '#lib/CodeBlock.svelte';
   import { kb, when } from '#lib/format.ts';
   import { viewer } from '#lib/viewer.svelte.ts';
   import { local } from '#lib/wall-time.ts';
@@ -81,7 +81,7 @@
   // Whether to show the picker: an owner whose project has no link, or who asked to change it.
   const choosing = $derived(gh !== null && data.owner && (gh.link === null || gh.relink));
   // The command that publishes this project from a checkout.
-  const cli = $derived(`yukibana publish --project ${p.project_id}`);
+  const cli = $derived(`$ yukibana publish --project ${p.project_id}`);
   // The templates a new project can start from: an owner's, where the GitHub App is configured.
   const templates = $derived(gh !== null && data.owner ? gh.templates : []);
   // The ways this person may publish, the recommended first. A link needs the GitHub App, a token an owner, the CLI
@@ -89,7 +89,7 @@
   const methods = $derived([
     ...(gh !== null ? [{ id: 'github', title: 'GitHub repository', blurb: 'Link it; every tag pushed publishes. No secret to copy.' }] : []),
     ...(data.owner ? [{ id: 'token', title: 'A token in CI secrets', blurb: 'For any CI, GitHub Actions included, without a link.' }] : []),
-    ...(p.can_edit ? [{ id: 'cli', title: 'The command line', blurb: 'Publish from a checkout on your own machine.' }] : []),
+    ...(p.can_edit ? [{ id: 'cli', title: 'CLI', blurb: 'Publish from a checkout on your own machine.' }] : []),
   ]);
   // Which card each choice starts on: what the address asks (`?source=new`, `?method=token`), so a link can open a
   // choice and a token form's answer comes back to the token panel; else the first. A token just made is on the token
@@ -269,8 +269,13 @@ jobs:
               <tr>
                 <td>{when(r.uploaded_at, viewer.zone)}{#if i === 0} <Chip tone="info">live</Chip>{/if}</td>
                 <td>{r.label}</td>
-                <td><code>{r.commit_sha?.slice(0, 12) ?? '—'}</code></td>
-                <td>{r.uploader ?? ''}{#if r.via_token} <Chip>token</Chip>{/if}{#if r.published_from !== null} <Chip>from {r.published_from}</Chip>{/if}</td>
+                <!-- A release from a linked repository links its commit on GitHub: `published_from` is the repository's
+                     owner/name as GitHub's token said it. The label is whatever the workflow passed, not surely a tag,
+                     so only the commit is linked. -->
+                <td>
+                  {#if r.commit_sha === null}—{:else if r.published_from !== null}<a href="https://github.com/{r.published_from}/commit/{r.commit_sha}" target="_blank" rel="noreferrer"><code>{r.commit_sha.slice(0, 12)}</code></a>{:else}<code>{r.commit_sha.slice(0, 12)}</code>{/if}
+                </td>
+                <td>{r.uploader ?? ''}{#if r.via_token} <Chip>token</Chip>{/if}</td>
                 <td><a href="/api/releases/{r.release_id}/starter">{kb(r.starter_size)}</a></td>
                 <td><a href="/api/releases/{r.release_id}/teacher">{kb(r.teacher_size)}</a></td>
               </tr>
@@ -316,9 +321,11 @@ jobs:
           <ul class="templates">
             {#each templates as t (t.repository)}
               <li>
-                <strong>{t.name}</strong> <span class="note">{t.repository}</span>
-                <span>{t.description}</span>
-                <a class="yk-btn yk-btn--secondary" href={useTemplateUrl(t)} target="_blank" rel="noreferrer">Create a repository from it</a>
+                <div>
+                  <strong>{t.name}</strong> <span class="note">{t.repository}</span>
+                  <p class="note">{t.description}</p>
+                </div>
+                <a class="yk-btn yk-btn--secondary" href={useTemplateUrl(t)} target="_blank" rel="noreferrer" aria-label="Use template {t.name}">Use template</a>
               </li>
             {/each}
           </ul>
@@ -443,8 +450,7 @@ jobs:
                     repository; to publish only to some, give the Action <code>projects:</code>, their ids separated by
                     commas. Anyone who can push a tag can publish; protect tags with a ruleset where your plan allows it.
                   </p>
-                  <pre>{workflow}</pre>
-                  <CopyButton text={workflow} label="Copy the workflow" />
+                  <CodeBlock code={workflow} language="yaml" title=".github/workflows/publish.yml" />
                 </div>
               </details>
             </div>
@@ -459,8 +465,7 @@ jobs:
             </p>
             {#if form?.token}
               <p class="ok">Token “{form.token.label}” created. Copy it now; it is not shown again.</p>
-              <pre>{form.token.secret}</pre>
-              <CopyButton text={form.token.secret} label="Copy the token" />
+              <CodeBlock code={form.token.secret} />
             {/if}
             <form method="POST" action={inMethod('token', 'createToken')} class="row pick">
               <label class="sr-only" for="token-label">Label</label>
@@ -499,8 +504,7 @@ jobs:
                     <code>YUKIBANA_PROJECT</code> (<code>{p.project_id}</code>). On GitHub Actions, this in
                     <code>.github/workflows/publish.yml</code> publishes every tag:
                   </p>
-                  <pre>{tokenWorkflow}</pre>
-                  <CopyButton text={tokenWorkflow} label="Copy the workflow" />
+                  <CodeBlock code={tokenWorkflow} language="yaml" title=".github/workflows/publish.yml" />
                   <p class="note">
                     Another CI runs <code>yukibana publish</code> with <code>YUKIBANA_TOKEN</code>,
                     <code>YUKIBANA_PROJECT</code> and <code>YUKIBANA_URL</code> (<code>{data.origin}</code>) in its environment.
@@ -517,8 +521,7 @@ jobs:
               From a checkout of the project, logged in as staff, the CLI builds both archives and publishes them. There is
               no upload on this page: the release id has to travel inside the starter, and only the CLI puts it there.
             </p>
-            <pre>{cli}</pre>
-            <CopyButton text={cli} label="Copy the command" />
+            <CodeBlock code={cli} language="shell" />
           </div>
         {/if}
       </div>

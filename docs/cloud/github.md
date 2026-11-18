@@ -28,8 +28,7 @@ link:
 2. They **pick an existing repository** from the ones the App can see and
    they administer or maintain, or type its `owner/name` (or paste its
    `https://github.com/owner/name` address). To start from a template, they
-   choose **Create a new project** instead and press **Create a
-   repository from it** beside one of the recommended
+   choose **Create a new project** instead and press **Use template** beside one of the recommended
    templates (`cloud/web/src/lib/templates.ts`; for now
    `Yukibana-Ed/scala-project-template`), which opens GitHub's own "Use this
    template" page, then come back and pick the new repository like any
@@ -66,8 +65,8 @@ link:
 4. Pushing a tag (`git tag v1 && git push origin v1`) runs that workflow on
    GitHub's runners, which builds the archives with the CLI and publishes
    them to every project linked to the repository. The release list on the
-   project page says "from owner/name" for a release published by link, and
-   the Repository section shows the last one.
+   project page links the commit of a release published by link to that
+   commit on GitHub, and the GitHub repository panel shows the last one.
 
 **Change** picks another repository (the link is replaced); **Unlink** ends
 it. Staff who are not owners see the link and cannot change it. Project

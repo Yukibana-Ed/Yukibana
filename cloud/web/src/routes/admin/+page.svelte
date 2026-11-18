@@ -3,7 +3,7 @@
   import Tabs from '#lib/Tabs.svelte';
   import Chip from '#lib/Chip.svelte';
   import Confirm from '#lib/Confirm.svelte';
-  import CopyButton from '#lib/CopyButton.svelte';
+  import CodeBlock from '#lib/CodeBlock.svelte';
   import Empty from '#lib/Empty.svelte';
   import { when } from '#lib/format.ts';
   import { viewer } from '#lib/viewer.svelte.ts';
@@ -69,8 +69,7 @@
     <section>
       <h2>New invite link</h2>
       <p class="ok">Invite{form.invite.label === '' ? '' : ` for ${form.invite.label}`} created. Copy the link now: it will not be shown again.</p>
-      <pre>{form.invite.link}</pre>
-      <CopyButton text={form.invite.link} label="Copy link" />
+      <CodeBlock code={form.invite.link} />
     </section>
   {/if}
   <section>

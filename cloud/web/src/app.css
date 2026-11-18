@@ -641,7 +641,7 @@
         align-items: center;
     }
     /* The recommended templates on a project page: one bordered card each, its name, the repository and a sentence,
-       and the button that sends the teacher to GitHub. */
+       and beside them the button that sends the teacher to GitHub's "Use this template". */
     ul.templates {
         display: grid;
         gap: var(--yk-space-3);
@@ -649,12 +649,43 @@
         list-style: none;
     }
     ul.templates li {
-        display: grid;
-        gap: var(--yk-space-1);
-        justify-items: start;
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--yk-space-2) var(--yk-space-4);
+        align-items: center;
+        justify-content: space-between;
         padding: var(--yk-space-3);
         border: 1px solid var(--yk-line);
         border-radius: var(--yk-radius-md);
+    }
+    ul.templates li p {
+        margin: var(--yk-space-1) 0 0;
+    }
+
+    /* Code blocks (#lib/CodeBlock.svelte), the docs site's Expressive Code frames: the page's own <pre> look (a bordered
+       box that wraps) is undone inside one, where the frame is the box and long lines scroll. A file's block has the
+       dock bar with the file as its one, current tab, as on the docs site. */
+    figure.code-block {
+        margin: 0;
+        justify-self: stretch;
+    }
+    .code-block > pre {
+        margin: 0;
+        border: 0;
+        border-radius: 0;
+        background: none;
+        padding: 10px 0;
+        white-space: pre;
+        word-break: normal;
+    }
+    .code-block.yk-code--terminal > pre > span {
+        padding-right: 44px;
+    }
+    .code-block > .yk-dock > span.yk-dock-tab {
+        cursor: default;
+        background: var(--yk-code-bg);
+        color: var(--yk-ink);
+        box-shadow: inset 0 -2px 0 var(--yk-accent);
     }
 
     /* The Releases tab's Publishing card: one choice after another, each a row of radio cards, and under them only the
