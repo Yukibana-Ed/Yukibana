@@ -211,12 +211,18 @@ export interface Started {
  *  Auth's authorization endpoint reads nothing from the browser (no
  *  cookie, no session; the user is bound later, at consent), so asking it
  *  from here makes the same authorization the browser would have.
- *  `fetchFn` is the Worker's `fetch`, or a test's. */
+ *  `fetchFn` is the Worker's `fetch`, or a test's. It is called as a plain
+ *  function, never as `input.fetchFn(…)`: called as a method, its `this`
+ *  is `input`, and the Workers runtime's `fetch` throws "Illegal
+ *  invocation" for any `this` but the global one. Node's does not mind,
+ *  which is how that call passed every test and failed every login from
+ *  the IDE in production. */
 export async function start(input: { readonly authorize: URL; readonly site: string; readonly nonce: string; readonly fetchFn: typeof fetch }): Promise<Started> {
     const failed = (message: string): Started => ({ to: { status: 502, message: report('connect', message) }, cookie: null });
+    const { fetchFn } = input;
     let res: Response;
     try {
-        res = await input.fetchFn(input.authorize, { redirect: 'manual' });
+        res = await fetchFn(input.authorize, { redirect: 'manual' });
     } catch (e) {
         return failed(`could not reach Auth's OAuth server: ${e instanceof Error ? e.message : String(e)}`);
     }
