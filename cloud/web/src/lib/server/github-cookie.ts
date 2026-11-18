@@ -130,6 +130,10 @@ export interface GitHubState {
     /** The edition and project whose page Connect was pressed on, to go back to. */
     readonly edition: EditionId;
     readonly project: ProjectId;
+    /** True iff Connect was pressed while changing an existing link
+     *  (`?relink`), so that the return shows the picker again rather than
+     *  the link being changed. */
+    readonly relink: boolean;
 }
 
 /** Seals `s` for the state cookie, valid for `GITHUB_STATE_SECONDS` from `now`. */
@@ -147,5 +151,5 @@ export async function openState(value: string | undefined, key: CryptoKey, now: 
     const edition = uuidOf<EditionId>(typeof v['edition'] === 'string' ? v['edition'] : null);
     const project = uuidOf<ProjectId>(typeof v['project'] === 'string' ? v['project'] : null);
     if (typeof state !== 'string' || typeof sub !== 'string' || edition === null || project === null) return null;
-    return { state, sub, edition, project };
+    return { state, sub, edition, project, relink: v['relink'] === true };
 }

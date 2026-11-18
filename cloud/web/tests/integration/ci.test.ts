@@ -156,10 +156,9 @@ test('a token for another registry, from another issuer, expired, or from a pull
     expect(await verifyCiToken(await sign(claims({ event_name: 'pull_request' })), AUDIENCE, keys)).toMatch(/pull_request run does not publish/);
 });
 
-test('a branch, a moved repository, a project not linked to it, and a commit other than the token says are each refused before anything is stored', async () => {
+test('a branch, a project not linked to the repository, and a commit other than the token says are each refused before anything is stored', async () => {
     const cases: [string, CiIdentity, ProjectId, string | null, number, RegExp][] = [
         ['a branch', await identity({ ref: 'refs/heads/main' }), first, null, 403, /Only tags publish; this run is at refs\/heads\/main\./],
-        ['a moved owner', await identity({ repository_owner_id: String(run + 99) }), first, null, 403, new RegExp(MOVED.replace(/[.;]/g, '\\$&'))],
         ['an unlinked project', await identity(), unlinked, null, 403, new RegExp(NOT_LINKED.replace(/[.;]/g, '\\$&'))],
         ['a project linked to another repository', await identity(), elsewhere, null, 403, /not linked to that project/],
         ['another commit', await identity(), first, 'abc1234', 400, /not the one this job runs at/],
@@ -177,6 +176,25 @@ test('a branch, a moved repository, a project not linked to it, and a commit oth
     // A moved repository's job is told that it moved, and of no project.
     const moved = await identity({ repository_owner_id: String(run + 99) });
     expect(ciProjectsOf(moved, await ciLinks(ctx, moved))).toMatchObject({ moved: MOVED, projects: [] });
+});
+
+test('a moved repository is told it moved only by a project it was linked to, and not linked by any other, and leaves nothing in the bucket either way', async () => {
+    // The Worker cannot tell which project a moved link belongs to, so the database decides, after the upload, and
+    // its refusal deletes both objects.
+    const moved = await identity({ repository_owner_id: String(run + 99) });
+    for (const [project, sentence] of [
+        [first, MOVED],
+        [unlinked, NOT_LINKED],
+    ] as const) {
+        const before = await releasesOf(project);
+        const { ctx: watched, put } = recording();
+        await expect(publishRelease(watched, { kind: 'ci', identity: moved }, project, archive, other, 'nope', null, null), sentence).rejects.toMatchObject({
+            status: 403,
+            body: { message: sentence },
+        });
+        for (const key of put) expect(await bucket.head(key as Parameters<typeof bucket.head>[0]), key).toBeNull();
+        expect(await releasesOf(project), sentence).toBe(before);
+    }
     // And a branch run is listed with the reason each project is skipped.
     const branch = await identity({ ref: 'refs/heads/main' });
     const skipped = ciProjectsOf(branch, await ciLinks(ctx, branch)).projects.map(p => p.refused);
@@ -184,7 +202,7 @@ test('a branch, a moved repository, a project not linked to it, and a commit oth
 });
 
 test(
-    'over HTTP, a CI token for another registry gets the CI refusal from both CI routes, and a GitHub-looking bearer with a teacher’s cookies is nobody',
+    'over HTTP, a CI token for another registry, an expired one and one from another issuer get the CI refusal from both CI routes, and a GitHub-looking bearer with a teacher’s cookies is nobody',
     { timeout: 180_000 },
     async () => {
         app = await startApp();
@@ -204,6 +222,8 @@ test(
         const expected = told.message.match(/this registry expects (\S+)\.$/)?.[1] ?? '';
         expect(expected, told.message).toBe(origin);
         const expired = await sign(claims(), { aud: expected, exp: Math.floor(Date.now() / 1000) - 5 });
+        // A GitHub Enterprise job's token, from an issuer of its own: told which issuer is accepted, not to log in.
+        const enterprise = await sign(claims(), { aud: expected, iss: 'https://school.ghe.com/_services/token' });
         const form = (): FormData => {
             const f = new FormData();
             f.set('starter', new File([archive], 'starter.tar.gz'));
@@ -215,6 +235,7 @@ test(
         for (const [token, why] of [
             [foreign, `this token is for https://other.example; this registry expects ${expected}.`],
             [expired, 'it expired at'],
+            [enterprise, `it was issued by https://school.ghe.com/_services/token; this registry accepts only ${GITHUB_ACTIONS_ISSUER}.`],
         ] as const) {
             for (const [method, path] of [
                 ['POST', `/api/projects/${first}/releases`],
@@ -230,6 +251,8 @@ test(
             }
         }
         expect(answers).toEqual([
+            `POST /api/projects/${first}/releases: 401 refused as CI`,
+            'GET /api/ci/projects: 401 refused as CI',
             `POST /api/projects/${first}/releases: 401 refused as CI`,
             'GET /api/ci/projects: 401 refused as CI',
             `POST /api/projects/${first}/releases: 401 refused as CI`,

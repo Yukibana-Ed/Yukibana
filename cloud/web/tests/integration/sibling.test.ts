@@ -332,7 +332,7 @@ test('a page on a sibling subdomain cannot finish, cancel or spend the GitHub co
     // this app sealed, which a sibling can neither read nor set (__Host-).
     const state = 'dGhlLXRlYWNoZXJzLW93bi1zdGF0ZQ';
     const sealed = await sealState(
-        { state, sub: uid(TEACHER), edition: edition as EditionId, project: project as ProjectId },
+        { state, sub: uid(TEACHER), edition: edition as EditionId, project: project as ProjectId, relink: false },
         await cookieKey(GITHUB_APP.clientSecret),
         new Date(),
     );

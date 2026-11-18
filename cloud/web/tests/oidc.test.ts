@@ -1,6 +1,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { SignJWT, createLocalJWKSet, exportJWK, generateKeyPair } from 'jose';
+import { SignJWT, createLocalJWKSet, errors, exportJWK, generateKeyPair, type JWTVerifyGetKey } from 'jose';
+import { isHttpError } from '@sveltejs/kit';
 import { GITHUB_ACTIONS_ISSUER, ciIdentityOf, isCiToken, issuerOf, verifyCiToken } from '../src/lib/server/oidc.js';
 
 const AUDIENCE = 'https://cloud.yukibana.dev';
@@ -91,11 +92,37 @@ test('a verified token from a pull request publishes nothing', async () => {
     assert.match((await verifyCiToken(await sign({ ...CLAIMS, event_name: 'pull_request' }), AUDIENCE, keys)) as string, /pull_request run does not publish/);
 });
 
-test('a GitHub-looking bearer is routed to CI by its issuer alone, and nothing else is', async () => {
+test('a JWT from any issuer but Supabase Auth is routed to CI, so that a GitHub Enterprise job is told which issuer is accepted, and nothing else is', async () => {
     const { sign } = await issuer();
     assert.equal(isCiToken(await sign(CLAIMS)), true);
+    assert.equal(isCiToken(await sign(CLAIMS, { iss: 'https://token.actions.githubusercontent.com/school' })), true);
+    assert.equal(isCiToken(await sign(CLAIMS, { iss: 'https://school.ghe.com/_services/token' })), true);
     assert.equal(isCiToken(await sign(CLAIMS, { iss: 'https://example.supabase.co/auth/v1' })), false);
     assert.equal(isCiToken(`yk_${'0'.repeat(64)}`), false);
     assert.equal(isCiToken('garbage'), false);
     assert.equal(issuerOf('garbage'), null);
+});
+
+test('a GitHub that cannot serve its key set is a 503 the job may retry, never a refusal that blames the token', async () => {
+    const { keys, sign } = await issuer();
+    const token = await sign(CLAIMS);
+    const failing =
+        (thrown: Error): JWTVerifyGetKey =>
+        () =>
+            Promise.reject(thrown);
+    for (const thrown of [
+        new errors.JOSEError('Expected 200 OK from the JSON Web Key Set HTTP response'),
+        new errors.JWKSInvalid('JSON Web Key Set malformed'),
+        new errors.JWKSTimeout(),
+        new TypeError('fetch failed'),
+    ]) {
+        const answer = await verifyCiToken(token, AUDIENCE, failing(thrown)).then(
+            v => v,
+            (e: unknown) => e,
+        );
+        assert.ok(isHttpError(answer, 503), `${thrown.constructor.name}: ${JSON.stringify(answer)}`);
+    }
+    // A key set that is there but holds no key for the token is the token's fault.
+    const noMatch: JWTVerifyGetKey = (header, t) => keys({ ...header, kid: 'another' }, t);
+    assert.equal(await verifyCiToken(token, AUDIENCE, noMatch), 'it is not signed by a key GitHub publishes');
 });

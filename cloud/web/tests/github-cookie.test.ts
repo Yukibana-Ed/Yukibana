@@ -11,6 +11,7 @@ const flight = {
     sub: ME,
     edition: '11111111-1111-4111-8111-111111111111' as EditionId,
     project: '22222222-2222-4222-8222-222222222222' as ProjectId,
+    relink: false,
 };
 
 test('a GitHub token sealed for the person signed in opens for them until it expires', async () => {

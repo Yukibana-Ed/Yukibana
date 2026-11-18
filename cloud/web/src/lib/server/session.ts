@@ -13,7 +13,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Cookies } from '@sveltejs/kit';
 import { claimsOf, type Claims } from '#lib/claims.ts';
 import { SESSION_COOKIE_OPTIONS } from '#lib/session-cookie.ts';
-import { issuerOf } from './oidc';
+import { isCiToken } from './oidc';
 
 /** The client's data API is never used (queries go through db.ts), so its
  *  schema is empty. Saying so keeps the type honest: an `any` schema would
@@ -160,8 +160,4 @@ export async function identify(
  *  server's (Supabase's is always `<project>/auth/v1`). Only ever makes a
  *  request nobody, so a wrong guess costs a 401 and grants nothing. A token
  *  with no readable issuer goes to Auth, which refuses it in its own words. */
-function notASession(bearer: string): boolean {
-    if (/^yk_/i.test(bearer)) return true;
-    const iss = issuerOf(bearer);
-    return iss !== null && !/\/auth\/v1\/?$/.test(iss);
-}
+const notASession = (bearer: string): boolean => /^yk_/i.test(bearer) || isCiToken(bearer);

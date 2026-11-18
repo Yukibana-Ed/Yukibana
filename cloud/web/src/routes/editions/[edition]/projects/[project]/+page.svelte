@@ -95,6 +95,7 @@ jobs:
       - uses: Yukibana-Ed/Yukibana/action@main
         with:
           url: ${data.origin}
+          projects: ${p.project_id}
           label: \${{ github.ref_name }}`);
 </script>
 
@@ -290,6 +291,7 @@ jobs:
             GitHub asks you to authorise the Yukibana Cloud App first; you need admin or maintain on the repository.
           </p>
           <form method="POST" action={actionIn('releases', 'connectGithub')} class="row">
+            {#if gh.relink}<input type="hidden" name="relink" value="1" />{/if}
             <button class="yk-btn yk-btn--primary">Connect GitHub</button>
             <button class="yk-btn yk-btn--secondary" name="install" value="1">Install the App or add repositories</button>
             {#if gh.relink}<a href="?tab=releases#repository">Keep the current link</a>{/if}
@@ -321,6 +323,7 @@ jobs:
             <button class="yk-btn yk-btn--secondary">Link</button>
           </form>
           <form method="POST" action={actionIn('releases', 'connectGithub')} class="row">
+            {#if gh.relink}<input type="hidden" name="relink" value="1" />{/if}
             <button class="yk-btn yk-btn--secondary" name="install" value="1">Install the App or add repositories</button>
             <a href="?tab=releases{gh.relink ? '&relink' : ''}#repository">Refresh</a>
             {#if gh.relink}<a href="?tab=releases#repository">Keep the current link</a>{/if}
@@ -338,8 +341,10 @@ jobs:
         <summary>The workflow a linked repository needs</summary>
         <p class="note">
           Put this in <code>.github/workflows/publish.yml</code> in the repository. It proves where it runs with GitHub's
-          OIDC token (<code>id-token: write</code>), so it needs no secret. Anyone who can push a tag to the repository
-          can publish; protect tags with a ruleset where your plan allows it.
+          OIDC token (<code>id-token: write</code>), so it needs no secret. It publishes only to the linked projects its
+          <code>projects</code> names, this one's id here: a repository linked to projects of other editions too lists
+          their ids, separated by commas. Anyone who can push a tag to the repository can publish; protect tags with a
+          ruleset where your plan allows it.
         </p>
         <pre>{workflow}</pre>
       </details>

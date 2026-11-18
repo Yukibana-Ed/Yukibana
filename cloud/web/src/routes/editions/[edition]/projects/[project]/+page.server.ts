@@ -373,8 +373,8 @@ export const actions: Actions = {
         return { ok: true };
     },
     /** Connect GitHub: seals a connection in flight into the state cookie
-     *  (a fresh random state, the person's `sub`, this edition and project;
-     *  ten minutes) and redirects (303) to GitHub's authorize page, or, with
+     *  (a fresh random state, the person's `sub`, this edition and project,
+     *  and whether a link is being changed, the field `relink=1`; ten minutes) and redirects (303) to GitHub's authorize page, or, with
      *  the field `install=1`, to the App's installation page. Asks nobody
      *  and decides nothing: what may be linked is decided when linking. A
      *  POST like every cookie write, so only this site's own form can start
@@ -387,7 +387,11 @@ export const actions: Actions = {
         const form = await event.request.formData();
         const state = nonce();
         const { key } = await githubFor(app);
-        event.cookies.set(GITHUB_STATE_COOKIE, await sealState({ state, sub: claims.sub, edition, project }, key, new Date()), GITHUB_STATE_COOKIE_OPTIONS);
+        event.cookies.set(
+            GITHUB_STATE_COOKIE,
+            await sealState({ state, sub: claims.sub, edition, project, relink: text(form, 'relink') === '1' }, key, new Date()),
+            GITHUB_STATE_COOKIE_OPTIONS,
+        );
         const to = text(form, 'install') === '1' ? installUrlOf(app.slug, state) : authorizeUrlOf(app.clientId, siteOrigin(workerConfig().siteUrl, event.url), state);
         redirect(303, to.toString(), { external: ['https://github.com'] });
     },

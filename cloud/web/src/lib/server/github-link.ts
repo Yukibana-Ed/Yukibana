@@ -54,8 +54,10 @@ export function installUrlOf(slug: string, state: string): URL {
 export const returnUrlOf = (site: string): string => `${site}/auth/github/return`;
 
 /** Returns the project page's Releases tab, where the Repository section is, for
- *  `edition` and `project`, as a path. */
-export const repositorySectionOf = (edition: EditionId, project: ProjectId): string => `/editions/${edition}/projects/${project}?tab=releases`;
+ *  `edition` and `project`, as a path; with `relink`, the address that shows
+ *  the picker over an existing link (`&relink`), scrolled to the section. */
+export const repositorySectionOf = (edition: EditionId, project: ProjectId, relink = false): string =>
+    `/editions/${edition}/projects/${project}?tab=releases${relink ? '&relink#repository' : ''}`;
 
 /** What `/auth/github/return` does. */
 export type Returned =
@@ -88,7 +90,10 @@ const AGAIN = 'Go back to the project page and press Connect GitHub again.';
  *    cookie's: `refused`, touching nothing;
  *  - an `error` from GitHub, or no `code`: `failed`;
  *  - the code GitHub refuses: `failed`, reported;
- *  - otherwise `connected`, with the token sealed for `sub` as of `now`.
+ *  - otherwise `connected`, with the token sealed for `sub` as of `now`,
+ *    back to the project page, with the picker again when Connect was
+ *    pressed while changing a link (it once came back without it, and the
+ *    owner had to press Change a second time).
  *
  *  `installation_id` and `setup_action` are ignored: the installations are
  *  listed again with the token. */
@@ -119,7 +124,7 @@ export async function returned(input: {
         if (!(e instanceof GitHubError)) throw e;
         return { kind: 'failed', status: 502, message: `${report('github', e.message)}. ${AGAIN}` };
     }
-    return { kind: 'connected', cookie: await sealToken(token, input.sub, input.key, input.now), to: repositorySectionOf(flight.edition, flight.project) };
+    return { kind: 'connected', cookie: await sealToken(token, input.sub, input.key, input.now), to: repositorySectionOf(flight.edition, flight.project, flight.relink) };
 }
 
 /** A repository the person may link, as the picker shows it. */

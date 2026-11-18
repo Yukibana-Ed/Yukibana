@@ -24,7 +24,8 @@ export const GET: RequestHandler = async event => {
  *  a person's access token (from `yukibana publish` after `yukibana
  *  login`), who must be staff of the project's edition.
  *
- *  A bearer that claims GitHub Actions' issuer takes the CI branch, before
+ *  A bearer that is a JWT from any issuer but Supabase Auth (`isCiToken`)
+ *  takes the CI branch, before
  *  the session's: it is verified here (`requireCi`), and refused as a 401
  *  "CI token refused: <why>" before the body is read. Without that branch
  *  it would reach `requireBearer`, and every CI token would be refused as a

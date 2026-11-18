@@ -10,7 +10,8 @@
  *  is taken from the token, never from the request's body.
  *
  *  Only GitHub Actions' public issuer is accepted. GitHub Enterprise's
- *  custom issuers, and any other forge, are refused like any other issuer:
+ *  custom issuers, and any other forge, are refused like any other issuer,
+ *  with a sentence that names the one accepted:
  *  a second forge is a migration and an adapter here (docs/cloud/github.md).
  */
 
@@ -95,10 +96,19 @@ export function issuerOf(token: string): string | null {
     }
 }
 
-/** True iff `bearer` claims, unverified, to come from GitHub Actions: a
- *  routing hint, so that a CI route sends it to `verifyCiToken` and the
- *  session code does not take it for a bad session. It proves nothing. */
-export const isCiToken = (bearer: string): boolean => issuerOf(bearer) === GITHUB_ACTIONS_ISSUER;
+/** True iff `bearer` is, unverified, a JWT with an issuer that is not a
+ *  Supabase Auth server's (always `<project>/auth/v1`): GitHub Actions'
+ *  token, or a token from any other issuer a job might send, such as a
+ *  GitHub Enterprise one. A routing hint, so that a CI route sends it to
+ *  `verifyCiToken`, which refuses every issuer but GitHub's in a sentence
+ *  that names the issuer accepted, and so that the session code does not
+ *  take it for a bad session. It proves nothing. It once required GitHub's
+ *  exact issuer, and a GitHub Enterprise job was then told to "log in
+ *  first", or to send the token it had just sent. */
+export function isCiToken(bearer: string): boolean {
+    const iss = issuerOf(bearer);
+    return iss !== null && !/\/auth\/v1\/?$/.test(iss);
+}
 
 /** What the cheap checks find wrong with `token` before any key is fetched,
  *  or null. They read the token unverified, so they can only refuse, never
@@ -124,6 +134,29 @@ function precheck(token: string, audience: string, now: number): string | null {
     return null;
 }
 
+/** A key set that could not be had, whatever jose called it: the cause is
+ *  what the key getter threw. */
+class KeySetUnavailable extends Error {}
+
+/** `keys`, except that anything it throws other than "no key, or several,
+ *  match this token" (which is the token's fault) becomes a
+ *  `KeySetUnavailable`. jose throws a plain `JOSEError` for a key set
+ *  answered with anything but 200 or with a body that is not JSON, and
+ *  `JWKSInvalid` for a malformed one; only its timeout has a class of its
+ *  own. Telling those apart from a bad token by class, as this module once
+ *  did, answered a GitHub outage as "401 CI token refused" and reported
+ *  nothing. */
+const keysOrUnavailable =
+    (keys: JWTVerifyGetKey): JWTVerifyGetKey =>
+    async (header, token) => {
+        try {
+            return await keys(header, token);
+        } catch (e) {
+            if (e instanceof errors.JWKSNoMatchingKey || e instanceof errors.JWKSMultipleMatchingKeys) throw e;
+            throw new KeySetUnavailable('key set unavailable', { cause: e });
+        }
+    };
+
 /** Returns the identity in `token` once it is verified, or a sentence saying
  *  why it is refused, for "CI token refused: <sentence>".
  *
@@ -136,23 +169,25 @@ function precheck(token: string, audience: string, now: number): string | null {
  *
  *  `keys` is GitHub's published key set in production; the integration
  *  suite passes a local one and signs its own tokens. A key set that cannot
- *  be fetched is not the token's fault: it is reported and thrown as a 503,
+ *  be had is not the token's fault: whatever `keys` throws, except that no
+ *  key (or several) matches the token, is reported and thrown as a 503,
  *  never answered as a refusal. */
 export async function verifyCiToken(token: string, audience: string, keys: JWTVerifyGetKey = githubKeys): Promise<CiIdentity | string> {
     const early = precheck(token, audience, Math.floor(Date.now() / 1000));
     if (early !== null) return early;
     let payload: JWTPayload;
     try {
-        ({ payload } = await jwtVerify(token, keys, { issuer: GITHUB_ACTIONS_ISSUER, audience, algorithms: ['RS256'] }));
+        ({ payload } = await jwtVerify(token, keysOrUnavailable(keys), { issuer: GITHUB_ACTIONS_ISSUER, audience, algorithms: ['RS256'] }));
     } catch (e) {
+        if (e instanceof KeySetUnavailable || e instanceof errors.JWKSTimeout || !(e instanceof errors.JOSEError)) {
+            const cause = e instanceof KeySetUnavailable ? e.cause : e;
+            report('oidc', `GitHub's signing keys could not be read: ${cause instanceof Error ? cause.message : String(cause)}`);
+            error(503, "GitHub's signing keys could not be read; try the job again.");
+        }
         if (e instanceof errors.JWTExpired) return 'it has expired; ask GitHub for a fresh one for each request';
         if (e instanceof errors.JWTClaimValidationFailed) return `its ${e.claim} claim is not acceptable (${e.reason})`;
         if (e instanceof errors.JWSSignatureVerificationFailed) return 'its signature is not valid';
         if (e instanceof errors.JWKSNoMatchingKey || e instanceof errors.JWKSMultipleMatchingKeys) return 'it is not signed by a key GitHub publishes';
-        if (e instanceof errors.JWKSTimeout || !(e instanceof errors.JOSEError)) {
-            report('oidc', `GitHub's signing keys could not be read: ${e instanceof Error ? e.message : String(e)}`);
-            error(503, "GitHub's signing keys could not be read; try the job again.");
-        }
         return `it could not be verified (${e.code})`;
     }
     return ciIdentityOf(payload);

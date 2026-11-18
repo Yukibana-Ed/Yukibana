@@ -238,6 +238,7 @@ const flight = {
     sub: ME,
     edition: '11111111-1111-4111-8111-111111111111' as EditionId,
     project: '22222222-2222-4222-8222-222222222222' as ProjectId,
+    relink: false,
 };
 /** What GitHub sends back after an installation with user authorisation on. */
 const installShaped = (state: string) => new URLSearchParams({ code: 'c0de', installation_id: '55501', setup_action: 'install', state });
@@ -273,7 +274,7 @@ test("a return whose state is not this browser's, or after the connection expire
     expect(gh.calls).toEqual([]);
 });
 
-test('a return to this browser’s own connection trades the code for a token sealed for this person, and goes back to the project page', async () => {
+test('a return to this browser’s own connection trades the code for a token sealed for this person, and goes back to the project page, to the picker when a link was being changed', async () => {
     const gh = stubGitHub();
     const key = await cookieKey('shh');
     const decided = await returned({ query: installShaped(flight.state), stateCookie: await sealState(flight, key, now), sub: ME, key, github: gh, now });
@@ -282,6 +283,10 @@ test('a return to this browser’s own connection trades the code for a token se
     expect(decided.to).toBe(`/editions/${flight.edition}/projects/${flight.project}?tab=releases`);
     expect(await openToken(decided.cookie, ME, key, now)).toBe('ghu_new');
     expect(await openToken(decided.cookie, SOMEBODY, key, now)).toBeNull();
+    // Connect pressed while changing a link comes back to the picker, not to the old link.
+    const changing = await returned({ query: installShaped(flight.state), stateCookie: await sealState({ ...flight, relink: true }, key, now), sub: ME, key, github: gh, now });
+    if (changing.kind !== 'connected') throw new Error(`not connected: ${JSON.stringify(changing)}`);
+    expect(changing.to).toBe(`/editions/${flight.edition}/projects/${flight.project}?tab=releases&relink#repository`);
 });
 
 test('a person who says no on GitHub, or a code GitHub refuses, ends the connection with a sentence', async () => {

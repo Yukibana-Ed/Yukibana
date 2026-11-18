@@ -89,14 +89,23 @@ export async function ciLinks(ctx: Context, identity: CiIdentity): Promise<CiLin
 }
 
 /** Returns why the job `identity` describes may not publish to `project`,
- *  or null when the database would accept it: not linked (or linked to
- *  another repository), moved, not a tag, or a linking owner no longer an
- *  owner. Asked before a byte is stored, so a refused job leaves nothing
- *  in the bucket; the database checks the same again when the row is
- *  written. */
+ *  or null when the database might accept it: not linked (or linked to
+ *  another repository), not a tag, or a linking owner no longer an owner.
+ *  Asked before a byte is stored, so a refused job leaves nothing in the
+ *  bucket; the database checks the same again when the row is written.
+ *
+ *  It never says what the database would not. `app.ci_projects` cannot say
+ *  which project a link made under another owner belongs to (a moved
+ *  repository learns nothing about its old links), so when the project is
+ *  not among the matching links and the repository has such a link, this
+ *  says nothing and leaves the verdict to `app.publish_release_with_repository`,
+ *  which says "moved" for this project's own moved link and "not linked"
+ *  for any other; its refusal deletes both objects again. It used to answer
+ *  "moved" there, and a job publishing to a project that was never linked
+ *  was told to link the wrong one again. */
 export async function ciRefusalFor(ctx: Context, identity: CiIdentity, project: ProjectId): Promise<string | null> {
     const rows = await ciLinks(ctx, identity);
     const row = rows.find(r => r.project_id !== null && trustId<ProjectId>(r.project_id) === project);
     if (row !== undefined) return ciRefusal(row, identity.ref);
-    return rows.some(r => !r.owner_matches) ? MOVED : NOT_LINKED;
+    return rows.some(r => !r.owner_matches) ? null : NOT_LINKED;
 }
