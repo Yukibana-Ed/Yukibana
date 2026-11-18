@@ -12,8 +12,9 @@ This page is how to run it. [architecture.md](architecture.md) is what the
 parts are and how they connect, [design.md](design.md) why it is shaped the
 way it is, [yukibana-json.md](yukibana-json.md) the contract a course
 repository follows, [cli.md](cli.md) the CLI and the library the IDE uses,
-[theia.md](theia.md) how the IDE embeds it, [deploy.md](deploy.md) how it
-ships, and [cloud/CLAUDE.md](../../cloud/CLAUDE.md) how the code is written.
+[theia.md](theia.md) how the IDE embeds it, [github.md](github.md) how a
+course repository on GitHub publishes without a token, [deploy.md](deploy.md)
+how it ships, and [cloud/CLAUDE.md](../../cloud/CLAUDE.md) how the code is written.
 
 | | |
 | --- | --- |
@@ -21,7 +22,7 @@ ships, and [cloud/CLAUDE.md](../../cloud/CLAUDE.md) how the code is written.
 | The app | SvelteKit in `cloud/web` (`@yukibana/cloud-web`), one Cloudflare Worker, Postgres through Hyperdrive as a role that can bypass no policy. |
 | The CLI | `packages/cli` (`@yukibana/cli`): a teacher's `check`, `build`, `publish`, `download`, `assemble`; a student's `login`, `projects`, `starter`, `submit`. It and the IDE share `packages/client` (`@yukibana/client`). `action/` wraps the CLI as a GitHub Action. |
 | Files | Cloudflare R2 over S3 in production, RustFS over S3 locally (`cloud/dev/compose.yml`). The database holds keys. |
-| Login | Supabase Auth: GitHub, or a one-time code by email, in the browser. The CLI (`yukibana login`) and the IDE log in through the website, as the account the person confirms there. Publishing from CI uses a per-project token instead. |
+| Login | Supabase Auth: GitHub, or a one-time code by email, in the browser. The CLI (`yukibana login`) and the IDE log in through the website, as the account the person confirms there. Publishing from CI uses GitHub's OIDC token, in a repository linked to the project, or a per-project token. |
 
 Every command below runs from the repository's root.
 
@@ -122,7 +123,28 @@ After `yukibana login`, `publish` works without a token for a project you
 are staff of. The project id is on the project page, and so is a publishing
 token (owners only).
 
-In the course repository's own CI, the Action does the same on every push:
+In the course repository's own CI, the Action does the same. Where the
+registry has a GitHub App (deploy.md, step 8), an owner links the project to
+the repository on the project page (Releases, Repository), and every tag
+then publishes to every project linked to it, with no secret
+([github.md](github.md)):
+
+```yaml
+on:
+  push:
+    tags: ['*']
+permissions:
+  contents: read
+  id-token: write
+# …
+- uses: actions/checkout@v4
+- uses: Yukibana-Ed/Yukibana/action@main
+  with:
+    url: https://yukibana.example.org
+    label: ${{ github.ref_name }}
+```
+
+Without a link, with a token, on whatever the workflow runs on:
 
 ```yaml
 - uses: actions/checkout@v4
@@ -147,7 +169,9 @@ student preview and send a submission.
 Login is a GitHub **OAuth App** (Settings → Developer settings → OAuth
 Apps), one per environment, with callback URL `<API URL>/auth/v1/callback`.
 Its id and secret go in `cloud/dev/.env` locally and in the deploy secrets in
-production. No GitHub App and no webhooks: the registry never reads a
+production. Linking a repository is a separate, optional GitHub App
+(deploy.md, step 8; `cloud/web/.dev.vars.example` locally) that asks for
+repository metadata only. No webhooks: the registry never reads a
 repository.
 
 ## Deploying

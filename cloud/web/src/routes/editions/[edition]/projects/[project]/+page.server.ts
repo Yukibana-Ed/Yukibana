@@ -201,7 +201,14 @@ export const load: PageServerLoad = async event => {
                 : [];
             const submissions = rows.map(r => handInOf(r, all));
             const link = app !== null && staff ? await linkOf(tx, project) : null;
-            return { project: p, staff, owner, submissions, students, allReleases: all, releases, tokens, link, origin: event.url.origin };
+            // The registry's address the page tells a workflow to use: the
+            // site's canonical origin, not the one this page was opened at. A
+            // CI job asks GitHub for a token whose audience is that address,
+            // and the registry accepts only its own canonical origin, so a
+            // snippet copied from the workers.dev address would publish
+            // nothing (docs/cloud/github.md).
+            const origin = siteOrigin(workerConfig().siteUrl, event.url);
+            return { project: p, staff, owner, submissions, students, allReleases: all, releases, tokens, link, origin };
         });
         const { link, ...rest } = page;
         if (app === null || !page.staff) return { ...rest, github: null };

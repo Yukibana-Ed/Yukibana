@@ -63,3 +63,8 @@ test("the Worker's sentences are the database's, so a job reads the same reason 
     const migration = readFileSync(fileURLToPath(new URL('../../db/supabase/migrations/20261118090000_repository_links.sql', import.meta.url)), 'utf8');
     for (const sentence of [NOT_LINKED, MOVED, OWNER_GONE, onlyTags('%')]) assert.ok(migration.includes(`'${sentence.replaceAll("'", "''")}'`), sentence);
 });
+
+test("the feature's documentation quotes the sentences a job really reads, so a teacher can search the page for what the log says", () => {
+    const page = readFileSync(fileURLToPath(new URL('../../../docs/cloud/github.md', import.meta.url)), 'utf8');
+    for (const sentence of [MOVED, OWNER_GONE, onlyTags('refs/heads/main')]) assert.ok(page.includes(sentence), sentence);
+});

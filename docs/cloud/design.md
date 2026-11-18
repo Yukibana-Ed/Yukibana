@@ -26,7 +26,9 @@ grading integrations would later have to fight:
   time, a webhook surface, and a copy of every teacher's repository in the
   bucket. Moving the transformation into a CLI that runs where the
   repository already is (a laptop, the repository's own CI) removed all
-  three. A teacher without CI runs the same CLI on their own machine.
+  three. A teacher without CI runs the same CLI on their own machine. The
+  GitHub App added in 2026-11 (below, "Publishing from a linked repository")
+  still reads no repository and takes no webhook.
 
 ## Constraints
 
@@ -187,10 +189,12 @@ records sizes and SHA-256s, and serves the newest starter to students whose
 project is open. Staff see the whole history and can fetch either archive of
 any release; a wrong release is followed by a right one.
 
-Two ways to publish, both the same request:
+Three ways to publish, all the same request:
 
-* `yukibana publish` from a teacher's machine;
-* the GitHub Action in the course repository's CI, on every push.
+* `yukibana publish` from a teacher's machine, as the person logged in;
+* the GitHub Action in the course repository's CI, with a project token;
+* the same Action in a repository linked to the project, on every tag, with
+  GitHub's OIDC token and no secret (2026-11, below).
 
 The project page used to take the two files from `yukibana build` by hand.
 It stopped (2026-10) when releases began carrying their id inside the
@@ -206,6 +210,75 @@ whose entire power is two functions: turn a hash into a project id, and
 record a release for it. A leaked token can publish releases to one project,
 which its staff can see and follow with a new one, and can be revoked from
 the page.
+
+## Publishing from a linked repository
+
+2026-11; `github.md` is the whole feature. A token is a secret a teacher has
+to make, copy and paste into the repository's settings, once per project,
+and it never expires. An owner can instead link the project to its GitHub
+repository on the project page, and the repository's workflow then proves
+where it runs with the OIDC token GitHub mints for each job. The decisions,
+each with the alternative it beat:
+
+**A link binds GitHub's ids, at link time.** A link is `(repository_id,
+owner_id)`, the numeric, immutable ids GitHub returns when the link is made;
+the name is for display. A rename keeps the link, a transfer to another
+owner breaks it (the job is told the repository moved, and nothing else),
+and a repository deleted and recreated under the same name publishes
+nothing. npm's trusted publishing bound to owner/repo names until a first
+publish, which left about 1,500 packages open to whoever re-registered a
+freed name ("SlugFest", disclosed 2026-10-13); PyPI resolves the owner's id
+when a publisher is configured. Binding ids from the start leaves no window.
+
+**Linking takes proof of control.** One repository may publish to several
+projects (the same exercise in two editions), so without proof a stranger
+could link somebody's private course repository to a project of their own
+and receive its hidden tests on the next tag. The Worker asks GitHub, with
+the teacher's own token, and requires admin or maintain on the repository;
+the database then requires the teacher to own the edition. The App asks for
+repository metadata and nothing more: Administration and Repository creation
+are sensitive permissions an organisation owner must approve, and an App's
+permissions apply to every installation, so either would have kept teachers
+in school organisations from installing it at all. Templates are GitHub's
+own "Use this template" page, for the same reason.
+
+**Only tags publish, from `push` and `workflow_dispatch` runs only.** The
+events are an allow list (npm learned with `issue_comment` that a deny list
+misses one). A per-link ref pattern was planned and dropped: it protects
+nothing, because whoever can push to the repository can push any tag,
+change the workflow's `on:`, and read the hidden tests anyway.
+
+**A link trusts everyone who can push a tag or run a workflow in the
+repository**, exactly as a token secret trusts everyone with write access.
+That is said plainly on the feature's page rather than hidden behind a
+pattern; GitHub's tag rulesets are what restrict who may tag.
+
+**A link lasts as long as its maker owns the edition.** It is a credential
+kept outside the cloud, so when its maker is removed or becomes an
+assistant, publishing stops until an owner links again, rather than
+carrying on in the name of somebody who is not a member. Releases by link
+record that person as `uploaded_by`, and the repository as
+`published_from`, a name rather than a link id that relinking would leave
+dangling.
+
+**What the token proves comes from the token.** The repository, ref and
+commit the database sees are the verified token's, never the request's; a
+form commit that differs is refused. The token's audience is the site's
+canonical origin, so a token minted for another registry, or for another
+address of this one, is refused with both named. Replays are not tracked:
+the tokens live minutes, and the CLI asks for one per request.
+
+**The GitHub user token is held fifteen minutes, sealed to its person.** It
+lives in a `__Host-` cookie encrypted under a key derived from the App's
+client secret and bound to the signed-in person's id, is deleted once a
+link is made and revoked at logout, and is never stored server-side.
+Without the binding, a second teacher signing in on a shared machine could
+link the first teacher's repository with the first teacher's proof.
+
+Left out: webhooks, building in the cloud, other forges (an issuer column
+and an adapter, when one is needed), creating repositories, branches and
+per-link patterns, and skipping a commit already published, which silently
+dropped a release re-tagged on the same commit.
 
 ## The student's side and the teacher's
 

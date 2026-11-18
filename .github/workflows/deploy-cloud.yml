@@ -29,8 +29,10 @@
 #   FIRST_ADMIN_EMAIL       who app.bootstrap_admin promotes, once
 #   CLOUDFLARE_API_TOKEN    a token that can deploy the yukibana-cloud Worker
 #   CLOUDFLARE_ACCOUNT_ID   the Cloudflare account it is in
-# The Worker's own secrets (SUPABASE_PUBLISHABLE_KEY, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY) are set once with
-# `wrangler secret put` and are not touched here. docs/cloud/deploy.md is the whole runbook.
+# The Worker's own secrets (SUPABASE_PUBLISHABLE_KEY, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, and the optional GitHub
+# App's GITHUB_APP_CLIENT_ID, GITHUB_APP_CLIENT_SECRET and GITHUB_APP_SLUG) are set once with `wrangler secret put`
+# (the GitHub App's three together, with `wrangler secret bulk`) and are not touched here. docs/cloud/deploy.md is the
+# whole runbook.
 name: Deploy cloud
 run-name: Deploy ${{ github.sha }}
 

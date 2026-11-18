@@ -166,7 +166,9 @@ outside `A-Za-z0-9._~-`. The Supabase CLI rejects a string that is not encoded.
 Then create a **GitHub OAuth App** for login, at GitHub → Settings →
 Developer settings → OAuth Apps → New. The callback URL is
 `https://<ref>.supabase.co/auth/v1/callback`. Keep the client id and secret.
-This is an OAuth App, not a GitHub App: the registry reads no repositories.
+This is an OAuth App, for login only. Linking a project to a repository is a
+separate GitHub App (step 8), which is optional and reads nothing but
+repository metadata.
 
 Login codes are mailed through **Resend**. Supabase's built-in mailer sends
 only to your organisation's own members, a couple of mails an hour, and on
@@ -274,7 +276,9 @@ pnpm --filter @yukibana/cloud-web exec wrangler secret put S3_SECRET_ACCESS_KEY
 ```
 
 They are not in the deploy workflow: a secret that is re-pushed on every
-deploy is a secret that is in CI's environment on every deploy.
+deploy is a secret that is in CI's environment on every deploy. The GitHub
+App's three, for linking repositories, are optional and set the same way,
+together (step 8).
 
 ## 5. The environments' secrets
 
@@ -381,6 +385,102 @@ grants, or has more than one redirect URI. The secret key is
 used for this and nowhere else: it is not a Worker secret and not a
 repository secret.
 
+## 8. The GitHub App, for linking repositories
+
+Optional. Without it, a project is published to with a token or by a
+logged-in person, and the project page says nothing about GitHub. With it,
+an owner links a project to a repository, and the repository's workflow
+publishes with GitHub's OIDC token (`docs/cloud/github.md`). One App per
+environment: its callback URL is the environment's.
+
+**Register it** at GitHub → Settings → Developer settings → GitHub Apps →
+New GitHub App (under the organisation that should own it, Yukibana-Ed for
+production, so that no one person's account holds it):
+
+| Field | Value |
+| --- | --- |
+| GitHub App name | what teachers see when they authorise and install it, such as "Yukibana Cloud" |
+| Homepage URL | `SITE_URL` |
+| Callback URL | `<SITE_URL>/auth/github/return`, exactly: the Worker sends this address as `redirect_uri`, and GitHub refuses any other |
+| Expire user authorization tokens | on (the default) |
+| Request user authorization (OAuth) during installation | **on**, so that installing comes back to the callback with a code |
+| Enable Device Flow | off |
+| Setup URL | empty |
+| Webhook | **Active off**: the registry takes no webhooks |
+| Repository permissions | **Metadata: Read-only**, and nothing else |
+| Organization and account permissions | none |
+| Where can this GitHub App be installed? | **Any account**: teachers install it on their own accounts and their schools' organisations |
+
+Metadata is the one permission, on purpose. Administration and Repository
+creation are both sensitive permission sets that need an organisation
+owner's approval (GitHub changelog, 2026-10-13), and an App's permissions
+apply to every installation: with either, a teacher in a school organisation
+could not install the App even to pick an existing repository. Everything
+the Worker does is with the teacher's own user token, which can do no more
+than both the App and the teacher may.
+
+On the App's page that follows, note the **Client ID** and the **slug** (the
+last part of its public page, `https://github.com/apps/<slug>`), and
+**generate a client secret**. No private key is needed: the Worker never
+acts as the App itself. If GitHub made one, delete it.
+
+**Set the three values at once**, as Worker secrets. They are all-or-none:
+a Worker with some of them and not the others answers every request with
+"The server is not configured." and logs which are missing, so setting them
+one by one with `secret put` would take the site down between the first and
+the third. `secret bulk` sets them in one request, from a JSON file kept
+outside the checkout and out of the shell history:
+
+```bash
+# ~/github-app.json holds {"GITHUB_APP_CLIENT_ID": "…", "GITHUB_APP_CLIENT_SECRET": "…", "GITHUB_APP_SLUG": "…"}
+pnpm --filter @yukibana/cloud-web exec wrangler secret bulk ~/github-app.json
+rm ~/github-app.json
+```
+
+The client id and the slug are not secret, but they live beside the secret
+so the three change together. Secrets take effect at once, without a deploy.
+To turn the feature off again, the same command with each of the three set
+to `null` deletes them together; deleting them one by one with `secret
+delete` takes the site down in between, as above. Links that exist keep
+publishing with the App gone: only linking needs it.
+
+**Check.** On a project page, as an owner, the Releases tab has a
+Repository section with Connect GitHub. Connect, install the App on a test
+repository, link it, and push a tag there with the workflow the section
+shows: the job log lists the project, and the release says "from
+owner/name".
+
+**`GITHUB_TEMPLATE`** (`owner/name`) is optional and has no default. When
+it is set, the Repository section links to GitHub's "Use this template" page
+for that repository. Set it only once the template's own workflow publishes
+by link (`permissions: id-token: write`, and `Yukibana-Ed/Yukibana/action@main`
+without `token` or `project`): a repository made from a template still on
+tokens would publish nothing until the teacher edits its workflow.
+LordBaryhobal/yukibana-template-scala is such a template until
+`docs/cloud/github-template.patch` is merged there. It is not secret: a
+`vars` entry in `cloud/web/wrangler.jsonc`, or a secret like the others.
+
+**Rotating the client secret.** GitHub keeps two client secrets at once:
+generate a new one, `wrangler secret put GITHUB_APP_CLIENT_SECRET` with it,
+then delete the old one on GitHub. The GitHub cookies are sealed under a key
+derived from the secret, so a teacher in the middle of linking (fifteen
+minutes at most) presses Connect again.
+
+**Previews and other addresses.** Linking works only at `SITE_URL`: the
+callback is registered there, so a Connect started on a preview, or on the
+workers.dev address, comes back to the canonical site, where that browser
+has no connection in flight. Publishing by link, likewise, accepts only
+tokens whose audience is `SITE_URL`'s origin, which is the `url` the
+project page's workflow snippet shows.
+
+**Locally.** Register a development App of your own the same way, with the
+callback `http://127.0.0.1:5173/auth/github/return` and the homepage
+`http://127.0.0.1:5173`, and put the three values in `cloud/web/.dev.vars`
+(`cloud/web/.dev.vars.example` lists them). Linking then works against the
+local stack. Publishing by link does not: GitHub's runners cannot reach
+127.0.0.1, and the integration suite (`cloud/web/tests/integration/ci.test.ts`)
+covers that path with tokens it signs itself.
+
 ## Afterwards
 
 The migrations in this repository have been applied to the production
@@ -392,8 +492,9 @@ this is the date it started being true.
 
 Everything else is in the app. A teacher creates a course, an edition,
 enrols by address, and creates a project. Publishing a release is
-`docs/cloud/yukibana-json.md`: `yukibana build` and an upload, or a token and the
-GitHub Action in the course repository.
+`docs/cloud/yukibana-json.md`: `yukibana publish` from a checkout, or the
+GitHub Action in the course repository, with a token or, once step 8 is
+done, by linking the repository on the project page (`docs/cloud/github.md`).
 
 ## When something goes wrong
 
@@ -457,6 +558,33 @@ Hyperdrive. The response says so since the day it was found; the fix is
 `pnpm --filter @yukibana/cloud-web exec wrangler hyperdrive update <id> --connection-string=...` with
 `yukibana_app` and `APP_DB_PASSWORD`, and no redeploy, since Hyperdrive is
 read per request.
+
+**Every page says "The server is not configured."** The Worker's logs
+(the Worker's Observability tab, or `wrangler tail`) say which value is
+wrong. "GITHUB_APP_… is not set" is a GitHub App with some but not all of
+its three secrets: step 8, which sets them together. `wrangler secret list`
+shows which are there.
+
+**Connect GitHub ends on GitHub with "The redirect_uri is not associated
+with this application".** The App's callback URL is not
+`<SITE_URL>/auth/github/return`, or `SITE_URL` is not the address the App
+was registered for. Step 8.
+
+**Connect GitHub comes back with "This GitHub connection has expired or was
+not started in this browser".** More than ten minutes passed on GitHub, or
+Connect was pressed on another address than `SITE_URL` (a preview, the
+workers.dev one). Press Connect again at `SITE_URL`.
+
+**A linked repository's job fails with "CI token refused: this token is for
+… ; this registry expects …".** The workflow's `url` is another address of
+the registry than `SITE_URL`'s origin. Use the address the project page's
+snippet shows. With "it was issued by …", the job did not send a GitHub
+Actions token at all (a GitHub Enterprise Server runner, say), which is not
+supported.
+
+**A linked repository's job answers 503 about GitHub's signing keys.** The
+Worker could not fetch GitHub's published keys, so it could not check the
+token; nothing was refused for good. Re-run the job.
 
 **Nightly Drift failed.** Something changed the database outside a migration.
 The job prints the difference; either revert it in the dashboard or write it

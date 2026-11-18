@@ -64,7 +64,10 @@ function in a migration, and nowhere else: the Worker never re-decides it.
   Tables those functions write have no insert grant for `authenticated`.
 * **Claims come from the JWT and nowhere else.** `claims.ts` says what reaches
   `request.jwt.claims`; hooks verify the token against the Auth server's
-  keys before anything reads it.
+  keys before anything reads it. A GitHub Actions job's facts (repository,
+  owner, ref, commit) come from its OIDC token, verified against GitHub's
+  keys by `oidc.ts` and passed to the database as arguments, never from the
+  request's body.
 * **A policy that reads its own table through a helper.** `app.role_in`,
   `app.shares_edition` and `app.current_starter` are `security definer` so a
   policy on `enrollment` does not recurse into itself, and so a student's
@@ -79,7 +82,9 @@ function in a migration, and nowhere else: the Worker never re-decides it.
   can call `app.project_for_token` and `app.publish_release_with_token` and
   has no table grant at all: a request with a token can publish to the one
   project the token names and read nothing. A table grant for that role is
-  a bug.
+  a bug. A linked repository's job is the same role with two functions of
+  its own, `app.ci_projects` and `app.publish_release_with_repository`
+  (`docs/cloud/github.md`), which decide from the verified token's facts.
 
 Every policy has a pgTAP test in `cloud/db/supabase/tests/`, and the tests are written
 as negatives: the student who cannot read a classmate's submission, the
@@ -98,8 +103,12 @@ set cookies for the whole of yukibana.dev. Until Light moves to a domain of
 its own, the cloud protects itself, by these rules:
 
 * **No cookie-authenticated GET has side effects.** A GET handler and a
-  `load` only read. Two exceptions, each bounded. The login callback sets
-  the session, in cookies only this host can set. The IDE login's consent
+  `load` only read. Three exceptions, each bounded. The login callback sets
+  the session, in cookies only this host can set. The GitHub App's return
+  (`/auth/github/return`) sets the GitHub token cookie, also a `__Host-`
+  one, and only for the connection this browser's own `?/connectGithub`
+  form started, for the person signed in: any other request to it is
+  refused before GitHub is asked and touches no cookie. The IDE login's consent
   route (`/auth/connect/consent`) is a GET because Auth's
   `authorization_url_path` is one, and asking Auth about an authorization
   binds it to whoever is signed in, a write in Auth: so the route asks only
@@ -132,7 +141,8 @@ The negatives are `cloud/web/tests/integration/sibling.test.ts`: every route,
 read from `src/routes`, sent what a light.yukibana.dev page can send, with a
 signed-in teacher's cookies, against the real app; nothing in the database
 or in Auth may change, nobody may be signed in or out, and a login in flight
-may not be bound, approved or cancelled.
+may not be bound, approved or cancelled, nor a GitHub connection finished,
+cancelled or spent.
 
 ## Everything is TypeScript, and the types say what the code means
 
