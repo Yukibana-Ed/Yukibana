@@ -87,9 +87,9 @@
   // The ways this person may publish, the recommended first. A link needs the GitHub App, a token an owner, the CLI
   // someone who may edit the edition's projects.
   const methods = $derived([
-    ...(gh !== null ? [{ id: 'github', title: 'GitHub repository', blurb: 'Link it; every tag pushed publishes. No secret to copy.' }] : []),
-    ...(data.owner ? [{ id: 'token', title: 'A token in CI secrets', blurb: 'For any CI, GitHub Actions included, without a link.' }] : []),
-    ...(p.can_edit ? [{ id: 'cli', title: 'CLI', blurb: 'Publish from a checkout on your own machine.' }] : []),
+    ...(gh !== null ? [{ id: 'github', title: 'GitHub repository', blurb: 'Link the repository; its GitHub Actions workflow publishes with no secret to store.' }] : []),
+    ...(data.owner ? [{ id: 'token', title: 'Project token', blurb: 'Store a token as a secret in any CI, GitHub Actions included.' }] : []),
+    ...(p.can_edit ? [{ id: 'cli', title: 'CLI', blurb: 'Publish from a checkout on your computer, signed in as staff.' }] : []),
   ]);
   // Which card each choice starts on: what the address asks (`?source=new`, `?method=token`), so a link can open a
   // choice and a token form's answer comes back to the token panel; else the first. A token just made is on the token
@@ -358,7 +358,7 @@ jobs:
                 <div>
                   <a href="https://github.com/{gh.link.repository}" target="_blank" rel="noreferrer"><code>{gh.link.repository}</code></a>
                   <p class="note">
-                    Tags pushed there publish releases here. Linked{gh.link.linkedBy === null ? '' : ` by ${gh.link.linkedBy}`}, {when(gh.link.linkedAt, viewer.zone)}.
+                    Its GitHub Actions workflow publishes here. Linked{gh.link.linkedBy === null ? '' : ` by ${gh.link.linkedBy}`}, {when(gh.link.linkedAt, viewer.zone)}.
                     {#if gh.link.lastPublish === null}
                       Nothing published from it yet.
                     {:else}
@@ -371,7 +371,7 @@ jobs:
                   <div class="row">
                     <a class="yk-btn yk-btn--secondary" href="?tab=releases&relink#repository">Change</a>
                     <Confirm label="Unlink" title="Unlink {gh.link.repository}?" action={actionIn('releases', 'unlinkRepository')} fields={{}}>
-                      Tags pushed to {gh.link.repository} stop publishing to this project. Releases already published stay.
+                      The workflow in {gh.link.repository} stops publishing to this project. Releases already published stay.
                     </Confirm>
                   </div>
                 {/if}
@@ -391,8 +391,9 @@ jobs:
                 <p>Choose the repository to link instead of <code>{gh.link.repository}</code>. <a href="?tab=releases#repository">Keep the current link</a></p>
               {:else}
                 <p>
-                  Link the repository and every tag pushed there publishes a release here. The workflow proves where it runs
-                  with GitHub's own token, so there is no secret to copy.
+                  Link the repository and add the publishing workflow to it (a template already has it). The workflow proves
+                  which repository it runs in with GitHub's own token, so there is no secret to store. Releases are
+                  published from runs on a tag.
                 </p>
               {/if}
               {#if !gh.connected}
@@ -467,8 +468,8 @@ jobs:
         {#if data.owner}
           <div class="panel" data-method="token">
             <p>
-              Make a token and store it in the CI's secrets. It publishes releases to this project and nothing else, from
-              any branch or tag. For GitHub Actions without a link, or any other CI.
+              Make a token and store it as a secret in your CI. It publishes to this project and nothing else, from any
+              branch or tag, and works in any CI, GitHub Actions included.
             </p>
             {#if form?.token}
               <p class="ok">Token “{form.token.label}” created. Copy it now; it is not shown again.</p>
