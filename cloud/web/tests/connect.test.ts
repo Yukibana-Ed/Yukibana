@@ -193,13 +193,18 @@ test('once the browser comes back with its own authorization, every way consent 
 });
 
 /** Auth's authorization endpoint, faked: answers every request with
- *  `status` and `location`, and records what it was asked. */
+ *  `status` and `location`, and records what it was asked. Like the
+ *  Workers runtime's `fetch`, and unlike Node's, it throws "Illegal
+ *  invocation" when called with any `this` but none or the global one, so
+ *  that a call such as `input.fetchFn(…)` fails here as it fails in
+ *  production. */
 function authorizeEndpoint(status: number, location: string | null, body = '') {
     const asked: { url: string; redirect: RequestRedirect | undefined }[] = [];
-    const fetchFn = (async (url: URL | RequestInfo, init?: RequestInit) => {
+    const fetchFn = async function (this: unknown, url: URL | RequestInfo, init?: RequestInit) {
+        if (this !== undefined && this !== globalThis) throw new TypeError('Illegal invocation: function called with incorrect `this` reference.');
         asked.push({ url: url instanceof Request ? url.url : url.toString(), redirect: init?.redirect });
         return new Response(body, { status, headers: location === null ? {} : { location } });
-    }) as typeof fetch;
+    } as typeof fetch;
     return { fetchFn, asked };
 }
 
@@ -213,6 +218,13 @@ test('continuing asks Auth for the authorization from the server, and the browse
     expect(ep.asked).toEqual([{ url: expect.stringMatching(/^https:\/\/auth\.example\/auth\/v1\/oauth\/authorize\?/), redirect: 'manual' }]);
     expect(where({ to: s.to, spend: [] })).toBe(`${SITE}/auth/connect/consent?authorization_id=az-9_1`);
     expect(s.cookie).toEqual({ name: connectCookie(NONCE), value: 'az-9_1' });
+});
+
+test("continuing calls the Worker's fetch as a function, so the Workers runtime does not refuse it as an illegal invocation", async () => {
+    const ep = authorizeEndpoint(302, `${SITE}/auth/connect/consent?authorization_id=az-9_1`);
+    const s = await startWith(ep.fetchFn);
+    expect(where({ to: s.to, spend: [] })).not.toBe('502');
+    expect(ep.asked).toHaveLength(1);
 });
 
 test('a request Auth refuses after checking the client goes back to the CLI as an error, and sets no cookie', async () => {
