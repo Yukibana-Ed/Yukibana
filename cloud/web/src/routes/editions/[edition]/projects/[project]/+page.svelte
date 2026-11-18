@@ -383,7 +383,7 @@ jobs:
                 </p>
               {/if}
             {:else if !data.owner}
-              <p class="note">No repository is linked. An owner of this edition can link one.</p>
+              <p class="note">No repository is linked. An owner of this edition who administers or maintains it on GitHub can link one.</p>
             {/if}
 
             {#if choosing}
@@ -414,7 +414,12 @@ jobs:
                   <button class="yk-btn yk-btn--primary">Link</button>
                 </form>
               {:else}
-                <p class="note">The App sees no repository you administer or maintain yet.</p>
+                <!-- The list is the signed-in person's own (#lib/server/github-link `pickerFor`): an owner of the edition
+                     who has no admin or maintain on the course repository yet, or no longer, sees nothing here. -->
+                <p class="note">
+                  GitHub shows no repository you administer or maintain. You need admin or maintain on the repository
+                  yourself: ask its administrators, or, if you have it, give the App access to it below.
+                </p>
               {/if}
             {/if}
 
@@ -430,8 +435,10 @@ jobs:
                       <button class="yk-btn yk-btn--secondary">Link</button>
                     </form>
                     <p class="note">
-                      Or give the App access to it: install the App on the repository's account, or add the repository to an
-                      existing installation, then refresh. In an organisation an owner may have to approve.
+                      Only repositories you administer or maintain yourself are listed, wherever the App is installed. If
+                      you have that access and it is still missing, give the App access to it: install the App on the
+                      repository's account, or add the repository to an existing installation, then refresh. In an
+                      organisation an owner may have to approve.
                     </p>
                     <form method="POST" action={actionIn('releases', 'connectGithub')} class="row">
                       {#if gh.relink}<input type="hidden" name="relink" value="1" />{/if}

@@ -65,7 +65,13 @@ afterAll(async () => {
 });
 
 test('a repository GitHub does not show the person, or one they only push to, is refused before the database is asked', async () => {
-    expect(await linkRepository(sql, claimsOf(TEACHER), project, gitHubWith(null), 'ghu_x', { name: 'heig-isc/intro-exercise' })).toMatchObject({ ok: false, status: 404 });
+    // An owner of the edition with no access to the repository on GitHub, not yet or not any more: GitHub shows them
+    // nothing, and the page says it may be their access rather than only the App.
+    expect(await linkRepository(sql, claimsOf(TEACHER), project, gitHubWith(null), 'ghu_x', { name: 'heig-isc/intro-exercise' })).toMatchObject({
+        ok: false,
+        status: 404,
+        message: expect.stringContaining('no access to it on GitHub'),
+    });
     const pusher = gitHubWith(repo({ admin: false, maintain: false }));
     const refused = await linkRepository(sql, claimsOf(TEACHER), project, pusher, 'ghu_x', { id: String(run) });
     expect(refused).toMatchObject({ ok: false, status: 403, message: expect.stringContaining('admin or maintain') });

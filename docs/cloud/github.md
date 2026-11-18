@@ -345,6 +345,20 @@ projects and editions it names.
     admin or maintain, so its requests stay well under the Worker's
     subrequest limit. A GitHub failure or rate limit is reported and shown as
     a sentence; it never fails the page.
+    The list is the person's own, wherever the App is installed: asked with
+    a user's token, GitHub lists only the repositories that user has
+    explicit access to, each with that user's permissions ("The access the
+    user has to each repository is included in the hash under the
+    permissions key"), so an App installed on a whole organisation shows a
+    member nothing they could not open themselves, and only what they
+    administer or maintain is kept. Staff's access on GitHub need not match
+    their role in the edition, either way: an owner without access, not yet
+    or not any more, sees an empty list and a refusal that says it may be
+    their access; an assistant who administers the repository sees it and
+    the database refuses the link. Unlinking needs no GitHub access, so an
+    owner who lost theirs can still end a link. A link already made keeps
+    publishing while its maker owns the edition, whatever their access on
+    GitHub since (see "Many projects, one repository").
   * `POST ?/linkRepository` asks GitHub for the repository, by id or by name,
     with the person's token, requires admin or maintain, then calls
     `app.link_repository` with the ids GitHub returned, and deletes the token

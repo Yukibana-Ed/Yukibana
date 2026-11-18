@@ -222,6 +222,32 @@ test('the picker lists only repositories the person administers or maintains, fr
     expect(one.truncated).toBe(true);
 });
 
+test('an App installed on a whole organisation lists, to each person, only the repositories they administer or maintain there themselves', async () => {
+    // What GitHub answers `/user/installations/{id}/repositories` for one
+    // member of an organisation whose installation covers every repository:
+    // only what that member may access, each with the member's own
+    // permissions, and here one entry without permissions at all.
+    const orgWide = repositoryPageOf({
+        total_count: 4,
+        repository_selection: 'all',
+        repositories: [
+            { ...RECORDED_REPOSITORY, id: 1, full_name: 'heig-isc/maintained', permissions: { admin: false, maintain: true, push: true, pull: true } },
+            { ...RECORDED_REPOSITORY, id: 2, full_name: 'heig-isc/administered', permissions: { admin: true, maintain: true, push: true, pull: true } },
+            { ...RECORDED_REPOSITORY, id: 3, full_name: 'heig-isc/pushed-to', permissions: { admin: false, maintain: false, push: true, pull: true } },
+            { ...RECORDED_REPOSITORY, id: 4, full_name: 'heig-isc/read-only', permissions: { admin: false, maintain: false, push: false, pull: true } },
+            { ...RECORDED_REPOSITORY, id: 5, full_name: 'heig-isc/no-permissions-said', permissions: undefined },
+        ],
+    });
+    if (orgWide === null) throw new Error('the recorded page did not read');
+    const gh = stubGitHub({ installations: () => Promise.resolve([{ id: 55501, account: 'heig-isc' }]), installationRepositories: () => Promise.resolve(orgWide) });
+    expect((await pickerFor(gh, 'ghu_member')).repositories.map(r => r.fullName)).toEqual(['heig-isc/administered', 'heig-isc/maintained']);
+
+    // A member of the edition's staff with no access to anything there yet,
+    // or none any more: GitHub lists nothing, and so does the picker.
+    const nobody = stubGitHub({ installations: () => Promise.resolve([{ id: 55501, account: 'heig-isc' }]), installationRepositories: () => Promise.resolve({ repositories: [], total: 0 }) });
+    expect(await pickerFor(nobody, 'ghu_newcomer')).toEqual({ repositories: [], truncated: false, failed: null });
+});
+
 test('GitHub failing or rate limiting the picker is a sentence on the page, not a failed page', async () => {
     const picker = await pickerFor(
         stubGitHub({ installations: () => Promise.reject(new GitHubError('GitHub answered 403 to the list of installations (rate limited)', 403)) }),
