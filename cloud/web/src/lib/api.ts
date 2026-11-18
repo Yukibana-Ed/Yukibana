@@ -152,6 +152,10 @@ export interface ReleaseJson {
     readonly uploadedBy: string | null;
     /** `true` iff it was published with a project token rather than by a person signed in. */
     readonly viaToken: boolean;
+    /** The repository (`owner/name`, as the CI job's token named it) a release
+     *  published by a linked repository came from; null for any other. Its
+     *  `uploadedBy` is then the owner who linked the repository. */
+    readonly publishedFrom: string | null;
 }
 
 /** An enrolment in an edition (`GET /api/editions/:id/members`): staff see

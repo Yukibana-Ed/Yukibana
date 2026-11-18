@@ -5,6 +5,7 @@ import { SignJWT, createLocalJWKSet, exportJWK, generateKeyPair, type JWTVerifyG
 import { asUser, connect } from '../../src/lib/server/db.js';
 import { s3Bucket } from '../../src/lib/server/storage.js';
 import { publishRelease } from '../../src/lib/server/releases.js';
+import { releases as releasesListed } from '../../src/lib/server/catalogue.js';
 import { ciLinks, ciProjectsOf, MOVED, NOT_LINKED } from '../../src/lib/server/ci.js';
 import { GITHUB_ACTIONS_ISSUER, verifyCiToken, type CiIdentity } from '../../src/lib/server/oidc.js';
 import { trustId, type ProjectId } from '../../src/lib/ids.js';
@@ -140,6 +141,9 @@ test('a tag pushed in a linked repository publishes to every project linked to i
     }
     // The CLI sends the commit too; the same one is accepted.
     await publishRelease(ctx, { kind: 'ci', identity: job }, first, archive, other, 'v1 again', SHA.toUpperCase(), null);
+    // The API says where a release by link came from, as the project page does.
+    const listed2 = await releasesListed(ctx, claimsOf(TEACHER), first);
+    expect(listed2.map(r => r.publishedFrom)).toEqual(['ada/course', 'ada/course']);
 });
 
 test('a token for another registry, from another issuer, expired, or from a pull request is refused, and the refusal for the audience names the one expected', async () => {
@@ -192,13 +196,13 @@ test(
         const releases = await releasesOf(first);
 
         const foreign = await sign(claims(), { aud: 'https://other.example' });
-        // The audience the app expects is its SITE_URL: this server's origin, or a .dev.vars' own, which wins (app.ts).
+        // The audience the app expects is its SITE_URL, which the suite sets to this server's origin (app.ts).
         // Its refusal names it, so a job can tell which to ask for.
         const told = (await (await fetch(`${origin}/api/ci/projects`, { headers: { authorization: `Bearer ${foreign}`, accept: 'application/json' } })).json()) as {
             message: string;
         };
         const expected = told.message.match(/this registry expects (\S+)\.$/)?.[1] ?? '';
-        expect(expected, told.message).toMatch(/^https?:\/\/[^/]+$/);
+        expect(expected, told.message).toBe(origin);
         const expired = await sign(claims(), { aud: expected, exp: Math.floor(Date.now() / 1000) - 5 });
         const form = (): FormData => {
             const f = new FormData();

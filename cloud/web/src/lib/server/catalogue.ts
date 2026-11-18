@@ -218,10 +218,11 @@ export async function releases(ctx: Context, claims: Claims, id: ProjectId): Pro
                 uploaded_at: Date;
                 uploader: string | null;
                 via_token: boolean;
+                published_from: string | null;
             }[]
         >`
       select r.release_id, r.label, r.commit_sha, r.starter_size::text as starter_size, r.teacher_size::text as teacher_size, r.uploaded_at,
-             coalesce(u.github_login, u.full_name) as uploader, r.token_id is not null as via_token
+             coalesce(u.github_login, u.full_name) as uploader, r.token_id is not null as via_token, r.published_from
       from project_release r left join app_user u on u.user_id = r.uploaded_by
       where r.project_id = ${id}
       order by r.seq desc`;
@@ -234,6 +235,7 @@ export async function releases(ctx: Context, claims: Claims, id: ProjectId): Pro
             uploadedAt: r.uploaded_at.toISOString(),
             uploadedBy: r.uploader,
             viaToken: r.via_token,
+            publishedFrom: r.published_from,
         }));
     });
 }

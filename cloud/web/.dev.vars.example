@@ -21,3 +21,13 @@ S3_PUBLIC_ENDPOINT=http://localhost:9000
 S3_REGION=us-east-1
 S3_ACCESS_KEY_ID=rustfsadmin
 S3_SECRET_ACCESS_KEY=rustfsadmin
+
+# The GitHub App teachers link a project's repository through (docs/cloud/github.md).
+# All three or none: none leaves linking off, and the project page says nothing about
+# GitHub. Register a development App of your own, with the callback URL
+# http://127.0.0.1:5173/auth/github/return.
+# GITHUB_APP_CLIENT_ID=
+# GITHUB_APP_CLIENT_SECRET=
+# GITHUB_APP_SLUG=
+# Optional: a template repository (owner/name) whose workflow publishes with OIDC.
+# GITHUB_TEMPLATE=
