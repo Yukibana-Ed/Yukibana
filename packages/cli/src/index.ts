@@ -40,6 +40,9 @@ const USAGE = `usage: yukibana <command> [arguments] [options]
     check [<dir>]                       build in memory and report problems
     build [<dir>] [--out <dir>]         write starter.tar.gz and teacher.tar.gz
     publish [<dir>] --project <id> [--token <token>] [--label <text>]
+    publish [<dir>] --ci [--label <text>]
+                                        from GitHub Actions: to every project linked to
+                                        the repository, with the job's OIDC token
     download [<project>] [--out <dir>] [--student-submissions <who>]...
              [--all-versions] [--submission <id>]... [--assemble [--release <id|newest>]]
              [--archive] [--force]
@@ -85,6 +88,7 @@ async function main(): Promise<void> {
             url: { type: 'string' },
             token: { type: 'string' },
             project: { type: 'string' },
+            ci: { type: 'boolean' },
             edition: { type: 'string' },
             'student-submissions': { type: 'string', multiple: true },
             student: { type: 'string', multiple: true },

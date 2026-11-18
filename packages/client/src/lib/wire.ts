@@ -162,6 +162,11 @@ export interface Release {
     readonly uploadedBy: string | null;
     /** `true` iff it was published with a project token rather than by a person signed in. */
     readonly viaToken: boolean;
+    /** The repository (`owner/name`, as the CI job's token named it) a
+     *  release published by a linked repository came from; its `uploadedBy`
+     *  is then whoever linked it. Null for any other release, and from a
+     *  registry older than the field. */
+    readonly publishedFrom: string | null;
 }
 
 /** An enrolment in an edition. Staff see every one; a student only their own. */
@@ -302,6 +307,7 @@ const release = z.object({
     uploadedAt: text,
     uploadedBy: maybeText,
     viaToken: z.boolean(),
+    publishedFrom: maybeText,
 });
 const member = z.object({ email: text, role, source: text, userId: maybeText, fullName: maybeText, githubLogin: maybeText });
 const accepted = z.object({ submissionId: text, byteSize: count, sha256: text });
