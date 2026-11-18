@@ -1,9 +1,10 @@
 /** Publishing a release and handing out its archives. The same function
- *  serves CI (a project token) and the CLI as a person (their access
- *  token), so both make the same decisions in the same order: check the
- *  archives, store both, then record the row under the caller's policies;
- *  a refused row, or a bucket that fails part way, deletes both objects
- *  again.
+ *  serves CI (a project token, or a GitHub Actions OIDC token through a
+ *  repository link) and the CLI as a person (their access token), so all
+ *  make the same decisions in the same order: check the archives, ask the
+ *  database whether the caller may publish to the project, store both, then
+ *  record the row under the caller's policies; a refused row, or a bucket
+ *  that fails part way, deletes both objects again.
  */
 
 import { error, isHttpError } from '@sveltejs/kit';
@@ -12,6 +13,8 @@ import { isGzip, sha256 } from '#lib/bytes.ts';
 import { starterKey, teacherKey, trustId, trustKey, type ProjectId, type ReleaseId } from '#lib/ids.ts';
 import { report } from '#lib/report.ts';
 import { asPublisher, asUser, Misconfigured, statusOf } from './db';
+import { ciRefusalFor } from './ci';
+import type { CiIdentity } from './oidc';
 import type { BucketObject, Context } from './context';
 
 /** One archive of a release, as bytes. Nothing in the app uses it any
@@ -34,7 +37,7 @@ export interface Published {
 }
 
 /** Who is publishing: a person (on the page, or the CLI with their access
- *  token), or a project token from CI. */
+ *  token), a project token from CI, or a CI job of a linked repository. */
 export type Publisher =
     | {
           /** A person, on the page or through the CLI with their own access
@@ -49,6 +52,16 @@ export type Publisher =
           /** The token's secret as the request carried it; only its SHA-256
            *  reaches the database, and it is never logged. */
           readonly secret: string;
+      }
+    | {
+          /** A CI job of a GitHub repository linked to the project, proved
+           *  by a GitHub Actions OIDC token. */
+          readonly kind: 'ci';
+          /** What the verified token says (`verifyCiToken`): the repository's
+           *  ids and name, the ref and the commit. Everything the database
+           *  is told about where the release came from is taken from here,
+           *  never from the request's form. */
+          readonly identity: CiIdentity;
       };
 
 const hex = (b: Uint8Array): string => Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
@@ -69,6 +82,17 @@ async function tokenHash(secret: string): Promise<Uint8Array> {
  *  `releaseMaxBytes` a 413, one that is not gzip a 415; a token that does
  *  not name `project`, or a person who may not edit its projects, is a 403.
  *  `label` is passed to the database as it is, which decides what it takes.
+ *
+ *  For a CI job (`kind: 'ci'`) the commit is the token's `sha`: `commit`
+ *  null takes it, and a `commit` that differs from it is a 400 before
+ *  anything is stored, since a release by link records where it came from
+ *  as the token proves it and nothing the request says. The job is a 403,
+ *  with the reason in a sentence, unless `app.ci_projects` says the project
+ *  is linked to its repository under the same owner, the run is at a tag,
+ *  and whoever linked it still owns the edition; that is asked before a
+ *  byte is stored, and `app.publish_release_with_repository` checks it all
+ *  again when it records the row, with `uploaded_by` the person who linked
+ *  the repository and `published_from` its name now.
  *
  *  `release` is the id the publisher chose and wrote into the starter's
  *  yukibana.json, so a student's folder says which release it is; the row
@@ -95,6 +119,14 @@ export async function publishRelease(
         if (!isGzip(bytes)) error(415, `The ${name} archive is not gzip; a release is two .tar.gz files.`);
     }
     if (commit !== null && !/^[0-9a-f]{7,64}$/i.test(commit)) error(400, 'A commit is a hex sha.');
+    if (by.kind === 'ci') {
+        // The form's commit used to be the only one there was, and the CLI still
+        // sends it; on this path it may only repeat what the token proves.
+        if (commit !== null && commit.toLowerCase() !== by.identity.sha) {
+            error(400, `The commit sent (${commit}) is not the one this job runs at (${by.identity.sha}); a release from CI records the commit its token names.`);
+        }
+    }
+    const recorded = by.kind === 'ci' ? by.identity.sha : commit;
 
     // Both of these ask the database who the caller is, and both used to do it
     // outside the mapping below: a token that could not be looked up at all
@@ -114,6 +146,9 @@ export async function publishRelease(
                 return rows.length === 1;
             });
             if (!allowed) error(403, 'Only staff may publish a release.');
+        } else if (by.kind === 'ci') {
+            const refused = await ciRefusalFor(ctx, by.identity, project);
+            if (refused !== null) error(403, refused);
         }
     } catch (e) {
         refuse(e);
@@ -132,7 +167,7 @@ export async function publishRelease(
         const args = [
             release,
             label,
-            commit,
+            recorded,
             keys.starter,
             starter.byteLength,
             digests.starter as Uint8Array<ArrayBuffer>,
@@ -141,19 +176,27 @@ export async function publishRelease(
             digests.teacher as Uint8Array<ArrayBuffer>,
         ] as const;
         const id =
-            hash !== null
+            by.kind === 'ci'
                 ? await asPublisher(ctx.sql, async tx => {
+                      const { repositoryId, ownerId, ref, repository } = by.identity;
                       const [row] = await tx<
                           { id: string }[]
-                      >`select app.publish_release_with_token(${hash as Uint8Array<ArrayBuffer>}, ${args[0]}::uuid, ${args[1]}, ${args[2]}, ${args[3]}, ${args[4]}, ${args[5]}, ${args[6]}, ${args[7]}, ${args[8]}) as id`;
+                      >`select app.publish_release_with_repository(${repositoryId}, ${ownerId}, ${ref}, ${repository}, ${project}, ${args[0]}::uuid, ${args[1]}, ${args[2]}, ${args[3]}, ${args[4]}, ${args[5]}, ${args[6]}, ${args[7]}, ${args[8]}) as id`;
                       return row?.id ?? null;
                   })
-                : await asUser(ctx.sql, (by as { claims: Claims }).claims, async tx => {
-                      const [row] = await tx<
-                          { id: string }[]
-                      >`select app.publish_release(${project}, ${args[0]}::uuid, ${args[1]}, ${args[2]}, ${args[3]}, ${args[4]}, ${args[5]}, ${args[6]}, ${args[7]}, ${args[8]}) as id`;
-                      return row?.id ?? null;
-                  });
+                : hash !== null
+                  ? await asPublisher(ctx.sql, async tx => {
+                        const [row] = await tx<
+                            { id: string }[]
+                        >`select app.publish_release_with_token(${hash as Uint8Array<ArrayBuffer>}, ${args[0]}::uuid, ${args[1]}, ${args[2]}, ${args[3]}, ${args[4]}, ${args[5]}, ${args[6]}, ${args[7]}, ${args[8]}) as id`;
+                        return row?.id ?? null;
+                    })
+                  : await asUser(ctx.sql, (by as { claims: Claims }).claims, async tx => {
+                        const [row] = await tx<
+                            { id: string }[]
+                        >`select app.publish_release(${project}, ${args[0]}::uuid, ${args[1]}, ${args[2]}, ${args[3]}, ${args[4]}, ${args[5]}, ${args[6]}, ${args[7]}, ${args[8]}) as id`;
+                        return row?.id ?? null;
+                    });
         if (id === null) throw new Error('publish returned nothing');
         return {
             releaseId: trustId<ReleaseId>(id),

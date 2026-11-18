@@ -13,6 +13,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Cookies } from '@sveltejs/kit';
 import { claimsOf, type Claims } from '#lib/claims.ts';
 import { SESSION_COOKIE_OPTIONS } from '#lib/session-cookie.ts';
+import { issuerOf } from './oidc';
 
 /** The client's data API is never used (queries go through db.ts), so its
  *  schema is empty. Saying so keeps the type honest: an `any` schema would
@@ -125,12 +126,25 @@ export async function claimsFor(supabase: Supabase, authorization: string | null
  *  A session that stops counting while a tab is open, its refresh token
  *  revoked or already used, or Auth out of reach, used to read as "not
  *  logged in" with no word anywhere, and a page told a signed-in person to
- *  log in. The hook reports `refused` and the layout says it. */
+ *  log in. The hook reports `refused` and the layout says it.
+ *
+ *  Whenever an `Authorization: Bearer` header is present, cookies are never
+ *  read: the bearer alone decides, and a bearer that is not a session is
+ *  nobody, whatever cookies came with it. `forgery` lets bearer requests
+ *  write on exactly that promise, so a GitHub-looking bearer sent with a
+ *  teacher's cookies by a page on a sibling subdomain must not be the
+ *  teacher. A bearer that is plainly not a Supabase session, a project
+ *  token (`yk_…`) or a JWT whose `iss` is not an Auth server's
+ *  (`…/auth/v1`), such as a GitHub Actions OIDC token, is not shown to
+ *  Auth at all: it is `{ claims: null, refused: null, by: 'bearer' }`,
+ *  neither refused nor reported, because the routes that take it (CI
+ *  publishing) verify it themselves and every other route answers 401. */
 export async function identify(
     supabase: Supabase,
     authorization: string | null,
 ): Promise<{ claims: Claims; refused: null } | { claims: null; refused: string | null; by: 'bearer' | 'cookie' }> {
     const bearer = authorization?.match(/^Bearer\s+(\S+)$/i)?.[1];
+    if (bearer !== undefined && notASession(bearer)) return { claims: null, refused: null, by: 'bearer' };
     const { data, error } = await supabase.auth.getClaims(bearer);
     const by = bearer === undefined ? 'cookie' : 'bearer';
     if (error === null && data !== null) {
@@ -139,4 +153,15 @@ export async function identify(
     }
     const refused = error === null ? null : `${error.message}${error.code === undefined ? '' : ` (${error.code})`}`;
     return { claims: null, refused, by };
+}
+
+/** True iff `bearer` is, at a glance and unverified, something other than a
+ *  Supabase session: a project token, or a JWT whose issuer is not an Auth
+ *  server's (Supabase's is always `<project>/auth/v1`). Only ever makes a
+ *  request nobody, so a wrong guess costs a 401 and grants nothing. A token
+ *  with no readable issuer goes to Auth, which refuses it in its own words. */
+function notASession(bearer: string): boolean {
+    if (/^yk_/i.test(bearer)) return true;
+    const iss = issuerOf(bearer);
+    return iss !== null && !/\/auth\/v1\/?$/.test(iss);
 }

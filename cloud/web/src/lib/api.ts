@@ -189,6 +189,44 @@ export interface AuthConfigJson {
     readonly siteUrl: string;
 }
 
+/** `GET /api/ci/projects`: what the CI job whose GitHub Actions OIDC token
+ *  is the bearer may publish to. Every field but the projects' own is the
+ *  verified token's claim; nothing comes from the request. A job publishes
+ *  to each project whose `refused` is null, and says why it skips the rest. */
+export interface CiProjectsJson {
+    /** The repository's `owner/name` now, the token's `repository` claim. */
+    readonly repository: string;
+    /** The git ref the job runs at, such as `refs/tags/v1`. */
+    readonly ref: string;
+    /** The commit the job runs at, lowercase hex: the commit a release by
+     *  link records, and the only one it may say. */
+    readonly sha: string;
+    /** A sentence when links of this repository were made under an owner it
+     *  no longer has (it was transferred): those links publish nothing, and
+     *  which projects they were is not said. Null when there are none. */
+    readonly moved: string | null;
+    /** The projects linked to this repository under its current owner, by
+     *  edition then slug. Empty when it is linked to none. */
+    readonly projects: readonly CiProjectJson[];
+}
+
+/** One project a repository is linked to, in `CiProjectsJson`. */
+export interface CiProjectJson {
+    /** The project's id, to publish to. */
+    readonly id: string;
+    /** The project's slug. */
+    readonly slug: string;
+    /** The project's title. */
+    readonly title: string;
+    /** The edition, for people: its title (the course name) and label, as
+     *  `Introduction to Programming, 2026 autumn`. */
+    readonly edition: string;
+    /** Why a release from this job would be refused (only tags publish; the
+     *  person who linked it is no longer an owner), or null when it would be
+     *  accepted. A sentence for the job log; a client branches on null. */
+    readonly refused: string | null;
+}
+
 /** Every refusal and failure under `/api/`, whatever the status and whatever
  *  the caller's `Accept` says: a 400 for a request that cannot mean
  *  anything, 401 for no session, 403 for a session that may not, 404 for no

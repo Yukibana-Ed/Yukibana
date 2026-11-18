@@ -15,6 +15,8 @@ import { afterResponse, workerConfig } from './worker.ts';
 import { connect, Misconfigured, statusOf, type Sql } from './db';
 import { report } from '#lib/report.ts';
 import { s3Bucket, type Bucket } from './storage';
+import { siteOrigin } from './connect';
+import { isCiToken, verifyCiToken, type CiIdentity } from './oidc';
 
 /** What a route's server code works with, for the length of one request. */
 export interface Context {
@@ -66,6 +68,28 @@ export function requireBearer(event: RequestEvent): Claims {
     const bearer = /^Bearer\s+\S+$/i.test(event.request.headers.get('authorization') ?? '');
     if (!bearer) error(401, 'Send your session as an Authorization: Bearer header.');
     return requireClaims(event);
+}
+
+/** The `Authorization: Bearer` token of `event`, or null when it sent none
+ *  (or a header of another scheme). */
+export const bearerOf = (event: RequestEvent): string | null => event.request.headers.get('authorization')?.match(/^Bearer\s+(\S+)$/i)?.[1] ?? null;
+
+/** The CI job asking, from its bearer, or the 401 that says why not.
+ *
+ *  The bearer must be a GitHub Actions OIDC token for this registry's
+ *  canonical origin, `siteOrigin(config.siteUrl, event.url)`: the same
+ *  origin the IDE login uses, `SITE_URL` where it is set and the request's
+ *  own origin only where it is not (development). Every CI route calls
+ *  this itself: `isCiToken` only routes, and the hook takes a CI token for
+ *  nobody. Anything else, a person's session or a project token included,
+ *  is a 401 "CI token refused: <why>". A key set GitHub does not serve is a
+ *  503 (`verifyCiToken`). */
+export async function requireCi(event: RequestEvent): Promise<CiIdentity> {
+    const bearer = bearerOf(event);
+    if (bearer === null || !isCiToken(bearer)) error(401, 'CI token refused: send the GitHub Actions OIDC token as an Authorization: Bearer header.');
+    const verified = await verifyCiToken(bearer, siteOrigin(workerConfig().siteUrl, event.url));
+    if (typeof verified === 'string') error(401, `CI token refused: ${verified}.`);
+    return verified;
 }
 
 /** Runs an API call's database work and answers a refusal with the

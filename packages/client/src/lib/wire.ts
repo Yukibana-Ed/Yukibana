@@ -218,6 +218,39 @@ export interface AuthConfig {
     readonly siteUrl: string | null;
 }
 
+/** What a CI job may publish to (`GET /api/ci/projects`), as the registry
+ *  read it from the job's verified GitHub Actions OIDC token. */
+export interface CiProjects {
+    /** The repository's `owner/name` now, from the token. */
+    readonly repository: string;
+    /** The git ref the job runs at, from the token, such as `refs/tags/v1`. */
+    readonly ref: string;
+    /** The commit the job runs at, from the token: the commit a release by
+     *  link records, and the only `commit` the registry accepts with it. */
+    readonly sha: string;
+    /** A sentence when links of this repository were made under an owner it
+     *  no longer has, which publish nothing; null when there are none. */
+    readonly moved: string | null;
+    /** The projects linked to the repository under its current owner, by
+     *  edition then slug; empty when it is linked to none. */
+    readonly projects: readonly CiProject[];
+}
+
+/** One project a repository is linked to. */
+export interface CiProject {
+    /** The project's id, to build for and publish to. */
+    readonly id: string;
+    /** The project's slug. */
+    readonly slug: string;
+    /** The project's title. */
+    readonly title: string;
+    /** The edition, for people: its course name and label. */
+    readonly edition: string;
+    /** Why the registry would refuse a release from this job, as a sentence,
+     *  or null when it would accept one. Branch on null, never on the words. */
+    readonly refused: string | null;
+}
+
 /** A response that is not what this version expects. */
 export class Unexpected extends Error {}
 
@@ -274,6 +307,8 @@ const member = z.object({ email: text, role, source: text, userId: maybeText, fu
 const accepted = z.object({ submissionId: text, byteSize: count, sha256: text });
 const archive = z.object({ size: count, sha256: text });
 const published = z.object({ releaseId: text, starter: archive, teacher: archive });
+const ciProject = z.object({ id: text, slug: text, title: text, edition: text, refused: z.nullable(z.string()) });
+const ciProjects = z.object({ repository: text, ref: text, sha: text, moved: z.nullable(z.string()), projects: z.array(ciProject) });
 const authConfig = z.object({ supabaseUrl: text, publishableKey: text, oauthClientId: maybeText, siteUrl: maybeText });
 
 /** Returns `v` as `schema` says, or throws `Unexpected` with a sentence for
@@ -316,6 +351,9 @@ export const decodeAccepted = (v: unknown, where = 'submission'): Accepted => de
 export const decodePublished = (v: unknown, where = 'release'): Published => decode(published, v, where);
 /** Returns `v` as an `AuthConfig`, or throws `Unexpected` naming the field. */
 export const decodeAuthConfig = (v: unknown, where = 'auth config'): AuthConfig => decode(authConfig, v, where);
+
+/** Returns `v` as `CiProjects`, or throws `Unexpected` naming the field. */
+export const decodeCiProjects = (v: unknown, where = 'ci projects'): CiProjects => decode(ciProjects, v, where);
 
 /** Returns a decoder of a list whose items `item` decodes, each named
  *  `where[i]` in an error. */

@@ -192,3 +192,45 @@ test('a request with no session and no token is nobody, with nothing to explain'
     const who = await identify(supabaseFor(holding({}), 'https://auth.example', 'publishable'), null);
     assert.deepEqual(who, { claims: null, refused: null, by: 'cookie' });
 });
+
+/** An unsigned JWT with `claims`: what anyone can make, and what a routing
+ *  hint must not be fooled into trusting. */
+const unsigned = (claims: Record<string, unknown>): string =>
+    `${Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url')}.${Buffer.from(JSON.stringify(claims)).toString('base64url')}.sig`;
+
+test("a GitHub-looking bearer sent with a teacher's session cookie is nobody, and neither Auth nor the cookie is asked", async () => {
+    const TEACHER = '00000000-0000-4000-8000-00000000000a';
+    const real = sessionCookie(TEACHER, 'teacher@school.example');
+    let asked = 0;
+    const read: string[] = [];
+    const jar = holding({ [SESSION_COOKIE]: real });
+    const watched: Cookies = { ...jar, getAll: () => (read.push('getAll'), jar.getAll()), get: (name: string) => (read.push(name), jar.get(name)) };
+    vi.stubGlobal('fetch', async () => {
+        asked++;
+        return Response.json({ message: 'Auth was asked' }, { status: 500 });
+    });
+    const github = unsigned({ iss: 'https://token.actions.githubusercontent.com', aud: 'https://cloud.yukibana.dev', sub: TEACHER, repository_id: '1' });
+    for (const bearer of [github, `yk_${'0'.repeat(64)}`, unsigned({ iss: 'https://evil.example', sub: TEACHER })]) {
+        const supabase = supabaseFor(watched, 'https://auth.example', 'publishable');
+        // The client reads its cookies once as it starts, whatever the request; what counts is what deciding who asks reads.
+        await new Promise(resolve => setTimeout(resolve, 0));
+        read.length = 0;
+        const who = await identify(supabase, `Bearer ${bearer}`);
+        assert.deepEqual(who, { claims: null, refused: null, by: 'bearer' }, bearer.slice(0, 20));
+    }
+    assert.equal(asked, 0, 'Auth was asked about a bearer that is not a session');
+    assert.deepEqual(read, [], 'a cookie was read although a bearer was present');
+});
+
+test('a bearer that names an Auth server as its issuer is still shown to Auth, which decides', async () => {
+    let asked = 0;
+    vi.stubGlobal('fetch', async () => {
+        asked++;
+        return Response.json({ message: 'invalid JWT' }, { status: 401 });
+    });
+    const forged = unsigned({ iss: 'https://auth.example/auth/v1', sub: '00000000-0000-4000-8000-00000000000a', exp: Math.floor(Date.now() / 1000) + 60 });
+    const who = await identify(supabaseFor(holding({}), 'https://auth.example', 'publishable'), `Bearer ${forged}`);
+    assert.equal(who.claims, null);
+    assert.ok(who.claims === null && who.by === 'bearer' && who.refused !== null, 'the bearer was refused by Auth, in its words');
+    assert.ok(asked > 0, 'Auth was never asked');
+});

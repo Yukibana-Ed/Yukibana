@@ -1,7 +1,8 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { uuidOf, type ProjectId, type ReleaseId } from '#lib/ids.ts';
-import { answering, requireBearer, requireClaims, withContext } from '#lib/server/context.ts';
+import { answering, bearerOf, requireBearer, requireCi, requireClaims, withContext } from '#lib/server/context.ts';
+import { isCiToken } from '#lib/server/oidc.ts';
 import { releases } from '#lib/server/catalogue.ts';
 import { publishRelease, type Publisher } from '#lib/server/releases.ts';
 import { text, uuidIn } from '#lib/server/form.ts';
@@ -18,9 +19,16 @@ export const GET: RequestHandler = async event => {
 /** A release: multipart with `starter` and `teacher` (both .tar.gz), an
  *  optional `label` and `commit`, and the optional `release` id the
  *  publisher wrote into the starter (see `publishRelease`). Authenticated by a bearer, and only a
- *  bearer: a project token (`yk_…`, from CI), or a person's access token
- *  (from `yukibana publish` after `yukibana login`), who must own the
- *  project.
+ *  bearer: a project token (`yk_…`, from CI), a GitHub Actions OIDC token
+ *  (from `yukibana publish --ci` in a repository linked to the project), or
+ *  a person's access token (from `yukibana publish` after `yukibana
+ *  login`), who must be staff of the project's edition.
+ *
+ *  A bearer that claims GitHub Actions' issuer takes the CI branch, before
+ *  the session's: it is verified here (`requireCi`), and refused as a 401
+ *  "CI token refused: <why>" before the body is read. Without that branch
+ *  it would reach `requireBearer`, and every CI token would be refused as a
+ *  bad session.
  *
  *  A cookie session is deliberately not accepted here. It used to be, and
  *  it was a cross-site request forgery waiting to happen: this takes a
@@ -34,9 +42,14 @@ export const GET: RequestHandler = async event => {
 export const POST: RequestHandler = async event => {
     const project = uuidOf<ProjectId>(event.params.project);
     if (project === null) error(404, 'No such project.');
-    const token = event.request.headers.get('authorization')?.match(/^Bearer\s+(yk_[0-9a-f]{64})$/i)?.[1];
+    const bearer = bearerOf(event);
+    const token = bearer?.match(/^yk_[0-9a-f]{64}$/i)?.[0];
     const by: Publisher =
-        token !== undefined ? { kind: 'token', secret: token } : { kind: 'user', claims: event.request.headers.has('authorization') ? requireBearer(event) : bearerMissing() };
+        token !== undefined
+            ? { kind: 'token', secret: token }
+            : bearer !== null && isCiToken(bearer)
+              ? { kind: 'ci', identity: await requireCi(event) }
+              : { kind: 'user', claims: event.request.headers.has('authorization') ? requireBearer(event) : bearerMissing() };
 
     const form = await event.request.formData().catch(() => null);
     if (form === null) error(400, 'Send the two archives as multipart form data.');
