@@ -75,30 +75,31 @@
   {/if}
   <section>
     <h2>Invite a teacher</h2>
-    <p>The person who accepts the link gets teacher rights and can create courses. If they have no account, they create one when they sign in. Each link works once.</p>
+    <p>Everyone who accepts the link gets teacher rights and can create courses; it changes nothing for someone who already has them. If they have no account, they create one when they sign in. A link works for as many people as it reaches, until you remove it, so share it only with people you would make teachers.</p>
     <form method="POST" action={actionIn('invites', 'createInvite')} class="stack">
-      <label>For <input class="yk-input" name="label" maxlength="200" placeholder="Prof. Rossi, Operating Systems" /></label>
+      <label>For <input class="yk-input" name="label" maxlength="200" placeholder="Computer science faculty, autumn 2026" /></label>
       <button class="yk-btn yk-btn--primary">Create invite link</button>
     </form>
   </section>
 
   <section>
-    <h2>Unused invites</h2>
+    <h2>Invite links</h2>
     {#if data.invites.length === 0}
-      <Empty title="No unused invites">An invite link you create above is listed here until somebody accepts it.</Empty>
+      <Empty title="No invite links">An invite link you create above is listed here until you remove it.</Empty>
     {:else}
       <div class="scroll">
         <table class="yk-table">
-          <thead><tr><th>For</th><th>Created by</th><th>Created</th><th></th></tr></thead>
+          <thead><tr><th>For</th><th>Teachers made</th><th>Created by</th><th>Created</th><th></th></tr></thead>
           <tbody>
             {#each data.invites as i (i.invite_id)}
               <tr>
                 <td>{#if i.label === ''}<span class="muted">No label</span>{:else}{i.label}{/if}</td>
+                <td>{i.uses}</td>
                 <td>{i.created_by ?? ''}</td>
                 <td>{when(i.created_at, viewer.zone)}</td>
                 <td>
                   <Confirm label="Remove" title={i.label === '' ? 'Remove this invite?' : `Remove the invite for “${i.label}”?`} action={actionIn('invites', 'revokeInvite')} fields={{ invite_id: i.invite_id }}>
-                    Its link stops working at once. A removed invite cannot be restored; create a new one instead.
+                    Its link stops working at once. The teachers it made stay teachers; change their role in the Roles tab. A removed invite cannot be restored; create a new one instead.
                   </Confirm>
                 </td>
               </tr>

@@ -31,17 +31,21 @@
     <h1>You're a teacher now</h1>
     <p class="muted"><strong>{data.account.email}</strong> can now create courses, publish assignments and review submissions.</p>
     <a class="yk-btn yk-btn--primary" href="/">Go to your courses</a>
+  {:else if !data.open}
+    <h1>This invite is no longer valid</h1>
+    <p class="muted">An admin removed it. Ask the admin who sent it for a new one.</p>
+    {@render switchAccount('Log in with a different account')}
   {:else if data.account.role !== 'user'}
     <h1>You already have teacher rights</h1>
     <p class="muted">
       <strong>{data.account.email}</strong> is {data.account.role === 'admin' ? 'an admin' : 'a teacher'} and can already create courses, so
-      this invite would change nothing. It stays unused, and the person it was meant for can still accept it.
+      this invite changes nothing for you. The link still works for anyone else you share it with.
     </p>
-    {@render switchAccount('Accept with a different account')}
-  {:else if !data.open}
-    <h1>This invite is no longer valid</h1>
-    <p class="muted">It was already accepted or removed. Ask the admin who sent it for a new one.</p>
-    {@render switchAccount('Log in with a different account')}
+    <a class="yk-btn yk-btn--primary" href="/">Go to your courses</a>
+    <div class="again">
+      <span class="muted">Not your account?</span>
+      {@render switchAccount('Use a different account')}
+    </div>
   {:else}
     <h1>You're invited to teach</h1>
     <p class="muted">Accepting gives <strong>{data.account.email}</strong> teacher rights: you can create courses, publish assignments and review submissions.</p>

@@ -68,22 +68,39 @@ afterAll(async () => {
     await sql.end({ timeout: 5 });
 });
 
-test('an invite turns one plain user into a teacher, and nobody else after them', async () => {
-    const secret = await invite('first come');
-    const [first, second] = [fresh(), fresh()];
+test('one invite link makes a teacher of every plain user who accepts it, until an admin removes it', async () => {
+    const secret = await invite('a whole faculty');
+    const [first, second, late] = [fresh(), fresh(), fresh()];
     await account(first);
     await account(second);
+    await account(late);
     expect(await accept(first, secret)).toBeNull();
+    expect(await accept(second, secret)).toBeNull();
     expect(await roleOf(first)).toBe('teacher');
-    expect(await accept(second, secret)).toEqual({ status: 404, code: 'P0002' });
-    expect(await roleOf(second)).toBe('user');
+    expect(await roleOf(second)).toBe('teacher');
+
+    const [row] = await asUser(
+        sql,
+        claimsOf(ADMIN),
+        tx => tx<{ invite_id: string; uses: number }[]>`
+        select invite_id, uses::int as uses from teacher_invite where label = 'a whole faculty' and created_by = ${claimsOf(ADMIN).sub}`,
+    );
+    if (row === undefined) throw new Error('the invite is not listed');
+    expect(row.uses).toBe(2);
+    await asUser(sql, claimsOf(ADMIN), tx => tx`select app.revoke_teacher_invite(${row.invite_id})`);
+    expect(await accept(late, secret)).toEqual({ status: 404, code: 'P0002' });
+    expect(await roleOf(late)).toBe('user');
+    expect(await roleOf(first)).toBe('teacher');
 });
 
-test('a teacher can neither create nor see invites, and opening one leaves it for its person', async () => {
+test('a teacher can neither create nor see invites, and accepting one changes nothing for them', async () => {
     const secret = await invite('for someone else');
     await expect(asTeacher(tx => tx`select app.create_teacher_invite('mine')`)).rejects.toMatchObject({ code: '42501' });
     expect(await asTeacher(tx => tx`select 1 from teacher_invite`)).toHaveLength(0);
-    expect(await accept(TEACHER, secret)).toEqual({ status: 403, code: '42501' });
+    expect(await accept(TEACHER, secret)).toBeNull();
+    expect(await roleOf(TEACHER)).toBe('teacher');
+    expect(await accept(ADMIN, secret)).toBeNull();
+    expect(await roleOf(ADMIN)).toBe('admin');
     expect(await exists(secret)).toBe(true);
 });
 
@@ -111,7 +128,7 @@ async function signUp(addr: string, next: string): Promise<string> {
         .join('; ');
 }
 
-test('someone without an account opens an invite link, signs up on the way, and accepts it to become a teacher', { timeout: 60_000 }, async () => {
+test('people without an account open the same invite link, sign up on the way, and each accept it to become a teacher', { timeout: 60_000 }, async () => {
     const link = inviteLink(app.origin, await invite('through the app'));
     const path = new URL(link).pathname;
     expect(await (await fetch(link)).text()).toContain(`/auth/login?next=${encodeURIComponent(path)}`);
@@ -121,6 +138,9 @@ test('someone without an account opens an invite link, signs up on the way, and 
     const accepted = await fetch(`${link}?/accept`, ownForm({}, cookie));
     expect(await accepted.text()).toContain('a teacher now');
     expect(await (await fetch(link, { headers: { cookie } })).text()).toContain('You already have teacher rights');
+
+    const another = await signUp(fresh(), path);
+    expect(await (await fetch(`${link}?/accept`, ownForm({}, another))).text()).toContain('a teacher now');
 });
 
 test('switching accounts on an invite logs out and comes back to it through the login page', async () => {
