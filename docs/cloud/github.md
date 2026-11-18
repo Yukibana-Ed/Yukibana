@@ -228,9 +228,10 @@ projects and editions it names.
   and not a link id, because links are replaced and deleted and the history
   must not lose its source.
 * `app.link_repository(project, repository_id, owner_id, repository)`: owners
-  only (`app.is_owner`), replaces the project's link if there is one (a new
+  on the edition's roster only (`app.role_in`, since 2026-11; see below), replaces the project's link if there is one (a new
   link id each time), and leaves an audit row naming the link it replaced.
-  `app.unlink_repository(project)`: owners only, audit row, P0002 when there
+  `app.unlink_repository(project)`: owners only (`app.is_owner`, admins
+  included), audit row, P0002 when there
   is nothing to unlink.
 * `app.ci_projects(repository_id, owner_id, ref)`, for `yukibana_publisher`:
   one row per link of that repository whose owner matches, ordered by
@@ -503,7 +504,11 @@ Each was decided while building, for the reason given:
 * **Owners are checked with `app.is_owner`, not `app.role_in(edition) =
   'owner'`.** `role_in` is null for somebody not enrolled, and an `if` on
   null does not raise, so a stranger would have passed: the hole migration
-  20261008120000 closed once already.
+  20261008120000 closed once already. Since 2026-11 `app.is_owner` also
+  answers true for an admin, whose link would be accepted and then refuse
+  every release (`app.link_owner_current` asks the roster), so linking asks
+  `app.role_in(edition) = 'owner'` inside an `exists`, where a null drops
+  the row and a stranger is refused; unlinking still asks `app.is_owner`.
 * **A moved repository is one row, not one per link**, in
   `app.ci_projects` and as a top-level `moved` sentence in
   `GET /api/ci/projects`: the new owner learns that the repository moved,

@@ -13,6 +13,7 @@
   const tabs = $derived<Tab[]>([
     { id: 'roles', label: 'Roles', count: data.staff.length },
     { id: 'invites', label: 'Invites', count: data.invites.length },
+    { id: 'courses', label: 'Courses', count: data.courses.length },
     { id: 'audit', label: 'Audit log' },
   ]);
   const tab = $derived(tabOf(page.url, tabs));
@@ -21,7 +22,7 @@
 <div class="head">
   <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Courses</a><span>Administration</span></nav>
   <h1>Administration</h1>
-  <p>Who may create courses, and everything the platform has been asked to do.</p>
+  <p>Who may create courses, every course on the platform, and everything it has been asked to do.</p>
 </div>
 
 <Tabs {tabs} current={tab} />
@@ -107,6 +108,34 @@
         </table>
       </div>
     {/if}
+  </section>
+
+{:else if tab === 'courses'}
+  <section>
+    <h2>Courses and editions</h2>
+    {#if data.courses.length === 0}
+      <Empty title="No courses yet">A course a teacher creates is listed here, with each of its editions.</Empty>
+    {:else}
+      <div class="scroll">
+        <table class="yk-table">
+          <thead><tr><th>Code</th><th>Edition</th><th>Owners</th><th>Students</th></tr></thead>
+          <tbody>
+            {#each data.courses as c (c.edition_id ?? c.course_id)}
+              <tr>
+                <td>{c.code}</td>
+                <td>
+                  {#if c.edition_id === null}<span class="muted">No edition</span>
+                  {:else}<a href="/editions/{c.edition_id}">{c.title} · {c.label}</a>{#if c.archived_at !== null} <Chip>archived</Chip>{/if}{/if}
+                </td>
+                <td>{#if c.owners === '' && c.edition_id !== null}<Chip>none</Chip>{:else}{c.owners}{/if}</td>
+                <td>{c.edition_id === null ? '' : c.students}</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
+    {/if}
+    <p class="note">An admin is owner and staff of every edition without being on its roster: open one to manage it as its owners do. Project tokens and repository links stay with the owners on the roster.</p>
   </section>
 
 {:else}

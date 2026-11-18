@@ -29,7 +29,8 @@ export async function me(ctx: Context, claims: Claims): Promise<MeJson> {
 }
 
 /** Returns the editions the caller is enrolled in, with their role in
- *  each: the policy shows nobody, admins included, any other. Ordered
+ *  each. An admin can read every edition; this lists only those they are
+ *  enrolled in, as for anyone. Ordered
  *  current before archived, then by course code, then by label descending
  *  (so "2026 autumn" before "2025 autumn"). Empty, not an error, for
  *  someone enrolled nowhere. */
@@ -38,6 +39,7 @@ export async function editions(ctx: Context, claims: Claims): Promise<EditionJso
         const rows = await tx<{ edition_id: string; label: string; archived: boolean; code: string; title: string; role: EditionRole }[]>`
       select e.edition_id, e.label, e.archived_at is not null as archived, c.code, e.title, app.role_in(e.edition_id)::text as role
       from course_edition e join course c on c.course_id = e.course_id
+      where app.role_in(e.edition_id) is not null
       order by e.archived_at nulls first, c.code, e.label desc`;
         return rows.map(r => ({ editionId: r.edition_id, courseCode: r.code, courseTitle: r.title, label: r.label, archived: r.archived, role: r.role }));
     });

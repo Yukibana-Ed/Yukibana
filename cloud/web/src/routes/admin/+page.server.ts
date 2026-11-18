@@ -6,8 +6,22 @@ import { inviteLink } from '#lib/invite.ts';
 import type { InviteId } from '#lib/ids.ts';
 import { requireClaims, withContext } from '#lib/server/context.ts';
 
-/** Platform roles. The one thing an admin does here is make teachers, by address or by invite link.
- *  Returns everyone whose platform role is not `user`, every unused invite (newest first, with the name of the admin who created it, or null
+/** One row of the courses overview: an edition, or a course left with none (made before a course came with its first), in which case every
+ *  edition field is null. `owners` are the owners' addresses as the roster has them, comma-separated; empty when nobody owns it. */
+interface CourseRow {
+    course_id: string;
+    code: string;
+    edition_id: string | null;
+    label: string | null;
+    title: string | null;
+    archived_at: Date | null;
+    owners: string;
+    students: number;
+}
+
+/** Platform roles and every course. An admin makes teachers here, by address or by invite link, and finds any edition, which they manage
+ *  on its own page: an admin is owner and staff of every edition.
+ *  Returns everyone whose platform role is not `user`, every course and edition (`CourseRow`, by code, current editions first), every unused invite (newest first, with the name of the admin who created it, or null
  *  when their profile has none), and the newest 50 rows of the audit log with each `subject` as JSON text. A 403 for
  *  anyone but an admin, decided by `app.is_admin`; the login page for
  *  nobody. */
@@ -23,9 +37,15 @@ export const load: PageServerLoad = async event => {
         select i.invite_id, i.label, coalesce(u.full_name, u.github_login) as created_by, i.created_at
           from teacher_invite i join app_user u on u.user_id = i.created_by
          order by i.created_at desc`;
+            const courses = await tx<CourseRow[]>`
+        select c.course_id, c.code, e.edition_id, e.label, e.title, e.archived_at,
+               coalesce((select string_agg(r.email, ', ' order by r.email) from enrollment r where r.edition_id = e.edition_id and r.role = 'owner'), '') as owners,
+               (select count(*) from enrollment r where r.edition_id = e.edition_id and r.role = 'student')::int as students
+          from course c left join course_edition e on e.course_id = c.course_id
+         order by c.code, e.archived_at nulls first, e.label desc`;
             const audit = await tx<{ at: Date; actor: string | null; action: string; subject: unknown }[]>`
         select at, actor, action, subject from audit_log order by at desc limit 50`;
-            return { staff, invites, audit: audit.map(a => ({ at: a.at, actor: a.actor, action: a.action, subject: JSON.stringify(a.subject) })) };
+            return { staff, courses, invites, audit: audit.map(a => ({ at: a.at, actor: a.actor, action: a.action, subject: JSON.stringify(a.subject) })) };
         }),
     );
 };
