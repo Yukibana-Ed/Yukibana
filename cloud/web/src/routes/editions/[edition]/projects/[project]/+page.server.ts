@@ -1,4 +1,5 @@
 import { error, fail, redirect } from '@sveltejs/kit';
+import { TEMPLATES, type Template } from '#lib/templates.ts';
 import type { Actions, PageServerLoad } from './$types';
 import { trustId, uuidOf, type EditionId, type ProjectId, type ReleaseId, type SubmissionId, type TokenId, type UserId } from '#lib/ids.ts';
 import type { EnrolledStudent, HandIn, Release } from '#lib/hand-ins.ts';
@@ -98,8 +99,9 @@ interface GitHubSection {
     picker: Picker | null;
     /** Whether the address asks to change the link (`?relink`). */
     relink: boolean;
-    /** `GITHUB_TEMPLATE`, for an owner; null when none is configured. */
-    template: string | null;
+    /** The recommended templates (#lib/templates), for an owner; empty for
+     *  other staff, who cannot link. */
+    templates: readonly Template[];
     /** The App's page on GitHub, `https://github.com/apps/<slug>`. */
     app: string;
 }
@@ -221,7 +223,7 @@ export const load: PageServerLoad = async event => {
             connected = token !== null;
             if (token !== null && (link === null || relink)) picker = await pickerFor(github, token);
         }
-        const section: GitHubSection = { link, connected, picker, relink, template: page.owner ? app.template : null, app: `https://github.com/apps/${app.slug}` };
+        const section: GitHubSection = { link, connected, picker, relink, templates: page.owner ? TEMPLATES : [], app: `https://github.com/apps/${app.slug}` };
         return { ...rest, github: section };
     });
 };

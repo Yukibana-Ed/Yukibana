@@ -424,25 +424,27 @@ last part of its public page, `https://github.com/apps/<slug>`), and
 **generate a client secret**. No private key is needed: the Worker never
 acts as the App itself. If GitHub made one, delete it.
 
-**Set the three values at once**, as Worker secrets. They are all-or-none:
-a Worker with some of them and not the others answers every request with
-"The server is not configured." and logs which are missing, so setting them
-one by one with `secret put` would take the site down between the first and
-the third. `secret bulk` sets them in one request, from a JSON file kept
-outside the checkout and out of the shell history:
+**Set the three values.** The client id and the slug are not secret: they
+are `vars` in `cloud/web/wrangler.jsonc` (`GITHUB_APP_CLIENT_ID`,
+`GITHUB_APP_SLUG`), which ship with the next deploy. Production's are
+Yukibana-Ed's App, `yukibana-cloud`. The client secret is a Worker secret,
+set from a checkout and in effect at once:
 
 ```bash
-# ~/github-app.json holds {"GITHUB_APP_CLIENT_ID": "…", "GITHUB_APP_CLIENT_SECRET": "…", "GITHUB_APP_SLUG": "…"}
-pnpm --filter @yukibana/cloud-web exec wrangler secret bulk ~/github-app.json
-rm ~/github-app.json
+pnpm --filter @yukibana/cloud-web exec wrangler secret put GITHUB_APP_CLIENT_SECRET
 ```
 
-The client id and the slug are not secret, but they live beside the secret
-so the three change together. Secrets take effect at once, without a deploy.
-To turn the feature off again, the same command with each of the three set
-to `null` deletes them together; deleting them one by one with `secret
-delete` takes the site down in between, as above. Links that exist keep
-publishing with the App gone: only linking needs it.
+All three are needed. With only some of them, linking is off, the log says
+which are missing (`config: … is not set, so linking to GitHub is off`), and
+the rest of the site works; so the order they are set in does not matter.
+To turn the feature off, delete the secret. Links that exist keep publishing
+with the App gone: only linking needs it.
+
+For local development, the same App's callback URLs include
+`http://127.0.0.1:5173/auth/github/return`, so its client secret in
+`cloud/web/.dev.vars` turns linking on locally. GitHub keeps two client
+secrets at once, so a developer can have one of their own and it can be
+revoked alone.
 
 **Check.** On a project page, as an owner, the Releases tab has a
 Repository section with Connect GitHub. Connect, install the App on a test
@@ -450,15 +452,14 @@ repository, link it, and push a tag there with the workflow the section
 shows: the job log lists the project, and the release says "from
 owner/name".
 
-**`GITHUB_TEMPLATE`** (`owner/name`) is optional and has no default. When
-it is set, the Repository section links to GitHub's "Use this template" page
-for that repository. Set it only once the template's own workflow publishes
-by link (`permissions: id-token: write`, and `Yukibana-Ed/Yukibana/action@main`
-without `token` or `project`): a repository made from a template still on
-tokens would publish nothing until the teacher edits its workflow.
-LordBaryhobal/yukibana-template-scala is such a template until
-`docs/cloud/github-template.patch` is merged there. It is not secret: a
-`vars` entry in `cloud/web/wrangler.jsonc`, or a secret like the others.
+**Recommended templates** are a list in code, `cloud/web/src/lib/templates.ts`,
+the same in every environment: the Repository section shows each with a
+button to GitHub's "Use this template" page. A template belongs there only
+once its own workflow publishes by link (`permissions: id-token: write`,
+and `Yukibana-Ed/Yukibana/action@main` without `token` or `project`): a
+repository made from a template still on tokens publishes nothing until the
+teacher edits its workflow. `Yukibana-Ed/scala-project-template` is the
+first.
 
 **Rotating the client secret.** GitHub keeps two client secrets at once:
 generate a new one, `wrangler secret put GITHUB_APP_CLIENT_SECRET` with it,

@@ -155,24 +155,14 @@ test('a project linked to the repository that the repository does not name is se
     );
 });
 
-test('a repository that names no project publishes nothing, and fails after listing the ids it could name', async () => {
-    const { seen, fetchFn } = world([{ id: LINKED[0] ?? '', slug: 'course', refused: null }]);
-    const out: string[] = [];
-    vi.spyOn(console, 'log').mockImplementation((line: string) => void out.push(line));
-    vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    const inv: Invocation = {
-        options: { folder: 'course', ci: true, url: 'https://cloud.yukibana.dev' },
-        args: [await course()],
-        env: CI_ENV,
-        store: memoryStore(),
-        fetch: fetchFn,
-    };
-    await assert.rejects(release('publish', inv), /names no project to publish to/);
-    assert.ok(
-        out.some(l => l.includes(LINKED[0] ?? '?')),
-        out.join('\n'),
+test('without --projects, a repository publishes to every project linked to it', async () => {
+    const { seen, fetchFn } = world(LINKED.map((id, i) => ({ id, slug: `p${i}`, refused: null })));
+    const { err } = await publishIn(await course(), { ci: true, url: 'https://cloud.yukibana.dev' }, CI_ENV, fetchFn);
+    assert.deepEqual(
+        seen.requests.filter(r => r.method === 'POST').map(r => new URL(r.url).pathname),
+        LINKED.map(id => `/api/projects/${id}/releases`),
     );
-    assert.equal(seen.requests.filter(r => r.method === 'POST').length, 0);
+    assert.ok(!err.some(l => l.includes('does not name it')), err.join('\n'));
 });
 
 test('a failure for one project does not stop the others, and the job fails naming it and every skipped one', async () => {

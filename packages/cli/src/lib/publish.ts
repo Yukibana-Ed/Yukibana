@@ -37,12 +37,11 @@ export type PublishMode =
       }
     | {
           /** By the repository's link, with the job's OIDC token, to the
-           *  projects the registry lists for it that the repository itself
-           *  names (`named`). */
+           *  projects the registry lists for it, or only to those of them the
+           *  repository names (`named`) when it names any. */
           readonly kind: 'ci';
           /** The project ids `--projects` names, in its order, without
-           *  repeats; possibly none, which `ciPlanOf` fails once it can show
-           *  the linked projects' ids. */
+           *  repeats; none means every linked project. */
           readonly named: readonly string[];
           /** What CI mode ignores and says so: a project or token set in the
            *  environment or the yukibana.json, never an error, because a
@@ -83,8 +82,9 @@ export function publishModeOf(inputs: PublishInputs): PublishMode {
     if (problems.length > 0) return { kind: 'refused', problems };
     const warnings: string[] = [];
     if (set(inputs.envToken)) warnings.push("YUKIBANA_TOKEN is set and ignored: --ci publishes with the job's OIDC token");
-    if (set(inputs.envProject)) warnings.push(`YUKIBANA_PROJECT (${inputs.envProject}) is ignored: --ci publishes to the linked projects --projects names`);
-    if (inputs.configProject !== null) warnings.push(`the projectId in yukibana.json (${inputs.configProject}) is ignored: --ci publishes to the linked projects --projects names`);
+    if (set(inputs.envProject)) warnings.push(`YUKIBANA_PROJECT (${inputs.envProject}) is ignored: --ci publishes to the projects linked to the repository`);
+    if (inputs.configProject !== null)
+        warnings.push(`the projectId in yukibana.json (${inputs.configProject}) is ignored: --ci publishes to the projects linked to the repository`);
     return { kind: 'ci', named, warnings };
 }
 
@@ -117,33 +117,29 @@ export interface CiPlan {
 export const NOTHING_LINKED =
     'this repository is linked to no project, so there is nothing to publish to; an owner of the project links it on the project page (Releases, Repository)';
 
-/** The sentence for a repository that names no project to publish to. */
-export const NOTHING_NAMED =
-    "this repository names no project to publish to; give the action's `projects` input (or --projects) the ids of the linked projects above it publishes to";
-
 /** The sentence for a project the repository names that the registry does not list. */
 export const NAMED_NOT_LINKED = 'it is not linked to this repository (under its current owner); an owner of the project links it on the project page (Releases, Repository)';
 
 /** Returns what to do with `answer` when the repository names `named`.
  *
- *  A link is made on the project page, by a person who could then
- *  administer the repository, and only an owner of the project can remove
- *  it; the repository has no say in it. So a release goes only where both
- *  sides agree: a project the registry lists for the repository and the
- *  repository names. Without that, somebody who once administered the
- *  repository could link it to a project of their own, and every tag
- *  pushed after they lost their access would still send them the teacher
- *  archive, hidden tests and all. A linked project the repository does not
- *  name is printed and warned about, and nothing is sent to it; a named
- *  one the registry would refuse or does not list is printed with the
+ *  By default (`named` empty) a release goes to every project the registry
+ *  lists for the repository: several projects may share one repository, and
+ *  a teacher who links one more should not have to edit the repository too.
+ *  A repository that names projects (`--projects`) publishes only to those
+ *  of them that are linked, and a linked project it does not name is
+ *  printed and warned about, and sent nothing. That is the repository's
+ *  say over a link, which is made on the project page by a person who could
+ *  then administer the repository, and which only an owner of the project
+ *  can remove: without it, somebody who once administered the repository
+ *  and linked it to a project of their own keeps receiving the teacher
+ *  archive after losing their access (docs/cloud/github.md, "Many
+ *  projects, one repository"). A project the run would publish to that the registry
+ *  would refuse, or a named one it does not list, is printed with the
  *  reason and fails the job at the end, so a link that stopped working (a
  *  run not at a tag, a linking owner who left) is never a green job that
- *  published less than it seems, and the repository can always stop the
- *  failure by naming that project no more. Naming none fails with
- *  `NOTHING_NAMED`, after the log has listed the linked projects' ids. A
- *  moved repository with no current link fails with the registry's
- *  sentence about moving; with current links, it is a warning. No link at
- *  all fails with `NOTHING_LINKED`. Pure. */
+ *  published less than it seems. A moved repository with no current link
+ *  fails with the registry's sentence about moving; with current links, it
+ *  is a warning. No link at all fails with `NOTHING_LINKED`. Pure. */
 export function ciPlanOf(answer: CiProjects, named: readonly string[]): CiPlan {
     const lines = [`${answer.repository} at ${answer.ref} (${answer.sha.slice(0, 12)}) is linked to ${count(answer.projects.length)}`];
     const targets: CiProject[] = [];
@@ -152,12 +148,11 @@ export function ciPlanOf(answer: CiProjects, named: readonly string[]): CiPlan {
     const wanted = new Set(named);
     for (const p of answer.projects) {
         const name = `${p.slug} "${p.title}" (${p.edition}, ${p.id})`;
-        if (!wanted.has(p.id)) {
+        if (named.length > 0 && !wanted.has(p.id)) {
             lines.push(`  skips ${name}: this repository does not name it`);
-            if (named.length > 0)
-                warnings.push(
-                    `${p.slug} (${p.edition}) is linked to this repository, which does not name it, so nothing was published there; add ${p.id} to \`projects\` to publish there`,
-                );
+            warnings.push(
+                `${p.slug} (${p.edition}) is linked to this repository, which does not name it, so nothing was published there; add ${p.id} to \`projects\` to publish there`,
+            );
         } else if (p.refused === null) {
             targets.push(p);
             lines.push(`  publishes to ${name}`);
@@ -170,7 +165,6 @@ export function ciPlanOf(answer: CiProjects, named: readonly string[]): CiPlan {
     for (const id of named) if (!listed.has(id)) problems.push(`not published to ${id}: ${NAMED_NOT_LINKED}`);
     if (answer.moved !== null) (answer.projects.length === 0 ? problems : warnings).push(answer.moved);
     else if (answer.projects.length === 0) problems.push(NOTHING_LINKED);
-    if (named.length === 0 && answer.projects.length > 0) problems.push(NOTHING_NAMED);
     return { lines, targets, problems, warnings };
 }
 

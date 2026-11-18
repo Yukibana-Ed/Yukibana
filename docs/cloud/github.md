@@ -26,9 +26,12 @@ link:
 2. They **pick an existing repository** from the ones the App can see and
    they administer or maintain, or type its `owner/name` (or paste its
    `https://github.com/owner/name` address). To start from a template, they
-   make the repository on GitHub's own "Use this template" page, which the
-   project page links to when the registry has a template configured, then
-   come back and pick it like any other.
+   press **Create a repository from it** beside one of the recommended
+   templates (`cloud/web/src/lib/templates.ts`; for now
+   `Yukibana-Ed/scala-project-template`), which opens GitHub's own "Use this
+   template" page, then come back and pick the new repository like any
+   other. A repository made from a recommended template already has the
+   workflow below.
 3. The repository needs the workflow the project page shows, collapsed,
    under "The workflow a linked repository needs", in
    `.github/workflows/publish.yml`:
@@ -49,18 +52,17 @@ link:
          - uses: Yukibana-Ed/Yukibana/action@main
            with:
              url: https://cloud.yukibana.dev
-             projects: 01a0b563-aeff-7c42-ae73-5aab2f2b5a01
              label: ${{ github.ref_name }}
    ```
 
-   `projects` is the project's id, which the page's snippet fills in; a
-   repository linked to projects of several editions lists their ids,
-   separated by commas. A template's workflow can read it from a repository
-   variable instead (`projects: ${{ vars.YUKIBANA_PROJECT }}`), so that a
-   repository made from it needs only that variable.
+   It names no project: a release goes to every project linked to the
+   repository, so linking one more project needs nothing in the repository.
+   A repository that wants a say gives the Action `projects:`, the ids of
+   the linked projects it publishes to, separated by commas (see "Many projects, one
+   repository").
 4. Pushing a tag (`git tag v1 && git push origin v1`) runs that workflow on
    GitHub's runners, which builds the archives with the CLI and publishes
-   them to every project linked to the repository that `projects` names. The release list on the
+   them to every project linked to the repository. The release list on the
    project page says "from owner/name" for a release published by link, and
    the Repository section shows the last one.
 
@@ -76,13 +78,13 @@ linked to the repository, with its id, published or skipped with the reason:
 Yukibana-Ed/intro-exercises at refs/tags/v3 (4f0c2d9a1b7e) is linked to 3 projects
   publishes to ex1 "Hello, Scala" (Introduction to Programming, 2026 autumn, 01a0…5a01)
   skips ex1 "Hello, Scala" (Introduction to Programming, 2025 autumn, 01a0…5a02): The person who linked this repository is no longer an owner of this edition; an owner must link it again.
-  skips ex1 "Hello, Scala" (Algorithms, 2026 autumn, 01a0…5a03): this repository does not name it
+  publishes to ex1 "Hello, Scala" (Algorithms, 2026 autumn, 01a0…5a03)
 ```
 
-A project `projects` names that is skipped fails the job once the others
-have published, so a green job never means fewer releases than the log
-suggests; a linked project it does not name is a warning, and is sent
-nothing. The reasons a job reads, in the registry's own words:
+A project that is skipped fails the job once the others have published, so
+a green job never means fewer releases than the log suggests. With
+`projects` given, a linked project it does not name is a warning, and is
+sent nothing. The reasons a job reads, in the registry's own words:
 
 | The job says | Because | What to do |
 | --- | --- | --- |
@@ -90,8 +92,7 @@ nothing. The reasons a job reads, in the registry's own words:
 | The person who linked this repository is no longer an owner of this edition; an owner must link it again. | the link lasts as long as its maker owns the edition | an owner presses Change and picks the same repository, or the repository stops naming the project |
 | This repository moved to another owner; link it again on the project page. | the repository was transferred, so its owner id changed | an owner of the project links it again, which needs admin or maintain under the new owner |
 | this repository is linked to no project, so there is nothing to publish to | no link, or it was removed | link it on the project page |
-| this repository names no project to publish to | the workflow has no `projects` | give it the ids the log lists for the projects it publishes to |
-| … is linked to this repository, which does not name it (a warning) | somebody linked the repository to a project the workflow does not list | nothing, if the project is not yours; otherwise add its id to `projects` |
+| … is linked to this repository, which does not name it (a warning) | the workflow gives `projects`, and somebody linked the repository to a project it does not list | nothing, if the project is not yours; otherwise add its id to `projects` |
 | CI token refused: this token is for https://x; this registry expects https://y | the Action's `url` is not the registry's canonical address | use the address the project page's snippet shows |
 | … add 'permissions: id-token: write' … | the workflow cannot ask GitHub for a token | add the `permissions` block above |
 
@@ -187,17 +188,22 @@ token, for the repository, and requires `permissions.admin` or
 That proof is asked once, when the link is made, and a link outlives it:
 it survives its maker losing access to the repository, and only an owner
 of the project can remove it, never the repository's administrators. So
-**the repository names the projects it publishes to** as well, in the
-Action's `projects` input (`--projects`), and a release goes only where
-the link and the repository agree. Without that, an assistant briefly
-given admin on the course repository could link it to a project of their
-own and, removed from the repository, keep receiving every teacher archive
-it built, hidden tests and all, with nobody on the repository's side able
-to stop it. A linked project the repository does not name is listed and
-warned about in the job log, with its id, and sent nothing; one it names
-that the registry refuses fails the job, and the repository ends that by no
-longer naming it, which matters for a link nobody can remove any more (its
-maker no longer an owner, and no owner left to relink or unlink). On a
+an assistant briefly given admin on the course repository could link it to
+a project of their own and, removed from the repository, keep receiving
+every teacher archive it built, hidden tests and all. By default that risk
+is accepted, for the sake of the default the feature exists for: a
+repository made from a template publishes to every project linked to it,
+with nothing to configure, and linking it to one more project needs nothing
+in the repository. Two things bound it. The job log lists every linked
+project, with its edition and id, on every run, so the repository's
+administrators see where its releases go. And a repository that wants a say
+gives the Action's `projects` input (`--projects`): a release then goes
+only where the link and the repository agree, a linked project it does not
+name is warned about and sent nothing, and a dead link that fails every tag
+(its maker no longer an owner, and no owner left to relink or unlink) is
+ended by no longer naming it. (The build's final review had made
+`projects` required; that was reverted before merge, since it brought back
+per-repository configuration, the cost this feature removes.) On a
 public repository the job log is public, and so are the titles of the
 projects and editions it names.
 
@@ -286,7 +292,10 @@ projects and editions it names.
   turns linking off: the GitHub routes and actions answer 404 and the
   project page says nothing about GitHub (publishing by link keeps working
   for links that exist). Some but not all is a configuration error naming
-  the missing ones. `GITHUB_TEMPLATE` (`owner/name`) is optional.
+  the missing ones, reported, with linking off and the rest of the site
+  working. The client id and the slug are `vars` in `wrangler.jsonc`; the
+  client secret is a Worker secret. The recommended templates are a list
+  in code, `cloud/web/src/lib/templates.ts`.
 * No App private key: everything is done with the person's own
   user-to-server token, which can do only what both the App and the person
   may, and the App may only read metadata.
@@ -345,7 +354,7 @@ projects and editions it names.
 
 * `YukibanaClient.ciProjects()` asks `GET /api/ci/projects`;
   `publishRelease` takes the OIDC token as its bearer like any other.
-* `yukibana publish [dir] --ci --projects <ids>` (`packages/cli/src/commands/release.ts`, with
+* `yukibana publish [dir] --ci [--projects <ids>]` (`packages/cli/src/commands/release.ts`, with
   its decisions in `src/lib/publish.ts`): CI mode is only ever explicit, and
   `--ci` with `--token` or `--project` is refused, as is `--projects`
   without `--ci`. It ignores, with a
@@ -354,10 +363,10 @@ projects and editions it names.
   template's project. It asks GitHub for a token (`src/oidc.ts`) with the
   registry's origin as the audience, a fresh one for every request and never
   printed, prints the plan above, then builds and publishes once per
-  project it lists that `--projects` names, each with its own release id
-  and the token's commit.
+  project it lists (or, with `--projects`, once per one of them it names),
+  each with its own release id and the token's commit.
 * `action/action.yml`: with neither `token` nor `project`, it runs
-  `publish --ci --projects` with its `projects` input, and says first, as an error annotation, when the job has no
+  `publish --ci`, with `--projects` when its `projects` input is given, and says first, as an error annotation, when the job has no
   `id-token: write`. With either, it runs the token command as before. Every
   input reaches bash through `env:`; the comment above the step says why.
 
@@ -454,8 +463,11 @@ Where two decisions conflicted, the simpler sound one was taken:
   token is missing.
 * Tags only, rather than keeping the per-link pattern and only documenting
   who it trusts; the trust sentence was kept, about tags.
-* `GITHUB_TEMPLATE` has no default, rather than defaulting to Luis's
-  template, which has no OIDC workflow yet.
+* No template was configured by default, since Luis's template had no OIDC
+  workflow; after the build, `GITHUB_TEMPLATE` gave way to a list of
+  recommended templates in code, starting with
+  `Yukibana-Ed/scala-project-template`, made from Luis's with the OIDC
+  workflow.
 * The workflow snippet is always shown, collapsed, rather than while the
   link's `last_used_at` is null, since that column is gone.
 * The install path is a field on the Connect action rather than an action of
@@ -525,12 +537,14 @@ Each was decided while building, for the reason given:
 
 ## Review of the build, 2026-11-18
 
-* **The repository names its projects** (`projects`, `--projects`), and a
-  linked project it does not name is sent nothing. Before, `--ci` published
-  to every project linked to the repository, and a link outlived its
-  maker's access to the repository, which could not remove it: see "Many
-  projects, one repository". It also lets a repository stop a dead link
-  from failing every tag.
+* **A repository may name its projects** (`projects`, `--projects`), and a
+  linked project it does not name is then sent nothing; without it, a
+  release goes to every linked project. The final review made it required,
+  since a link outlives its maker's access to the repository, which cannot
+  remove it; before merging, it was made optional again, because requiring
+  it brought back per-repository configuration (see "Many projects, one
+  repository"). It also lets a repository stop a dead link from failing
+  every tag.
 * **A key set GitHub cannot serve is a 503, reported**, whatever jose calls
   the failure. Only its timeout had been; a 502 from GitHub's key set was
   answered "401 CI token refused: it could not be verified" and reported

@@ -7,7 +7,7 @@
  *  is the error, not a signature the bucket refuses.
  */
 
-import { REPOSITORY_NAME } from './github.ts';
+import { report } from '#lib/report.ts';
 
 /** Where the bucket is and how to sign for it: R2 in production, RustFS
  *  locally (see `s3Bucket` in #lib/server/storage). */
@@ -45,13 +45,6 @@ export interface GitHubConfig {
     /** The App's slug (`GITHUB_APP_SLUG`), the last segment of
      *  `https://github.com/apps/<slug>`, where it is installed. */
     readonly slug: string;
-    /** The template repository a teacher may start a course repository from
-     *  (`GITHUB_TEMPLATE`), as `owner/name`, or null for none. The page links
-     *  to GitHub's own "Use this template" page for it; nothing here creates
-     *  repositories. Set it only once that template's workflow publishes
-     *  with OIDC (`permissions: id-token: write` and the Action's `--ci`),
-     *  or teachers would start from a repository that cannot publish. */
-    readonly template: string | null;
 }
 
 /** Everything the Worker is configured with.
@@ -126,8 +119,11 @@ function bytes(env: Record<string, unknown>, name: string): number {
 
 /** The GitHub App, all of it or none. All three of its values unset is
  *  null: the feature is off, and that is not a mistake. Some set and some
- *  not is a mistake, and throws naming what is missing, rather than leaving
- *  an operator to wonder why the Connect button never appears. */
+ *  not is a mistake, and is reported naming what is missing, so an operator
+ *  does not wonder why the Connect button never appears; the feature is then
+ *  off too. It used to throw, which took the whole site down with it: the
+ *  client id and slug are vars in wrangler.jsonc, so every checkout's dev
+ *  server has them, and only those who set the secret have all three. */
 function github(env: Record<string, unknown>): GitHubConfig | null {
     const clientId = optional(env, 'GITHUB_APP_CLIENT_ID');
     const clientSecret = optional(env, 'GITHUB_APP_CLIENT_SECRET');
@@ -138,11 +134,13 @@ function github(env: Record<string, unknown>): GitHubConfig | null {
             .filter(([, v]) => v === null)
             .map(([n]) => n)
             .join(' and ');
-        throw new Error(`${missing} is not set: the GitHub App needs GITHUB_APP_CLIENT_ID, GITHUB_APP_CLIENT_SECRET and GITHUB_APP_SLUG, or none of them`);
+        report(
+            'config',
+            `${missing} is not set, so linking to GitHub is off: the GitHub App needs GITHUB_APP_CLIENT_ID, GITHUB_APP_CLIENT_SECRET and GITHUB_APP_SLUG, or none of them`,
+        );
+        return null;
     }
-    const template = optional(env, 'GITHUB_TEMPLATE');
-    if (template !== null && !REPOSITORY_NAME.test(template)) throw new Error(`GITHUB_TEMPLATE is not a repository's owner/name ("${template}")`);
-    return { clientId, clientSecret, slug, template };
+    return { clientId, clientSecret, slug };
 }
 
 /** Returns the configuration in `env`.
@@ -152,8 +150,8 @@ function github(env: Record<string, unknown>): GitHubConfig | null {
  *    an Error naming the first that is not (`S3_BUCKET is not set`). Set
  *    but empty is unset. `S3_PUBLIC_ENDPOINT` unset is `S3_ENDPOINT`;
  *    `SUPABASE_OAUTH_CLIENT_ID` and `SITE_URL` unset are null. The GitHub
- *    App's three values are all set or all unset (`github` is null), and
- *    `GITHUB_TEMPLATE`, when set, is an `owner/name`. Values are
+ *    App's three values are all set, or `github` is null (reported when only
+ *    some are set). Values are
  *    not checked beyond that: an address that is not one fails where it is
  *    used. */
 export function configOf(env: Cloudflare.Env): Config {

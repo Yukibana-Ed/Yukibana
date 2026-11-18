@@ -4,11 +4,11 @@
 #
 # Linked on the project page (Releases, Repository), with no secret: the job
 # proves which repository and tag it runs at with GitHub's OIDC token, and
-# publishes to the projects linked to the repository that `projects` names.
-# Only tags publish. A link is made by a project's owner, and the repository
-# cannot remove it, so `projects` is the repository's say: a linked project
-# it does not name (one linked by somebody who has since lost access to the
-# repository, say) is sent nothing.
+# publishes to every project linked to the repository. Only tags publish.
+# A link is made by a project's owner, and the repository cannot remove it;
+# a repository that wants a say gives `projects`, and a linked project it
+# does not name (one linked by somebody who has since lost access to the
+# repository, say) is then sent nothing.
 #
 #   on:
 #     push:
@@ -21,7 +21,6 @@
 #     - uses: Yukibana-Ed/Yukibana/action@main
 #       with:
 #         url: https://yukibana.example.org
-#         projects: 01a0b563-aeff-7c42-ae73-5aab2f2b5a01
 #         label: ${{ github.ref_name }}
 #
 # With a project token, made on the project page, which publishes to that
@@ -43,11 +42,11 @@ inputs:
     description: The registry, like https://yukibana.example.org
     required: true
   project:
-    description: The project id, from the project page; with `token`. Without either, the release goes by the link, to the projects `projects` names.
+    description: The project id, from the project page; with `token`. Without either, the release goes by the link, to every linked project (or those `projects` names).
     required: false
     default: ''
   projects:
-    description: Without `project` and `token`, the ids of the linked projects this repository publishes to, separated by commas, spaces or new lines. A linked project not named here is sent nothing.
+    description: Optional, without `project` and `token`. The ids of the linked projects this repository publishes to, separated by commas, spaces or new lines; when given, a linked project not named here is sent nothing. Empty publishes to every linked project.
     required: false
     default: ''
   token:
@@ -117,7 +116,11 @@ runs:
             echo "::error title=Yukibana::No project token was given, so this publishes by the repository's link, which needs GitHub's OIDC token. Add 'permissions: id-token: write' to the workflow (or to this job), or give the action 'project' and 'token'."
             exit 1
           fi
-          node "$cli" publish "$DIRECTORY" --ci --projects "$PROJECTS" --folder "$folder" --label "$label"
+          if [ -n "$PROJECTS" ]; then
+            node "$cli" publish "$DIRECTORY" --ci --projects "$PROJECTS" --folder "$folder" --label "$label"
+          else
+            node "$cli" publish "$DIRECTORY" --ci --folder "$folder" --label "$label"
+          fi
         else
           # With a token, exactly as before links existed: the project is
           # `project`, else the projectId in yukibana.json, and an empty

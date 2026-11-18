@@ -8,6 +8,7 @@
   import { viewer } from '#lib/viewer.svelte.ts';
   import { local } from '#lib/wall-time.ts';
   import { ideUrl } from '#lib/ide.ts';
+  import { useTemplateUrl } from '#lib/templates.ts';
   import { hold, live, refresh } from '#lib/live.svelte.ts';
   import { actionIn, tabOf, type Tab } from '#lib/tabs.ts';
   import { handInsOf } from '#lib/hand-ins.ts';
@@ -95,7 +96,6 @@ jobs:
       - uses: Yukibana-Ed/Yukibana/action@main
         with:
           url: ${data.origin}
-          projects: ${p.project_id}
           label: \${{ github.ref_name }}`);
 </script>
 
@@ -329,11 +329,24 @@ jobs:
             {#if gh.relink}<a href="?tab=releases#repository">Keep the current link</a>{/if}
           </form>
         {/if}
-        {#if gh.template !== null}
-          <p class="note">
-            Starting a new course repository? <a href="https://github.com/{gh.template}/generate" target="_blank" rel="noreferrer">Make one from the template</a>
-            on GitHub, then come back here and pick it.
-          </p>
+        {#if gh.templates.length > 0}
+          <div id="templates">
+            <h4>Start a new repository from a template</h4>
+            <p class="note">
+              GitHub makes the repository, under your account or an organisation, with the publishing workflow already in it.
+              Then come back here, press Refresh, and pick it above. If the App is installed on selected repositories only,
+              add the new one with "Install the App or add repositories".
+            </p>
+            <ul class="templates">
+              {#each gh.templates as t (t.repository)}
+                <li>
+                  <strong>{t.name}</strong> <span class="note">{t.repository}</span>
+                  <span>{t.description}</span>
+                  <a class="yk-btn yk-btn--secondary" href={useTemplateUrl(t)} target="_blank" rel="noreferrer">Create a repository from it</a>
+                </li>
+              {/each}
+            </ul>
+          </div>
         {/if}
       {/if}
 
@@ -341,10 +354,10 @@ jobs:
         <summary>The workflow a linked repository needs</summary>
         <p class="note">
           Put this in <code>.github/workflows/publish.yml</code> in the repository. It proves where it runs with GitHub's
-          OIDC token (<code>id-token: write</code>), so it needs no secret. It publishes only to the linked projects its
-          <code>projects</code> names, this one's id here: a repository linked to projects of other editions too lists
-          their ids, separated by commas. Anyone who can push a tag to the repository can publish; protect tags with a
-          ruleset where your plan allows it.
+          OIDC token (<code>id-token: write</code>), so it needs no secret, and publishes a release to every project
+          linked to the repository, this one included. A repository that should publish only to some of them gives the
+          Action <code>projects:</code>, their ids separated by commas. Anyone who can push a tag to the repository can
+          publish; protect tags with a ruleset where your plan allows it.
         </p>
         <pre>{workflow}</pre>
       </details>

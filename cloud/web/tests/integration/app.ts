@@ -50,9 +50,11 @@ async function freePort(): Promise<number> {
 }
 
 /** Starts the app and waits until it answers a page, at most `timeoutMs`.
+ *  `extraEnv` is added to the server's environment last, so a suite can
+ *  preload a stand-in (`NODE_OPTIONS`, see github-keys.ts).
  *  A server that exits or never answers fails with its own output, so the
  *  reason is in the test log rather than "fetch failed". */
-export async function startApp(timeoutMs = 90_000): Promise<App> {
+export async function startApp(timeoutMs = 90_000, extraEnv: NodeJS.ProcessEnv = {}): Promise<App> {
     const port = await freePort();
     const origin = `http://127.0.0.1:${port}`;
     const appDir = fileURLToPath(new URL('../..', import.meta.url));
@@ -78,6 +80,7 @@ export async function startApp(timeoutMs = 90_000): Promise<App> {
         GITHUB_APP_SLUG: GITHUB_APP.slug,
     };
     if (config.oauthClientId !== null) env['SUPABASE_OAUTH_CLIENT_ID'] = config.oauthClientId;
+    Object.assign(env, extraEnv);
     const child = spawn(process.execPath, [vite, 'dev', '--host', '127.0.0.1', '--port', String(port), '--strictPort'], { cwd: appDir, env, stdio: ['ignore', 'pipe', 'pipe'] });
     let output = '';
     child.stdout.on('data', (chunk: Buffer) => (output += chunk.toString()));

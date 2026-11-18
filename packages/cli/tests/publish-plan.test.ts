@@ -1,7 +1,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import type { CiProject, CiProjects } from '@yukibana/client';
-import { ciPlanOf, NAMED_NOT_LINKED, NOTHING_LINKED, NOTHING_NAMED, publishModeOf, type PublishInputs, type PublishMode } from '../src/lib/publish.js';
+import { ciPlanOf, NAMED_NOT_LINKED, NOTHING_LINKED, publishModeOf, type PublishInputs, type PublishMode } from '../src/lib/publish.js';
 
 const none: PublishInputs = { ci: false, token: undefined, project: undefined, projects: undefined, envToken: undefined, envProject: undefined, configProject: null };
 const P = '01a0b563-aeff-7c42-ae73-5aab2f2b5a01';
@@ -61,12 +61,13 @@ test.each<[string, CiProjects, string[], string[], (string | RegExp)[], (string 
         [],
         [/^stranger \(Intro, 2026 autumn\) is linked to this repository, which does not name it, so nothing was published there; add id-stranger/],
     ],
+    ['a repository that names no project publishes to every project linked to it', answer([project('a'), project('b')]), [], ['id-a', 'id-b'], [], []],
     [
-        'a repository that names no project publishes nothing and fails, once the log has listed the ids it could name',
-        answer([project('a'), project('b')]),
+        'a repository that names no project still fails for a linked project the registry refuses',
+        answer([project('a'), project('b', GONE)]),
         [],
-        [],
-        [NOTHING_NAMED],
+        ['id-a'],
+        [/^not published to b .*no longer an owner/],
         [],
     ],
     ['a named project the repository is not linked to fails the job', answer([project('a')]), ['id-a', 'id-x'], ['id-a'], [`not published to id-x: ${NAMED_NOT_LINKED}`], []],

@@ -47,7 +47,7 @@ request as you, and the database's policies decide.
 | `  --archive` | keep each `.tar.gz` as sent |
 | `assemble <submission> --teacher <archive or dir> --out dir` | the same from files already here |
 | `check`, `build`, `publish [dir]` | a teacher's release, as before; `publish` takes a project token or your login |
-| `publish [dir] --ci --projects <ids> [--label text]` | in GitHub Actions, in a repository linked to projects: a release of each of them `--projects` names, with the job's OIDC token (below) |
+| `publish [dir] --ci [--projects <ids>] [--label text]` | in GitHub Actions, in a repository linked to projects: a release of each of them (or of those `--projects` names), with the job's OIDC token (below) |
 | `enrol`, `unenrol <edition> <email>...` | owners |
 
 `download` writes `yukibana-download.json` beside the folders: which folder is
@@ -65,11 +65,11 @@ In a repository an owner has linked to projects on the project page
 (`docs/cloud/github.md`), the job publishes with no token at all:
 
 ```bash
-yukibana publish . --ci --projects 01a0b563-aeff-7c42-ae73-5aab2f2b5a01 --url https://cloud.yukibana.dev --label v3
+yukibana publish . --ci --url https://cloud.yukibana.dev --label v3
 ```
 
-which is what the Action runs, with its `projects` input, when it is given
-neither `token` nor `project`. The workflow needs `permissions: id-token: write`, and the run
+which is what the Action runs when it is given neither `token` nor
+`project` (with `--projects` when its `projects` input is set). The workflow needs `permissions: id-token: write`, and the run
 must be at a tag. CI mode is only ever explicit:
 
 * `--ci` with `--token` or `--project` is refused before anything is built,
@@ -84,8 +84,8 @@ must be at a tag. CI mode is only ever explicit:
   canonical address, and says which one when they differ.
 * It asks the registry which projects the repository is linked to, prints
   the repository, ref and commit, then every project with its id, published
-  or skipped with the registry's reason or because `--projects` does not
-  name it, and builds and publishes once per project both name,
+  or skipped with the registry's reason (or, with `--projects`, because it
+  does not name it), and builds and publishes once per remaining project,
   each starter with its own project id and release id, each release with
   the token's commit (a warning says so when the checkout is at another).
 * One project's failure does not stop the others. The command exits
