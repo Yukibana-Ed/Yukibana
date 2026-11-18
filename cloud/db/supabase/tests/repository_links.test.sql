@@ -14,8 +14,7 @@ select tests.create_user('student@example.com', 'Student', 'student');
 -- Two editions of one course, owned by two teachers. A, B and C are in the
 -- first; D, in the second, will link the same repository as A.
 select tests.authenticate(tests.uid('teacher@example.com'));
-select app.create_course('T-LINK', 'Links');
-select app.create_edition((select course_id from public.course where code = 'T-LINK'), '2026');
+select app.create_course('T-LINK', 'Links', '2026');
 select app.enrol(tests.edition('T-LINK', '2026'), 'ta@example.com', 'assistant');
 select app.enrol(tests.edition('T-LINK', '2026'), 'student@example.com');
 insert into public.project (edition_id, slug, title, kind)

@@ -53,8 +53,14 @@ grading integrations would later have to fight:
 editions; nearly everything hangs off an edition, including the course's
 name: each edition carries the name it ran under, its owners may change it,
 and where the page means the course rather than one edition it shows the
-latest edition's name (2026-10; until then a course's title was fixed at
-creation). A new edition is a copy of
+name of the latest edition the person can see (`app.course_name`; 2026-10,
+narrowed 2026-11, when showing the course's latest edition told people in
+older editions what a newer one, which they are not in, was called). A
+course is created with its first edition, whose owner its creator becomes,
+so every course has somebody on a roster. Nobody sees a course they have no
+edition of, and only an owner of one of its editions adds another: until
+2026-11 every teacher saw every course and could add an edition to any. A
+new edition is a copy of
 the previous one (`app.duplicate_edition`): projects and staff come along,
 students and dates do not. A project belongs to one edition; reusing an
 assignment next year is duplicating the edition, not sharing the project,
@@ -70,10 +76,14 @@ alone run the edition (roster, roles, duplicate, archive), delete a
 project (and its releases with it), and make publishing tokens. The
 editing rule has one name, `app.may_edit_projects`: the policies ask it, and
 so do the pages before drawing a control, so nobody sees a reorder handle or
-a form that would only be refused. An admin
-is not implicitly staff of anything: to see an edition they enrol in it,
-and it shows in the roster. The first admin is
-`app.bootstrap_admin`, run by an operator.
+a form that would only be refused. An admin is owner and staff of every
+edition (`app.is_owner`, `app.is_staff`) without being on its roster: they
+find any edition on the administration page and run it from its own page,
+as its owners do. Until 2026-11 an admin was staff of nothing and had to
+enrol to see an edition, which put them on its roster. Publishing
+credentials are the exception: project tokens and repository links publish
+in the name of an owner on the roster, so only such an owner makes one.
+The first admin is `app.bootstrap_admin`, run by an operator.
 
 **A teacher is made by address or by invite link.** Promoting by address
 needs an existing account. An invite link does not: an admin creates one in

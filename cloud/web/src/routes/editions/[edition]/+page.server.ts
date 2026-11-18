@@ -38,7 +38,7 @@ const editionOf = (param: string): EditionId => {
 /** An edition as the caller sees it: the projects the policies let them see
  *  (for a student those whose window is open now, all for staff) in the order students see
  *  them, for a student where they stand with each (`mine`), and for staff
- *  the roster. A 404 for an edition the caller cannot see, whether or not
+ *  (admins included) the roster. A 404 for an edition the caller cannot see, whether or not
  *  it exists, and for a parameter that is not a uuid; the login page for
  *  nobody. */
 export const load: PageServerLoad = async event => {
@@ -46,13 +46,27 @@ export const load: PageServerLoad = async event => {
     const edition = editionOf(event.params.edition);
     return withContext(ctx =>
         asUser(ctx.sql, claims, async tx => {
-            const [head] = await tx<{ edition_id: EditionId; label: string; archived_at: Date | null; code: string; title: string; role: string | null; can_edit: boolean }[]>`
+            const [head] = await tx<
+                {
+                    edition_id: EditionId;
+                    label: string;
+                    archived_at: Date | null;
+                    code: string;
+                    title: string;
+                    role: string | null;
+                    can_edit: boolean;
+                    staff: boolean;
+                    owner: boolean;
+                }[]
+            >`
         select e.edition_id, e.label, e.archived_at, c.code, e.title, app.role_in(e.edition_id)::text as role,
-               app.may_edit_projects(e.edition_id) as can_edit
+               app.may_edit_projects(e.edition_id) as can_edit, app.is_staff(e.edition_id) as staff, app.is_owner(e.edition_id) as owner
         from course_edition e join course c on c.course_id = e.course_id
         where e.edition_id = ${edition}`;
             if (head === undefined) error(404, 'No such edition.');
-            const staff = head.role === 'owner' || head.role === 'assistant';
+            // The database's answers, not the role's: an admin is staff and
+            // owner of every edition without being on its roster.
+            const staff = head.staff;
             const projects = await tx<ProjectRow[]>`
         select p.project_id, p.slug, p.title, p.kind::text as kind, p.available_after, p.deadline, p.closes_at,
                (select count(*) from project_release r where r.project_id = p.project_id)::int as releases,
@@ -72,7 +86,7 @@ export const load: PageServerLoad = async event => {
             // `canEdit` is the database's answer, the same function its policies
             // ask: the page draws the reorder handles and the new-project form only
             // when they would be accepted.
-            return { edition: head, role: head.role, staff, owner: head.role === 'owner', canEdit: head.can_edit, projects, mine, roster, kinds: KINDS };
+            return { edition: head, role: head.role, staff, owner: head.owner, canEdit: head.can_edit, projects, mine, roster, kinds: KINDS };
         }),
     );
 };
