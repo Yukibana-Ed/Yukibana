@@ -106,18 +106,25 @@ right for where you run it, and `.dev.vars` is written the same way.
 ## Publishing a project
 
 A course repository carries a `yukibana.json` ([yukibana-json.md](yukibana-json.md)).
-Install the CLI (`pnpm install`, or on its own `pnpm setup:cli`, which also
-compiles it; after changing it, `pnpm --filter @yukibana/cli prepare`) and give
-it a name, then run it from the course repository's checkout:
+Install the CLI from npm (Node.js 24 or later; `pnpm add --global` works
+as well):
 
 ```bash
-alias yukibana="node $PWD/packages/cli/lib/index.js"
+npm install --global @yukibana/cli
+```
 
+then run it from the course repository's checkout:
+
+```bash
 cd <course checkout>
 yukibana check .                    # what would be hidden; exit 1 on a problem
 yukibana build . --out .yukibana    # starter.tar.gz and teacher.tar.gz
 yukibana publish . --project <id> --url <registry> --token <token>
 ```
+
+To run the CLI from this checkout instead (after changing it), `pnpm setup:cli`
+compiles it (later `pnpm --filter @yukibana/cli prepare`), and
+`alias yukibana="node $PWD/packages/cli/lib/index.js"` gives it its name.
 
 After `yukibana login`, `publish` works without a token for a project you
 are staff of. The project id is on the project page, and so is a publishing

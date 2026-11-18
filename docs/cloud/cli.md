@@ -7,6 +7,21 @@ extensions share (`packages/client/src/library.ts` and, for what a
 Every command is a thin layer over the library, so what the terminal does,
 the IDE can do the same way.
 
+## Installing
+
+`@yukibana/cli` is on npm, released by `release.yml` with a `cli-v<X.Y.Z>`
+tag (CONTRIBUTING.md, Releasing). It needs Node.js 24 or later:
+
+```bash
+npm install --global @yukibana/cli    # or: pnpm add --global @yukibana/cli
+yukibana --help
+```
+
+`npx @yukibana/cli <command>` runs it without installing. The website's
+`reference/cli.mdx` is the install guide users see, with an npm and a pnpm
+tab. To run the CLI from this checkout, `pnpm setup:cli` builds it into
+`packages/cli/lib/index.js`.
+
 ## Logging in
 
 ```bash
