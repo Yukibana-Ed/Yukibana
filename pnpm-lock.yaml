@@ -194,6 +194,9 @@ catalogs:
     '@theia/ai-chat-ui':
       specifier: 1.76.0
       version: 1.76.0
+    '@theia/ai-code-completion':
+      specifier: 1.76.0
+      version: 1.76.0
     '@theia/ai-core':
       specifier: 1.76.0
       version: 1.76.0
@@ -597,6 +600,9 @@ importers:
       '@theia/ai-chat-ui':
         specifier: 'catalog:'
         version: 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)
+      '@theia/ai-code-completion':
+        specifier: 'catalog:'
+        version: 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)
       '@theia/ai-core':
         specifier: 'catalog:'
         version: 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)
@@ -730,6 +736,9 @@ importers:
         specifier: 'catalog:'
         version: 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)
       '@theia/ai-chat-ui':
+        specifier: 'catalog:'
+        version: 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)
+      '@theia/ai-code-completion':
         specifier: 'catalog:'
         version: 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)
       '@theia/ai-core':
@@ -2669,6 +2678,9 @@ packages:
 
   '@theia/ai-chat@1.76.0':
     resolution: {integrity: sha512-JSz0W1WHvNPA141Qi3FM+iEgGpKbvU3ZZTCNSztEgEoJ2bT8NBmGjanuqKoq9BM3VbVaTNDKQjC8TtLqSOsuWA==}
+
+  '@theia/ai-code-completion@1.76.0':
+    resolution: {integrity: sha512-AD+N2jg7Py7Bsajpm/89Cv1BDnl0WEjlsRZDrokuKRrYs7nb9zgalisEBaRcxDsF/71boSd7pbbTaFfQNUWm4g==}
 
   '@theia/ai-core-ui@1.76.0':
     resolution: {integrity: sha512-BA1dp3PlSHsH6UF6Q/V/4mCtIA/LRsoK3ruAvtDQErLvm0LktLd1uUG7WmLbIxjA77tlSGYDWNavC3ABRoYWUQ==}
@@ -8718,6 +8730,30 @@ snapshots:
       '@theia/monaco-editor-core': 1.108.201
       '@theia/workspace': 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)
       js-yaml: 4.3.2
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - '@theia/electron'
+      - '@types/react'
+      - '@types/react-dom'
+      - bare-abort-controller
+      - bare-buffer
+      - bufferutil
+      - debug
+      - react
+      - react-dom
+      - react-native-b4a
+      - supports-color
+      - typescript
+      - utf-8-validate
+
+  '@theia/ai-code-completion@1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)':
+    dependencies:
+      '@theia/ai-core': 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)
+      '@theia/core': 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)
+      '@theia/filesystem': 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)
+      '@theia/monaco-editor-core': 1.108.201
+      '@theia/output': 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)
+      '@theia/workspace': 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)
       tslib: 2.8.1
     transitivePeerDependencies:
       - '@theia/electron'
