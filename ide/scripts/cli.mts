@@ -164,6 +164,125 @@ function parseNewExtension(positionals: string[], lang: boolean = false, force: 
     return [ext, extPath];
 }
 
+function extractAllI18nTranslations(): Record<string, Set<string>> {
+    const extensionsDir = path.join(ide, 'extensions');
+    const files = fs.globSync(['**/*.ts', '**/*.tsx'], {
+        cwd: extensionsDir,
+        exclude: ['**/node_modules/', '**/lib/'],
+    });
+    const translations: Record<string, Set<string>> = {};
+
+    files.forEach(file => {
+        const filePath = path.join(extensionsDir, file);
+        const content = fs.readFileSync(filePath).toString();
+        const matches = content.matchAll(/localize(?:Markdown)?\(\s*'([^']+)',\s*'([^']+)'/g);
+        for (const match of matches) {
+            const [_, key, translation] = match;
+            if (key in translations) {
+                translations[key].add(translation);
+            } else {
+                translations[key] = new Set([translation]);
+            }
+        }
+    });
+    return translations;
+}
+
+interface Translations {
+    [k: string]: string | Translations;
+}
+
+function isI18nKeySet(key: string, translations: Translations): boolean {
+    if (key.includes('/')) {
+        const [prefix, ...tail] = key.split('/');
+        if (!(prefix in translations)) {
+            return false;
+        }
+        const subTranslations = translations[prefix];
+        if (typeof subTranslations === 'string') {
+            return false;
+        }
+        return isI18nKeySet(tail.join('/'), subTranslations);
+    } else {
+        if (!(key in translations)) {
+            return false;
+        }
+        return typeof translations[key] === 'string';
+    }
+}
+
+function collectTranslationKeys(translations: Translations): string[] {
+    return Object.entries(translations).flatMap(([key, subTranslations]) => {
+        if (typeof subTranslations === 'string') {
+            return [key];
+        }
+        return collectTranslationKeys(subTranslations).map(k => `${key}/${k}`);
+    });
+}
+
+function checkI18n(langs: string[]) {
+    const i18nDir = path.join(ide, 'extensions', 'yukibana-i18n', 'i18n');
+    if (langs.length === 0) {
+        langs = fs
+            .readdirSync(i18nDir)
+            .map(f => {
+                const lang = f.match(/nls\.([a-zA-Z-]+)\.json/)?.[1];
+                if (lang === undefined) {
+                    console.warn(`Skipping ${f}, not a lang file`);
+                }
+                return lang;
+            })
+            .filter(f => f !== undefined);
+    } else {
+        langs.forEach(lang => {
+            const filePath = path.join(i18nDir, `nls.${lang}.json`);
+            if (!fs.existsSync(filePath)) {
+                console.warn(`Unknown language ${lang}, no file ${filePath}`);
+            }
+        });
+    }
+    console.log(`Checking ${langs.length} languages`);
+    const translations = extractAllI18nTranslations();
+    const allKeys = Object.keys(translations);
+
+    const stats: {
+        [k: string]: {
+            missing: number;
+            extra: number;
+        };
+    } = {};
+
+    langs.forEach(lang => {
+        const langStats = { missing: 0, extra: 0 };
+        const filePath = path.join(i18nDir, `nls.${lang}.json`);
+        console.group(`lang=${lang}: `);
+        const langTranslations = JSON.parse(fs.readFileSync(filePath).toString()) as Translations;
+        allKeys.forEach(key => {
+            if (!isI18nKeySet(key, langTranslations)) {
+                const translation = Array.from(translations[key])
+                    .map(t => `'${t}'`)
+                    .join(', ');
+                console.warn(`Missing key '${key}'. English translation: ${translation}`);
+                langStats.missing++;
+            }
+        });
+        const langKeys = collectTranslationKeys(langTranslations);
+        langKeys.forEach(key => {
+            if (!allKeys.includes(key)) {
+                console.warn(`Extra translation key '${key}'`);
+                langStats.extra++;
+            }
+        });
+        console.groupEnd();
+        stats[lang] = langStats;
+    });
+
+    console.log(`\nExpected translation keys: ${allKeys.length}`);
+    Object.entries(stats).forEach(([lang, langStats]) => {
+        console.log(`${lang}: missing=${langStats.missing}    extra=${langStats.extra}`);
+    });
+}
+
 /** A command's arguments: its options, its positional arguments, and the arguments after `--`. */
 interface Parsed {
     values: Record<string, unknown>;
@@ -211,6 +330,13 @@ const commands: Record<string, { options: ParseArgsOptionsConfig; run: (args: Pa
             const force: boolean = !!values.force;
             const [extName, extPath] = parseNewExtension(positionals, lang, force);
             initExtension(extName, extPath, lang);
+        },
+    },
+    'i18n:check': {
+        options: { lang: { type: 'string', short: 'l', multiple: true } },
+        run: ({ values }) => {
+            const langs = (values.lang ?? []) as string[];
+            checkI18n(langs);
         },
     },
 };
