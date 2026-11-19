@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { enhance, type SubmitFunction } from '$app/forms';
   import { page } from '$app/state';
   import Tabs from '#lib/Tabs.svelte';
   import Chip from '#lib/Chip.svelte';
@@ -57,12 +58,23 @@
     if (tab !== 'settings') editing = false;
   });
   $effect(() => (editing ? hold() : undefined));
-  // Saving is a plain form post: the page stays on screen until the answer
-  // arrives, and the save's own broadcast usually arrives first. It is news
-  // about our change, not somebody else's, so while a save is on its way the
-  // page does not say it is out of date. It used to, and every save flashed
-  // the warning before "Saved.".
+  // The page stays on screen while a save is on its way, and the save's own
+  // broadcast usually arrives before its answer. It is news about our change,
+  // not somebody else's, so while a save is on its way the page does not say
+  // it is out of date. It used to, and every save flashed the warning before
+  // "Saved.".
   let saving = $state(false);
+  // A save that worked ends the editing (the form shows the project again,
+  // and follows it live); one that was refused keeps what was typed, for
+  // another try, and says why (the layout's toast).
+  const save: SubmitFunction = () => {
+    saving = true;
+    return async ({ result, update }) => {
+      if (result.type === 'success') editing = false;
+      await update();
+      saving = false;
+    };
+  };
   // The Save button says it worked, for two seconds, instead of a line above the form.
   let saved = $state(false);
   $effect(() => {
@@ -137,6 +149,12 @@ jobs:
           label: \${{ github.ref_name }}`);
 </script>
 
+<!-- Every form here posts with `use:enhance`, in the background, so the page needs JavaScript. A form posted by the
+     browser itself leaves a page that was the answer to a POST in the history, which a reload posts again: Safari
+     even posts it again after the page moved on to another address (another tab, by `pushState`), where it names no
+     action and is a 404. -->
+<noscript><p class="error">This page needs JavaScript. Turn it on and reload.</p></noscript>
+
 <div class="head">
   <nav class="crumbs" aria-label="Breadcrumb">
     <a href="/">Courses</a>
@@ -203,7 +221,7 @@ jobs:
       <h2>Submit your solution</h2>
       {#if p.can_submit}
         {#if pastDeadline}<p class="error">The deadline has passed: a submission now is recorded as late.</p>{/if}
-        <form method="POST" action={actionIn('overview', 'submit')} enctype="multipart/form-data" class="stack">
+        <form method="POST" action={actionIn('overview', 'submit')} enctype="multipart/form-data" class="stack" use:enhance>
           <label>Your solution as .tar.gz
             <input class="yk-input" type="file" name="archive" accept=".gz,.tgz,application/gzip" required />
           </label>
@@ -397,7 +415,7 @@ jobs:
                 </p>
               {/if}
               {#if !gh.connected}
-                <form method="POST" action={actionIn('releases', 'connectGithub')} class="row">
+                <form method="POST" action={actionIn('releases', 'connectGithub')} class="row" use:enhance>
                   {#if gh.relink}<input type="hidden" name="relink" value="1" />{/if}
                   <button class="yk-btn yk-btn--primary">Connect GitHub</button>
                   <span class="note">GitHub asks you to authorise the Yukibana Cloud App; you need admin or maintain on the repository.</span>
@@ -405,7 +423,7 @@ jobs:
               {:else if gh.picker !== null && gh.picker.failed !== null}
                 <p class="error">{gh.picker.failed}</p>
               {:else if gh.picker !== null && gh.picker.repositories.length > 0}
-                <form method="POST" action={actionIn('releases', 'linkRepository')} class="row pick">
+                <form method="POST" action={actionIn('releases', 'linkRepository')} class="row pick" use:enhance>
                   <label class="sr-only" for="repository-id">Repository</label>
                   <select id="repository-id" class="yk-input" name="repository_id" required>
                     {#each gh.picker.repositories as r (r.id)}
@@ -430,7 +448,7 @@ jobs:
                 <details open={gh.picker !== null && gh.picker.failed === null && gh.picker.repositories.length === 0}>
                   <summary>Repository not listed?{#if gh.picker?.truncated} <span class="muted">Not every repository is shown.</span>{/if}</summary>
                   <div class="body">
-                    <form method="POST" action={actionIn('releases', 'linkRepository')} class="row pick">
+                    <form method="POST" action={actionIn('releases', 'linkRepository')} class="row pick" use:enhance>
                       <label class="sr-only" for="repository-name">Repository, as owner/name</label>
                       <input id="repository-name" class="yk-input" name="repository" placeholder="owner/name" required />
                       <button class="yk-btn yk-btn--secondary">Link</button>
@@ -441,7 +459,7 @@ jobs:
                       repository's account, or add the repository to an existing installation, then refresh. In an
                       organisation an owner may have to approve.
                     </p>
-                    <form method="POST" action={actionIn('releases', 'connectGithub')} class="row">
+                    <form method="POST" action={actionIn('releases', 'connectGithub')} class="row" use:enhance>
                       {#if gh.relink}<input type="hidden" name="relink" value="1" />{/if}
                       <button class="yk-btn yk-btn--secondary" name="install" value="1">Install the App or add repositories</button>
                       <a href="?tab=releases{gh.relink ? '&relink' : ''}#repository">Refresh the list</a>
@@ -475,7 +493,7 @@ jobs:
               <p class="ok">Token “{form.token.label}” created. Copy it now; it is not shown again.</p>
               <CodeBlock code={form.token.secret} />
             {/if}
-            <form method="POST" action={inMethod('token', 'createToken')} class="row pick">
+            <form method="POST" action={inMethod('token', 'createToken')} class="row pick" use:enhance>
               <label class="sr-only" for="token-label">Label</label>
               <input id="token-label" class="yk-input" name="label" placeholder="Label, like “gitlab ci”" />
               <button class="yk-btn yk-btn--primary">Create a token</button>
@@ -545,7 +563,7 @@ jobs:
       </p>
     {/if}
     {#key p}
-      <form method="POST" action={actionIn('settings', 'update')} class="stack" oninput={() => (editing = true)} onsubmit={() => (saving = true)}>
+      <form method="POST" action={actionIn('settings', 'update')} class="stack" oninput={() => (editing = true)} use:enhance={save}>
         <label>Title <input class="yk-input" name="title" value={p.title} required /></label>
         <!-- The zone the times below are written in, and the instants they
              were written from: the action reads the times in that zone, and
