@@ -31,8 +31,7 @@
   "theiaExtensions": [
     {
       "electronMain": "lib/electron-main/updater-main-module",
-      "frontendElectron": "lib/browser/updater-frontend-module",
-      "backend": "lib/node/updater-backend-module"
+      "frontendElectron": "lib/browser/updater-frontend-module"
     }
   ]
 }

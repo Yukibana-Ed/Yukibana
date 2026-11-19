@@ -45,6 +45,7 @@
     "@theia/workspace": "catalog:",
     "@yukibana/ide-cloud-ext": "catalog:",
     "@yukibana/ide-ext": "catalog:",
+    "@yukibana/ide-i18n-ext": "catalog:",
     "@yukibana/ide-launcher-ext": "catalog:",
     "@yukibana/ide-product-ext": "catalog:",
     "@yukibana/ide-scala-lang-ext": "catalog:",

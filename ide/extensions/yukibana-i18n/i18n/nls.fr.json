@@ -107,6 +107,54 @@
         "thisWindow": "Cette fenêtre",
         "openInWindow": "Ouvert"
       }
+    },
+    "submission": {
+      "fileTarget": {
+        "noWorkspaceRoot": "Pas de racine dans l'espace de travail",
+        "copyFail": "Échec de copie du fichier"
+      },
+      "submitAssignment": "Remettre votre travail...",
+      "summaryTitle": "Résumé de votre tentative",
+      "summaryHeader": "Êtes-vous prêt·e à remettre votre travail ?",
+      "summaryFileCount": "Nombre de fichiers",
+      "summaryTotalSize": "Taille totale",
+      "summaryFiles": "Fichiers inclus",
+      "submit": "Envoyer",
+      "submitProgress": "Envoi",
+      "preparing": "Préparation...",
+      "transmitting": "Transmission...",
+      "unknownTarget": "Destination '{0}' inconnue",
+      "targetUnavailable": "La destination n'est pas disponible: {0}",
+      "submitSuccess": "Travail remis avec succès",
+      "submitFail": "Échec de la soumission: {0}",
+      "checkFailed": "Échec de vérification de la disponibilité de la destination",
+      "checkRetry": "Réessayer",
+      "checking": "Vérification de la disponibilité de la destination...",
+      "unavailabilityHeader": "Il y a peut-être un problème"
+    },
+    "telemetry": {
+      "live": {
+        "consent": "Consentement télémétrie live",
+        "close": "Fermer le projet",
+        "accept": "Accepter",
+        "title": "La télémétrie live est activée pour ce projet",
+        "subtitle": "Qu'est-ce que cela implique ?",
+        "details": "Votre professeur·e pourra:",
+        "detailsLiveStats": "voir des statistiques en direct sur ce que vous faites (vitesse d'écriture, résultats de tests, problèmes, etc.)",
+        "detailsRemoteView": "voir à distance les fichiers que vous éditez (vous serez notifié·e lorsque votre professeur·e active la vue à distance)"
+      }
+    },
+    "updater": {
+      "available": "Yukibana {0} est disponible",
+      "availableTooltip": "Ouvrir la page de téléchargement de Yukibana {0}",
+      "checkCommand": "Rechercher des mises à jour de l'IDE",
+      "downloading": "Téléchargement de Yukibana {0} en arrière-plan.",
+      "failed": "Impossible de rechercher des mises à jour: {0}",
+      "off": "Cette version de Yukibana ne se met pas à jour elle-même.",
+      "restartCommand": "Redémarrer pour mettre à jour l'IDE",
+      "restartToUpdate": "Redémarrer pour passer à la version {0}",
+      "restartToUpdateTooltip": "Yukibana {0} est téléchargé. Redémarrez maintenant pour l'utiliser, sinon il s'installera la prochaine fois que vous quitterez.",
+      "upToDate": "Yukibana est à jour."
     }
   }
 }

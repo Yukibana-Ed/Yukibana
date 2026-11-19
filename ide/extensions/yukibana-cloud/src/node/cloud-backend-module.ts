@@ -2,19 +2,17 @@
  * SPDX-License-Identifier: MIT
  */
 import { ConnectionHandler, RpcConnectionHandler } from '@theia/core';
-import { LocalizationContribution } from '@theia/core/lib/node/i18n/localization-contribution';
 import { ContainerModule } from '@theia/core/shared/inversify';
 import { IdentityProviderContribution } from '@yukibana/ide-ext/lib/node/identity-service';
 import { AuthClient, cloudAuthPath, CloudService, cloudServicePath } from '../common/cloud-protocol';
 import { OpenWorkspacesClient, openWorkspacesPath } from '../common/open-workspaces-protocol';
+import { UpdateService, updateServicePath } from '../common/update-protocol';
 import { CloudAuthImpl } from './cloud-auth';
 import { CloudClient } from './cloud-client';
 import { CloudIdentityProvider } from './cloud-identity-provider';
-import { YukibanaCloudLocalizationContribution } from './cloud-localization-contribution';
 import { CloudServiceImpl } from './cloud-service';
 import { CloudSessionManager } from './cloud-session-manager';
 import { OpenWorkspaces, OpenWorkspacesServerImpl } from './open-workspaces';
-import { UpdateService, updateServicePath } from '../common/update-protocol';
 import { UpdateServiceImpl } from './update/update-service';
 
 /**
@@ -68,9 +66,6 @@ export default new ContainerModule((bind, unbind, isBound, rebind) => {
                 }),
         )
         .inSingletonScope();
-
-    bind(YukibanaCloudLocalizationContribution).toSelf().inSingletonScope();
-    bind(LocalizationContribution).toService(YukibanaCloudLocalizationContribution);
 
     bind(CloudIdentityProvider).toSelf().inSingletonScope();
     bind(IdentityProviderContribution).toService(CloudIdentityProvider);
