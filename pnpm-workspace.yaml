@@ -106,6 +106,7 @@ catalog:
   '@yukibana/ide-cloud-ext': workspace:*
   '@yukibana/ide-common': workspace:*
   '@yukibana/ide-ext': workspace:*
+  '@yukibana/ide-i18n-ext': workspace:*
   '@yukibana/ide-launcher-ext': workspace:*
   '@yukibana/ide-product-ext': workspace:*
   '@yukibana/ide-scala-lang-ext': workspace:*

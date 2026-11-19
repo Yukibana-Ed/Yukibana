@@ -29,6 +29,7 @@
     "@theia/workspace": "catalog:",
     "@yukibana/ide-cloud-ext": "catalog:",
     "@yukibana/ide-ext": "catalog:",
+    "@yukibana/ide-i18n-ext": "catalog:",
     "@yukibana/ide-scala-lang-ext": "catalog:",
     "@yukibana/ide-submission-ext": "catalog:",
     "@yukibana/ide-telemetry-ext": "catalog:"

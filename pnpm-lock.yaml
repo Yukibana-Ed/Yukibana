@@ -332,6 +332,9 @@ catalogs:
     '@yukibana/ide-ext':
       specifier: workspace:*
       version: workspace:*
+    '@yukibana/ide-i18n-ext':
+      specifier: workspace:*
+      version: workspace:*
     '@yukibana/ide-launcher-ext':
       specifier: workspace:*
       version: workspace:*
@@ -669,6 +672,9 @@ importers:
       '@yukibana/ide-ext':
         specifier: 'catalog:'
         version: link:../extensions/yukibana
+      '@yukibana/ide-i18n-ext':
+        specifier: 'catalog:'
+        version: link:../extensions/yukibana-i18n
       '@yukibana/ide-scala-lang-ext':
         specifier: 'catalog:'
         version: link:../extensions/langs/scala
@@ -816,6 +822,9 @@ importers:
       '@yukibana/ide-ext':
         specifier: 'catalog:'
         version: link:../extensions/yukibana
+      '@yukibana/ide-i18n-ext':
+        specifier: 'catalog:'
+        version: link:../extensions/yukibana-i18n
       '@yukibana/ide-launcher-ext':
         specifier: 'catalog:'
         version: link:../extensions/yukibana-launcher
@@ -1027,6 +1036,18 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 5.0.5(@types/node@24.19.2)(@vitest/coverage-v8@5.0.5)(jsdom@30.1.3(@noble/hashes@1.8.0))(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
+
+  ide/extensions/yukibana-i18n:
+    devDependencies:
+      '@yukibana/ide':
+        specifier: 'catalog:'
+        version: link:../..
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.3
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
 
   ide/extensions/yukibana-launcher:
     dependencies:
