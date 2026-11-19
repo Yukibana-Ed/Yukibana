@@ -1,6 +1,9 @@
 /**
  * SPDX-License-Identifier: MIT
  */
+import { MaybePromise, RpcServer } from '@theia/core';
+import { editor } from '@theia/monaco-editor-core';
+
 export namespace TypingTelemetry {
     export const EditPath = 'yukibana/edit';
     export type EditOrigin = 'type' | 'cut' | 'paste' | 'completion' | 'drag-drop' | 'delete' | 'command' | 'unknown';
@@ -10,6 +13,7 @@ export namespace TypingTelemetry {
         removed: number;
         origin: EditOrigin;
         command?: string;
+        name?: string;
     }
 
     export interface Edit {
@@ -26,4 +30,109 @@ export namespace TypingTelemetry {
         changeOrigins: EditOrigin[];
         changeCommands: string[];
     }
+}
+
+export namespace LiveTelemetry {
+    export interface Envelope<P extends Payload> {
+        v: 1;
+        seq: number;
+        ts: number;
+        payload: P;
+    }
+
+    export interface Payload {
+        type: string;
+    }
+
+    // client -> server
+    export interface Hello extends Payload {
+        type: 'hello';
+        studentId: string;
+        projectId: string;
+    }
+    export interface DocSync extends Payload {
+        type: 'doc';
+        uri: string;
+        version: number;
+        full?: string;
+        changes?: editor.IModelContentChange[];
+        cursor?: [number, number];
+    }
+    export interface PasteStats {
+        size: number;
+        external: boolean;
+    }
+    export interface Stats extends Payload {
+        type: 'stats';
+        windowMs: number;
+        idleMs: number;
+        charsInserted: number;
+        charsDeleted: number;
+        pastes: PasteStats[];
+        commands: string[];
+        activeFile?: string;
+        focused: boolean;
+    }
+    export interface Event extends Payload {
+        type: 'event';
+        kind: 'run' | 'test' | 'submit' | 'ai-prompt' | 'file-op';
+        data: unknown;
+    }
+    export interface Problems extends Payload {
+        type: 'problems';
+        errors: number;
+        warnings: number;
+    }
+    export interface Ping extends Payload {
+        type: 'ping';
+    }
+
+    // server -> client
+    export interface Welcome extends Payload {
+        type: 'welcome';
+        sessionId: string;
+        serverTime: number;
+        heartbeatMs: number;
+    }
+    export interface Subscribe extends Payload {
+        type: 'subscribe';
+        stream: 'doc';
+    }
+    export interface Unsubscribe extends Payload {
+        type: 'unsubscribe';
+        stream: 'doc';
+    }
+    export interface Sync extends Payload {
+        type: 'sync';
+        uri: string;
+    }
+
+    export type ClientToServerPayload = Hello | DocSync | Stats | Event | Problems | Ping;
+    export type ServerToClientPayload = Welcome | Subscribe | Unsubscribe | Sync;
+}
+
+export interface LiveSessionContext {
+    projectId: string;
+}
+
+export const LiveTelemetrySink = Symbol('LiveTelemetrySink');
+export interface LiveTelemetrySink {
+    send(payload: LiveTelemetry.ClientToServerPayload): void;
+    dispose(): void;
+}
+
+export const LiveTelemetryServicePath = 'yukibana/live-telemetry';
+export const LiveTelemetryService = Symbol('LiveTelemetryService');
+export interface LiveTelemetryService extends RpcServer<LiveTelemetryClient> {
+    start(ctx: LiveSessionContext): MaybePromise<void>;
+    report(event: LiveTelemetry.ClientToServerPayload): void;
+    stop(): void;
+}
+
+export interface LiveTelemetryClient {
+    onCommand(command: LiveTelemetry.ServerToClientPayload): void;
+}
+
+export interface LiveTelemetrySinkHost {
+    dispatch(command: LiveTelemetry.ServerToClientPayload): void;
 }

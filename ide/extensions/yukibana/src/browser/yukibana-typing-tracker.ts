@@ -1,7 +1,7 @@
 /**
  * SPDX-License-Identifier: MIT
  */
-import { ILogger } from '@theia/core';
+import { Emitter, ILogger } from '@theia/core';
 import { FrontendApplicationContribution } from '@theia/core/lib/browser';
 import { inject, injectable, named } from '@theia/core/shared/inversify';
 import { EditorManager, EditorWidget } from '@theia/editor/lib/browser';
@@ -38,6 +38,9 @@ export class YukibanaTypingTracker implements FrontendApplicationContribution {
     @inject(ConfigProvider) protected readonly config!: ConfigProvider;
     /** The tracker's logger; nothing logs to it yet. */
     @inject(ILogger) @named('yukibana:TypingTracker') protected readonly logger!: ILogger;
+
+    protected readonly onDidEditEmitter = new Emitter<TypingTelemetry.Edit>();
+    readonly onDidEdit = this.onDidEditEmitter.event;
 
     /** Waits for the first config and, if it asks for typing stats, follows every editor open now and opened later. */
     async onStart(): Promise<void> {
@@ -76,16 +79,32 @@ export class YukibanaTypingTracker implements FrontendApplicationContribution {
                 const detailedReason = e.detailedReasons[i];
                 const origin = this.originOfChange(detailedReason);
                 const nChanges = e.detailedReasonsChangeLengths[i];
+                const editChanges = e.changes.slice(changeIdx, changeIdx + nChanges);
+                changeIdx += nChanges;
                 const command = origin === 'command' || origin === 'unknown' ? detailedReason.metadata?.detailedSource : undefined;
-                for (let j = 0; j < nChanges; j++) {
-                    const change = e.changes[changeIdx++];
+                const name = origin === 'unknown' ? detailedReason.metadata?.name : undefined;
+                const totalDelta = editChanges.reduce((a, b) => a + b.text.length - b.rangeLength, 0);
+
+                if (this.isMultiChangeAction(origin, command) && totalDelta === 0) {
+                    changes.push({
+                        inserted: editChanges.reduce((a, b) => a + b.text.length, 0),
+                        removed: editChanges.reduce((a, b) => a + b.rangeLength, 0),
+                        origin: origin,
+                        command: command,
+                        name: name,
+                    });
+                    continue;
+                }
+
+                editChanges.forEach(change => {
                     changes.push({
                         inserted: change.text.length,
                         removed: change.rangeLength,
                         origin: origin,
                         command: command,
+                        name: name,
                     });
-                }
+                });
             }
             const edit: TypingTelemetry.Edit = {
                 sinceLastTyped: sinceLastTyped,
@@ -93,6 +112,7 @@ export class YukibanaTypingTracker implements FrontendApplicationContribution {
                 file: monaco.getModel()?.uri?.toString(),
             };
             this.report(edit);
+            this.onDidEditEmitter.fire(edit);
         });
     }
 
@@ -114,6 +134,7 @@ export class YukibanaTypingTracker implements FrontendApplicationContribution {
                 if (detailedSource === 'editor.contrib.dragAndDrop') {
                     return 'drag-drop';
                 }
+                this.logger.debug(`Unknown command for ${JSON.stringify(detailedReason)}`);
                 return 'command';
             }
             if (kind === 'cut') {
@@ -123,7 +144,20 @@ export class YukibanaTypingTracker implements FrontendApplicationContribution {
                 return 'paste';
             }
         }
+        this.logger.debug(`Unknown change origin for ${JSON.stringify(detailedReason)}`);
         return 'unknown';
+    }
+
+    protected isMultiChangeAction(origin: TypingTelemetry.EditOrigin, command?: string): boolean {
+        if (origin === 'drag-drop') {
+            return true;
+        }
+        if (origin === 'command') {
+            if (command === 'editor.action.moveLinesUpAction' || command === 'editor.action.moveLinesDownAction') {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
