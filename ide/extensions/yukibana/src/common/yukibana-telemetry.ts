@@ -1,7 +1,7 @@
 /**
  * SPDX-License-Identifier: MIT
  */
-import { RpcServer } from '@theia/core';
+import { MaybePromise, RpcServer } from '@theia/core';
 import { editor } from '@theia/monaco-editor-core';
 
 export namespace TypingTelemetry {
@@ -124,7 +124,7 @@ export interface LiveTelemetrySink {
 export const LiveTelemetryServicePath = 'yukibana/live-telemetry';
 export const LiveTelemetryService = Symbol('LiveTelemetryService');
 export interface LiveTelemetryService extends RpcServer<LiveTelemetryClient> {
-    start(ctx: LiveSessionContext): void;
+    start(ctx: LiveSessionContext): MaybePromise<void>;
     report(event: LiveTelemetry.ClientToServerPayload): void;
     stop(): void;
 }

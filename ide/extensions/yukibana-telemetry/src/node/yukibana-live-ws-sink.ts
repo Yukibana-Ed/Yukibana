@@ -125,6 +125,7 @@ export class YukibanaLiveWebsocketTelemetrySink implements LiveTelemetrySink {
 @injectable()
 export class YukibanaLiveWebsocketTelemetrySinkContribution implements LiveTelemetrySinkContribution {
     @inject(ILogger) @named('yukibana:LiveWebsocketTelemetrySink') protected readonly logger!: ILogger;
+    readonly name: string = 'live-websocket-sink';
 
     create(ctx: LiveSessionContext, host: LiveTelemetrySinkHost): LiveTelemetrySink {
         return new YukibanaLiveWebsocketTelemetrySink(this.logger, host, ctx);
