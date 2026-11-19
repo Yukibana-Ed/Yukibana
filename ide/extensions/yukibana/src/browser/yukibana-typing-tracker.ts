@@ -80,6 +80,7 @@ export class YukibanaTypingTracker implements FrontendApplicationContribution {
                 const origin = this.originOfChange(detailedReason);
                 const nChanges = e.detailedReasonsChangeLengths[i];
                 const editChanges = e.changes.slice(changeIdx, changeIdx + nChanges);
+                changeIdx += nChanges;
                 const command = origin === 'command' || origin === 'unknown' ? detailedReason.metadata?.detailedSource : undefined;
                 const name = origin === 'unknown' ? detailedReason.metadata?.name : undefined;
                 const totalDelta = editChanges.reduce((a, b) => a + b.text.length - b.rangeLength, 0);
