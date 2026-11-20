@@ -55,10 +55,10 @@ export class UpdateContribution extends AbstractViewContribution<UpdateWidget> i
         this.updates.onDidChange(state => {
             const entry = statusText(state);
             if (entry === undefined) {
-                this.statusBar.removeElement(STATUS_ID);
+                void this.statusBar.removeElement(STATUS_ID);
                 return;
             }
-            this.statusBar.setElement(STATUS_ID, { ...entry, alignment: StatusBarAlignment.LEFT, priority: 50, onclick: () => this.openView({ activate: true, reveal: true }) });
+            void this.statusBar.setElement(STATUS_ID, { ...entry, alignment: StatusBarAlignment.LEFT, priority: 50, onclick: () => this.openView({ activate: true, reveal: true }) });
         });
         this.updates.onShow(() => this.openView({ activate: true, reveal: true }));
     }

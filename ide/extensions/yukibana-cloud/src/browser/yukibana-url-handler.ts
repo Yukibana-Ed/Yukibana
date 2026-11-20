@@ -34,7 +34,7 @@ export class YukibanaOpenHandler implements OpenHandler {
     @inject(YukibanaProjectOpener) protected opener!: YukibanaProjectOpener;
 
     /** Returns {@link YukibanaOpenHandler.PRIORITY} for a `yukibana:` URI and 0, not mine, for any other; `options` are ignored. */
-    canHandle(uri: URI, options?: OpenerOptions): MaybePromise<number> {
+    canHandle(uri: URI, _options?: OpenerOptions): MaybePromise<number> {
         return uri.scheme === 'yukibana' ? YukibanaOpenHandler.PRIORITY : 0;
     }
 
@@ -44,14 +44,14 @@ export class YukibanaOpenHandler implements OpenHandler {
      *
      * Rejects when the login it starts cannot reach the backend; the project opener itself never rejects.
      */
-    async open(uri: URI, options?: OpenerOptions): Promise<undefined> {
+    async open(uri: URI, _options?: OpenerOptions): Promise<undefined> {
         const subject = uri.authority;
         const command = uri.path.toString();
 
-        this.logger.info(`Opening url: ${uri.toString()}`);
+        void this.logger.info(`Opening url: ${uri.toString()}`);
 
         if (subject === 'project') {
-            this.logger.info(`Running project command: ${command}`);
+            void this.logger.info(`Running project command: ${command}`);
             await this.doProjectCommand(command, uri);
         }
     }
@@ -66,7 +66,7 @@ export class YukibanaOpenHandler implements OpenHandler {
     protected async doProjectCommand(command: string, uri: URI): Promise<void> {
         // The registry, not the keystore, says whether the stored session still works
         if ((await this.accounts.refresh()).kind === 'logged-out') {
-            this.logger.info('Logged out');
+            void this.logger.info('Logged out');
             await this.commands.executeCommand(LoginCommand.id);
         }
 
