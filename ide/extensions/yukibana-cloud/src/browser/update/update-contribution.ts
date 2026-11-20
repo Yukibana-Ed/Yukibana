@@ -58,7 +58,12 @@ export class UpdateContribution extends AbstractViewContribution<UpdateWidget> i
                 void this.statusBar.removeElement(STATUS_ID);
                 return;
             }
-            void this.statusBar.setElement(STATUS_ID, { ...entry, alignment: StatusBarAlignment.LEFT, priority: 50, onclick: () => this.openView({ activate: true, reveal: true }) });
+            void this.statusBar.setElement(STATUS_ID, {
+                ...entry,
+                alignment: StatusBarAlignment.LEFT,
+                priority: 50,
+                onclick: () => this.openView({ activate: true, reveal: true }),
+            });
         });
         this.updates.onShow(() => this.openView({ activate: true, reveal: true }));
     }

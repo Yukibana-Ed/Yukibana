@@ -123,7 +123,9 @@ export class CloudAccountService {
         const before = this.account;
         this._state = state;
         if (state.kind === 'logged-in' && state.account.userId !== before?.userId) {
-            void this.logger.info(`Logged in to the cloud registry as ${CloudAccount.label(state.account)} (user ${state.account.userId}, platform role ${state.account.platformRole})`);
+            void this.logger.info(
+                `Logged in to the cloud registry as ${CloudAccount.label(state.account)} (user ${state.account.userId}, platform role ${state.account.platformRole})`,
+            );
         } else if (state.kind === 'error') {
             void this.logger.warn(`Could not get the logged-in account: ${state.reason}`);
         }
