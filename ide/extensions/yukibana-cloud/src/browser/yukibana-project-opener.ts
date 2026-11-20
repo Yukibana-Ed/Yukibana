@@ -74,7 +74,7 @@ export class YukibanaProjectOpener {
      *   each still opens its project.
      */
     async openProjectURI(uri: URI): Promise<void> {
-        this.logger.info(`Opening project from URI: ${uri}`);
+        void this.logger.info(`Opening project from URI: ${uri.toString()}`);
         const start = Date.now();
         let stage: CloudTelemetry.OpenProjectStage = 'parse';
         this.outcome = 'error';
@@ -102,7 +102,7 @@ export class YukibanaProjectOpener {
             const destination = await this.askDestination(project);
             if (!destination) {
                 this.outcome = 'cancelled';
-                this.logger.info('No destination');
+                void this.logger.info('No destination');
                 return;
             }
 
@@ -125,8 +125,8 @@ export class YukibanaProjectOpener {
             this.report(this.outcome, stage, start, projectId, newWindow);
             this.workspaces.open(destination, { preserveWindow: !newWindow });
         } catch (e) {
-            this.logger.error(`Could not open project (stage: ${stage})`, e);
-            this.messages.error(localizeMarkdown('yukibana/cloud/openProject/failed', 'Could not open project: {0}', e instanceof Error ? e.message : String(e)));
+            void this.logger.error(`Could not open project (stage: ${stage})`, e);
+            void this.messages.error(localizeMarkdown('yukibana/cloud/openProject/failed', 'Could not open project: {0}', e instanceof Error ? e.message : String(e)));
         } finally {
             this.progress?.cancel();
             if (this.outcome !== 'opened') {
@@ -142,11 +142,11 @@ export class YukibanaProjectOpener {
     protected parseURI(uri: URI): string | undefined {
         // `?id=` gives '', which is no id either
         const projectId = new URLSearchParams(uri.query).get('id') || undefined;
-        this.logger.info(`Opening project: ${projectId}`);
+        void this.logger.info(`Opening project: ${projectId}`);
 
         if (!projectId) {
             this.outcome = 'invalid-uri';
-            this.logger.info('No project id');
+            void this.logger.info('No project id');
         }
         return projectId;
     }
@@ -162,21 +162,21 @@ export class YukibanaProjectOpener {
         const lookup = await this.service.getProjectInfo(projectId);
         if (lookup.kind === 'not-logged-in') {
             this.outcome = 'not-logged-in';
-            this.logger.info('Not logged in');
-            this.offerLogin(uri);
+            void this.logger.info('Not logged in');
+            void this.offerLogin(uri);
             return;
         }
         if (lookup.kind === 'not-found') {
             this.outcome = 'not-found';
-            this.logger.info('Project not found');
-            this.messages.error(nls.localize('yukibana/cloud/openProject/notFound', 'Project not found'));
+            void this.logger.info('Project not found');
+            void this.messages.error(nls.localize('yukibana/cloud/openProject/notFound', 'Project not found'));
             return;
         }
         const info = lookup.project;
         if (!info.starterReady) {
             this.outcome = 'no-starter';
-            this.logger.info('Project has no starter');
-            this.messages.error(localizeMarkdown('yukibana/cloud/openProject/noStarter', "Project '{0}' has no starter files to download yet", info.title));
+            void this.logger.info('Project has no starter');
+            void this.messages.error(localizeMarkdown('yukibana/cloud/openProject/noStarter', "Project '{0}' has no starter files to download yet", info.title));
             return;
         }
         return info;
@@ -225,12 +225,12 @@ export class YukibanaProjectOpener {
         const result = await this.service.downloadProject(projectId, destination.toString());
         if (!result.ok) {
             this.outcome = 'download-failed';
-            this.logger.error(`Could not download project: ${result.reason}`);
-            this.messages.error(localizeMarkdown('yukibana/cloud/openProject/downloadFailReason', 'Download failed: {0}', result.reason));
+            void this.logger.error(`Could not download project: ${result.reason}`);
+            void this.messages.error(localizeMarkdown('yukibana/cloud/openProject/downloadFailReason', 'Download failed: {0}', result.reason));
             return false;
         }
         if (result.leftOut.length > 0) {
-            this.messages.warn(localizeMarkdown('yukibana/cloud/openProject/leftOut', 'Some files of the starter were not unpacked: {0}', result.leftOut.join('; ')));
+            void this.messages.warn(localizeMarkdown('yukibana/cloud/openProject/leftOut', 'Some files of the starter were not unpacked: {0}', result.leftOut.join('; ')));
         }
         return true;
     }

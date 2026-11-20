@@ -25,8 +25,8 @@ import {
 } from '../../common/update-protocol';
 import { ReplaceEditsDialog } from './replace-edits-dialog';
 import { UpdateCheck } from './update-check';
-import { files, notification, updateButton } from './update-texts';
 import { nextCheckIn } from './update-schedule';
+import { files, notification, updateButton } from './update-texts';
 
 /** Returns the title the merge and diff editors give the student's side. Every screen uses these words. */
 export const YOUR_VERSION = (): string => nls.localize('yukibana/cloud/update/yourVersion', 'Your version');
@@ -113,10 +113,10 @@ export class AssignmentUpdates implements FrontendApplicationContribution, Updat
         // Browsers slow timers in a hidden window; a window that comes back checks if its check is overdue
         window.addEventListener('focus', () => {
             if (Date.now() - this.lastCheck >= nextCheckIn(this.lastCheck, this.state.deadline)) {
-                this.refresh();
+                void this.refresh();
             }
         });
-        this.refresh();
+        void this.refresh();
     }
 
     /** Checks the workspace folder again and returns its state; never rejects. One check runs at a time. */
@@ -165,7 +165,7 @@ export class AssignmentUpdates implements FrontendApplicationContribution, Updat
             result = await this.service.update(root.toString(), available.to, paths);
         }
         if (result.kind === 'failed') {
-            this.messages.error(localizeMarkdown('yukibana/cloud/update/failed', 'The update did not happen: {0}', result.reason));
+            void this.messages.error(localizeMarkdown('yukibana/cloud/update/failed', 'The update did not happen: {0}', result.reason));
             return;
         }
         if (result.kind === 'confirm') {
@@ -216,12 +216,12 @@ export class AssignmentUpdates implements FrontendApplicationContribution, Updat
             result = await this.service.undo(root.toString(), true);
         }
         if (result.kind === 'failed') {
-            this.messages.error(localizeMarkdown('yukibana/cloud/update/undoFailed', 'Could not undo the update: {0}', result.reason));
+            void this.messages.error(localizeMarkdown('yukibana/cloud/update/undoFailed', 'Could not undo the update: {0}', result.reason));
             return;
         }
         if (result.kind === 'undone') {
             this.set({ root, state: result.state });
-            this.messages.info(nls.localize('yukibana/cloud/update/undone', 'The update was undone. Your files are as they were before it.'));
+            void this.messages.info(nls.localize('yukibana/cloud/update/undone', 'The update was undone. Your files are as they were before it.'));
         }
     }
 
@@ -249,8 +249,8 @@ export class AssignmentUpdates implements FrontendApplicationContribution, Updat
 
     /** Tells the student that an action failed, since the view's buttons have nowhere else to say it. */
     reportFailure(e: unknown): void {
-        this.logger.error('An assignment update action failed', e);
-        this.messages.error(localizeMarkdown('yukibana/cloud/update/actionFailed', 'That did not work: {0}', messageOf(e)));
+        void this.logger.error('An assignment update action failed', e);
+        void this.messages.error(localizeMarkdown('yukibana/cloud/update/actionFailed', 'That did not work: {0}', messageOf(e)));
     }
 
     /**
@@ -364,7 +364,7 @@ export class AssignmentUpdates implements FrontendApplicationContribution, Updat
             this.announce(checked).catch((e: unknown) => this.reportFailure(e));
             return checked.state;
         } catch (e) {
-            this.logger.warn('Could not check for an assignment update', e);
+            void this.logger.warn('Could not check for an assignment update', e);
             return this.state;
         }
     }
@@ -379,7 +379,7 @@ export class AssignmentUpdates implements FrontendApplicationContribution, Updat
     /** Tells the student about a rollback in `checked`, and about its available update if this folder has not heard of it. */
     protected async announce({ root, state }: Checked): Promise<void> {
         if (state.rolledBack) {
-            this.messages.warn(
+            void this.messages.warn(
                 nls.localize(
                     'yukibana/cloud/update/rolledBack',
                     'An assignment update was interrupted before it finished, so your files have been put back as they were before it.',
@@ -452,6 +452,6 @@ export class AssignmentUpdates implements FrontendApplicationContribution, Updat
     /** Saves the editors with unsaved changes to the files of `rows` in `root`, so that the backend works on what the student sees. */
     protected async saveOpenEditors(root: URI, rows: readonly UpdateRow[]): Promise<void> {
         const paths = new Set(rows.map(r => root.resolve(r.path).toString()));
-        await Promise.all(this.editors.all.filter(e => e.saveable.dirty && paths.has(e.editor.uri.toString())).map(e => e.saveable.save()));
+        await Promise.all(this.editors.all.filter(e => e.saveable.dirty && paths.has(e.editor.uri.toString())).map(e => e.saveable.save() as Promise<void>));
     }
 }

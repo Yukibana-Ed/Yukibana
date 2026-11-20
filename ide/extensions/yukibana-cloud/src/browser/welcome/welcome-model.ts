@@ -141,6 +141,7 @@ export function calendarDays(from: number, to: number): number {
  */
 export function initials(name: string): string {
     const words = name.split(/[\s\-_.]+/u).filter(w => w.length > 0);
+    // eslint-disable-next-line @typescript-eslint/no-misused-spread
     const letters = words.length > 1 ? [...words[0]].slice(0, 1).concat([...words[1]].slice(0, 1)) : [...(words[0] ?? '?')].slice(0, 2);
     return letters.join('').toUpperCase();
 }

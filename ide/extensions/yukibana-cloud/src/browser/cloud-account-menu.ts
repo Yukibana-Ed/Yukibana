@@ -138,7 +138,7 @@ export class CloudAccountMenuContribution implements FrontendApplicationContribu
     onStart(): void {
         this.update(this.accounts.state);
         this.accounts.onDidChange(state => this.update(state));
-        this.accounts.refresh();
+        void this.accounts.refresh();
     }
 
     /** Opens the account menu at the status bar item `click` was on, and asks again who is logged in for next time. */
@@ -153,12 +153,12 @@ export class CloudAccountMenuContribution implements FrontendApplicationContribu
             includeAnchorArg: false,
         });
         // An open menu does not change, so this is for the next time it opens
-        this.accounts.refresh();
+        void this.accounts.refresh();
     }
 
     /** Replaces the status bar item and the menu's lines with those for `state`. */
     protected update(state: CloudAccountState): void {
-        this.statusBar.setElement(
+        void this.statusBar.setElement(
             ACCOUNT_STATUS_BAR_ID,
             accountStatusBarEntry(state, e => this.showMenu(e)),
         );
