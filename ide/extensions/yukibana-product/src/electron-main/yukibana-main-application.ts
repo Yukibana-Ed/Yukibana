@@ -23,7 +23,7 @@ export class YukibanaMainApplication extends ElectronMainApplication {
      * quit that is happening from one that was cancelled.
      */
     async closeAllWindows(): Promise<boolean> {
-        for (const window of [...this.windows.values()]) {
+        for (const window of this.windows.values()) {
             if (!(await window.close(StopReason.Close))) {
                 return false;
             }
@@ -44,7 +44,7 @@ export class YukibanaMainApplication extends ElectronMainApplication {
             const listener = createDisposableListener(ipcMain, CHANNEL_APP_STATE_CHANGED, (_event, state) => {
                 if (state === 'ready') {
                     listener.dispose();
-                    this.openUrl(urlToOpen);
+                    void this.openUrl(urlToOpen);
                 }
             });
         }
