@@ -24,13 +24,13 @@ export class YukibanaProblemContributioun extends ProblemContribution {
     /** Updates the status bar item on every config change, for the contribution's lifetime. */
     @postConstruct()
     init(): void {
-        this.configProvider.onConfigChanged(e => this.updateStatusBarElement());
+        this.configProvider.onConfigChanged(() => this.updateStatusBarElement());
     }
 
     /** Shows `problemStat` in the status bar as Theia does, or removes the item while squiggles are off. */
     protected setStatusBarElement(problemStat: ProblemStat): void {
         if (this.configProvider.config.features.squiggles === false) {
-            this.statusBar.removeElement('problem-marker-status');
+            void this.statusBar.removeElement('problem-marker-status');
             return;
         }
         super.setStatusBarElement(problemStat);
