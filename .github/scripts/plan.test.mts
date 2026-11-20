@@ -89,8 +89,9 @@ describe('what runs', () => {
         });
     });
 
-    test('a change to the devcontainer or the scripts its start runs builds it', () => {
-        expect(decide({ kind: 'packages', affected: ['@yukibana/cloud-dev'], files: ['cloud/dev/.devcontainer/setup.sh'] }, names).devcontainer).toBe(true);
+    test("a change to either devcontainer or the scripts the cloud's start runs builds them", () => {
+        expect(decide({ kind: 'packages', affected: ['@yukibana/cloud-dev'], files: ['.devcontainer/cloud/setup.sh'] }, names).devcontainer).toBe(true);
+        expect(decide({ kind: 'shared', affected: [], files: ['.devcontainer/ide/devcontainer.json'] }, names).devcontainer).toBe(true);
         expect(decide({ kind: 'packages', affected: ['@yukibana/cloud-dev'], files: ['cloud/dev/scripts/smoke.mjs'] }, names).devcontainer).toBe(true);
     });
 
@@ -104,9 +105,11 @@ describe('what runs', () => {
         expect(plan).toEqual({ packages: ['@yukibana/ci-scripts'], cloud: false, ide: false, devcontainer: false, licenses: false, preview: false, deploy: false });
     });
 
-    test('a change to the Supabase stack the devcontainer starts, or to a manifest its install reads, builds it', () => {
+    test('a change to the Supabase stack the devcontainer starts, or to any manifest its install reads, builds it', () => {
         expect(decide({ kind: 'packages', affected: ['@yukibana/cloud-db'], files: ['cloud/db/supabase/config.toml'] }, names).devcontainer).toBe(true);
         expect(decide({ kind: 'packages', affected: ['@yukibana/cloud-web'], files: ['cloud/web/package.json'] }, names).devcontainer).toBe(true);
+        expect(decide({ kind: 'packages', affected: ['@yukibana/ide-ext'], files: ['ide/extensions/yukibana/package.json'] }, names).devcontainer).toBe(true);
+        expect(decide({ kind: 'packages', affected: ['@yukibana/ide-ext'], files: ['ide/extensions/yukibana/src/index.ts'] }, names).devcontainer).toBe(false);
         expect(decide({ kind: 'packages', affected: ['@yukibana/cloud-db'], files: ['cloud/db/supabase/migrations/1_a.sql'] }, names).devcontainer).toBe(false);
     });
 
