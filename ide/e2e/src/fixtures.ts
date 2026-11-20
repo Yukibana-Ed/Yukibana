@@ -48,6 +48,7 @@ export const test = base.extend<{ screenshotOnFailure: void }, { app: App; launc
     /** App of the test's project. */
     app: ['browser', { option: true, scope: 'worker' }],
     /** Page that `launch` opened last, if any. */
+    // oxlint-disable-next-line no-empty-pattern
     launched: [async ({}, use) => use({}), { scope: 'worker' }],
     /** Opens the app of the test's project with a workspace. */
     launch: [
@@ -172,7 +173,7 @@ function startBackend(env: NodeJS.ProcessEnv): Backend {
             }
         };
         backend.stdout!.on('data', onData);
-        exited.then(code => reject(new Error(`The backend exited with ${code}:\n${output}`)));
+        void exited.then((code: number) => reject(new Error(`The backend exited with ${code}:\n${output}`)));
     });
     return {
         url,

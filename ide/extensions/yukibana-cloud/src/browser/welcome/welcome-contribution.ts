@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: MIT
  */
 import { Command, CommandRegistry, MenuModelRegistry } from '@theia/core';
-import { AbstractViewContribution, CommonMenus, FrontendApplication, FrontendApplicationContribution } from '@theia/core/lib/browser';
+import { AbstractViewContribution, CommonMenus, FrontendApplicationContribution } from '@theia/core/lib/browser';
 import { inject, injectable } from '@theia/core/shared/inversify';
 import { WorkspaceService } from '@theia/workspace/lib/browser';
 import { WelcomeWidget } from './welcome-widget';
@@ -32,7 +32,7 @@ export class WelcomeContribution extends AbstractViewContribution<WelcomeWidget>
     }
 
     /** Collapses the side panels and opens the welcome screen iff the window has no workspace. */
-    async onDidInitializeLayout(app: FrontendApplication): Promise<void> {
+    async onDidInitializeLayout(): Promise<void> {
         await this.workspaces.ready;
         if (this.workspaces.opened) {
             return;

@@ -40,7 +40,7 @@ export class OpenWorkspacesContribution implements FrontendApplicationContributi
         this.server.onDidOpenConnection(() => this.announce());
         this.workspaces.onWorkspaceLocationChanged(() => this.announce());
         // The connection may have opened already; saying the same workspace twice is harmless
-        this.announce();
+        void this.announce();
     }
 
     /** Tells the backend this window's workspace, once known; a failure is only logged. */

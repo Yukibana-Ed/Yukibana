@@ -91,7 +91,7 @@ export abstract class LanguageProviderToggleContribution implements FrontendAppl
                 },
             };
         };
-        this.configProvider.ready.then(() => this.flush());
+        void this.configProvider.ready.then(() => this.flush());
     }
 
     /**

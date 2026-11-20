@@ -53,12 +53,12 @@ export class YukibanaLayoutRestorer extends ShellLayoutRestorer {
     }
     /** Returns `false`, "nothing restored", so that the shell initializes the default layout. */
     override async restoreLayout(app: FrontendApplication): Promise<boolean> {
-        this.logger.debug('Prevent restoring layout');
+        void this.logger.debug('Prevent restoring layout');
         return false;
     }
     /** Does nothing: the layout is never saved. */
     override async storeLayout(app: FrontendApplication): Promise<void> {
-        this.logger.debug('Prevent saving layout');
+        void this.logger.debug('Prevent saving layout');
     }
 }
 
@@ -89,12 +89,12 @@ export class YukibanaLayoutContribution implements FrontendApplicationContributi
     ) {}
 
     /** Opens and activates the assignment pane iff there is a workspace root and the assignment file exists in it. */
-    async initializeLayout(app: FrontendApplication): Promise<void> {
-        this.logger.debug('Initializing layout');
+    async initializeLayout(): Promise<void> {
+        void this.logger.debug('Initializing layout');
         const assignmentURI = await this.assignmentResolver.resolve();
-        if (!!assignmentURI) {
+        if (assignmentURI !== undefined) {
             if (await this.fileService.exists(assignmentURI)) {
-                this.assignmentPane.openView({ activate: true, reveal: true });
+                await this.assignmentPane.openView({ activate: true, reveal: true });
             }
         }
     }
@@ -103,7 +103,7 @@ export class YukibanaLayoutContribution implements FrontendApplicationContributi
      * Opens the first config's `openFiles` under the first workspace root, once the workspace and the config are ready;
      * nothing when no folder is open.
      */
-    async onDidInitializeLayout(app: FrontendApplication): Promise<void> {
+    async onDidInitializeLayout(): Promise<void> {
         await this.workspaceService.ready;
         const config = await this.configProvider.ready;
         const roots = this.workspaceService.tryGetRoots();
@@ -124,7 +124,7 @@ export class YukibanaLayoutContribution implements FrontendApplicationContributi
      */
     protected async openFiles(root: URI, files: readonly string[]): Promise<void> {
         for (const [i, file] of files.entries()) {
-            this.openFile(root, file, i === 0 ? 'activate' : 'open');
+            await this.openFile(root, file, i === 0 ? 'activate' : 'open');
         }
     }
 
@@ -167,7 +167,7 @@ export function rebindWithLayoutToggle<T extends WithLayout>(
         .onActivation(({ container }, contribution) => {
             const configProvider = container.get(ConfigProvider);
             const original = contribution.initializeLayout?.bind(contribution);
-            if (!!original) {
+            if (original !== undefined) {
                 contribution.initializeLayout = async app => {
                     const config = await configProvider.ready;
                     if (isEnabled(config)) {

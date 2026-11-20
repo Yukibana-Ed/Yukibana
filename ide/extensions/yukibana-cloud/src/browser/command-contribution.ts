@@ -62,7 +62,7 @@ export class LoginCommandContribution implements CommandContribution {
                 // Asks the registry rather than the keystore, which may hold a session the registry no longer accepts
                 const state = await this.accounts.refresh();
                 if (state.kind === 'logged-in') {
-                    this.messageService.info(localizeMarkdown('yukibana/cloud/alreadyLoggedInAs', 'Already logged in as {0}', CloudAccount.label(state.account)));
+                    void this.messageService.info(localizeMarkdown('yukibana/cloud/alreadyLoggedInAs', 'Already logged in as {0}', CloudAccount.label(state.account)));
                     return;
                 }
                 await this.login(() => this.auth.login());
@@ -74,7 +74,7 @@ export class LoginCommandContribution implements CommandContribution {
         commands.registerCommand(LogoutCommand, {
             execute: async () => {
                 await this.auth.logout();
-                this.messageService.info(nls.localize('yukibana/cloud/logoutSuccessful', 'Logged out successfully'));
+                void this.messageService.info(nls.localize('yukibana/cloud/logoutSuccessful', 'Logged out successfully'));
             },
         });
     }
@@ -90,11 +90,11 @@ export class LoginCommandContribution implements CommandContribution {
         try {
             const result = await logIn();
             if (!result.ok) {
-                this.messageService.error(localizeMarkdown('yukibana/cloud/loginFailed', 'Failed to log in: {0}', result.reason));
+                void this.messageService.error(localizeMarkdown('yukibana/cloud/loginFailed', 'Failed to log in: {0}', result.reason));
                 return;
             }
             const state = await this.accounts.refresh();
-            this.messageService.info(
+            void this.messageService.info(
                 state.kind === 'logged-in'
                     ? localizeMarkdown('yukibana/cloud/loginSuccessfulAs', 'Logged in as {0}', CloudAccount.label(state.account))
                     : nls.localize('yukibana/cloud/loginSuccessful', 'Logged in successfully'),

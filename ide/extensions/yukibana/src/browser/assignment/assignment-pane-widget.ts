@@ -55,11 +55,11 @@ export class AssignmentPaneWidget extends BaseWidget {
         this.toDispose.push(
             this.fileService.onDidFilesChange(e => {
                 if (this.uri && e.contains(this.uri)) {
-                    this.refresh();
+                    void this.refresh();
                 }
             }),
         );
-        this.refresh();
+        void this.refresh();
     }
 
     /**

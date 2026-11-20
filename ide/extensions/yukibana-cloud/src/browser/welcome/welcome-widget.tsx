@@ -104,7 +104,7 @@ export class WelcomeWidget extends ReactWidget {
         this.toDispose.push(
             this.accounts.onDidChange(state => {
                 this.update();
-                this.loadAssignments(state);
+                void this.loadAssignments(state);
             }),
         );
         // Deadlines pass while the screen stays open; the lists themselves load when it shows
@@ -144,8 +144,8 @@ export class WelcomeWidget extends ReactWidget {
 
     /** Loads both lists again: another window may have opened something, or the deadlines moved on. */
     protected refresh(): void {
-        this.loadRecent();
-        this.loadAssignments(this.accounts.state);
+        void this.loadRecent();
+        void this.loadAssignments(this.accounts.state);
     }
 
     /**
@@ -172,7 +172,7 @@ export class WelcomeWidget extends ReactWidget {
                 }),
             );
         } catch (e) {
-            this.logger.warn('Could not list recent projects', e);
+            void this.logger.warn('Could not list recent projects', e);
         }
         // A newer list, from a later show, knows better
         if (request === this.recentRequest) {
@@ -262,8 +262,8 @@ export class WelcomeWidget extends ReactWidget {
             }
             this.workspaces.open(target);
         } catch (e) {
-            this.logger.error(`Could not create project at ${target.toString()}`, e);
-            this.messages.error(localizeMarkdown('yukibana/cloud/welcome/newProjectFailed', 'Could not create the project: {0}', e instanceof Error ? e.message : String(e)));
+            void this.logger.error(`Could not create project at ${target.toString()}`, e);
+            void this.messages.error(localizeMarkdown('yukibana/cloud/welcome/newProjectFailed', 'Could not create the project: {0}', e instanceof Error ? e.message : String(e)));
         }
     };
 
@@ -271,7 +271,7 @@ export class WelcomeWidget extends ReactWidget {
     protected openProject = (): void => {
         // The same choice Theia's File menu makes: macOS and browsers open files and folders with one command
         const command = isOSX || !environment.electron.is() ? WorkspaceCommands.OPEN : WorkspaceCommands.OPEN_FOLDER;
-        this.commands.executeCommand(command.id);
+        void this.commands.executeCommand(command.id);
     };
 
     /** Returns where `uri` is open, as of the last load: in this window, in another, or nowhere. */
@@ -304,12 +304,12 @@ export class WelcomeWidget extends ReactWidget {
     protected openAssignment(assignment: Assignment): void {
         const local = this.localCopyOf(assignment);
         if (local) {
-            this.openFolder(local.uri);
+            void this.openFolder(local.uri);
             return;
         }
         // The same way in as a link from the registry's web page, which downloads the starter first
         const uri = new URI('yukibana://project/open').withQuery(`id=${encodeURIComponent(assignment.project.projectId)}`);
-        open(this.openers, uri);
+        void open(this.openers, uri);
     }
 
     /** Returns the sidebar and the page shown. */
@@ -581,7 +581,7 @@ export class WelcomeWidget extends ReactWidget {
                         onKeyDown={e => e.stopPropagation()}
                         onClick={e => {
                             e.stopPropagation();
-                            this.removeRecent(project);
+                            void this.removeRecent(project);
                         }}
                     />
                 </div>

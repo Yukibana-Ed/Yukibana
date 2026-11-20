@@ -5,12 +5,12 @@ import { Command, CommandContribution, CommandRegistry, CommandService, Contribu
 import { inject, injectable, named } from '@theia/core/shared/inversify';
 import { TelemetryService } from '@theia/telemetry/lib/common';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
+import { localizeMarkdown } from '@yukibana/ide-common/lib/localize-markdown';
 import { ConfigProvider } from '@yukibana/ide-ext/lib/browser/config/config-provider';
 import { SubmissionPreview, SubmissionService } from '../common/submission-protocol';
 import { SubmissionResult, SubmissionTarget } from '../common/submission-target';
 import { SubmissionTelemetry } from '../common/submission-telemetry';
 import { SubmissionSummaryDialog } from './submission-summary-dialog';
-import { localizeMarkdown } from '@yukibana/ide-common/lib/localize-markdown';
 
 /** The command that prepares a submission of the workspace, shows it to the student, and sends it on their go-ahead. */
 export const SubmitCommand: Command = Command.toLocalizedCommand(
@@ -56,7 +56,7 @@ export class SubmitCommandContribution implements CommandContribution {
                 const targetId = config.submission.target;
                 const target = this.getTarget(targetId);
                 if (target === undefined) {
-                    this.messageService.error(localizeMarkdown('yukibana/submission/unknownTarget', "Unknown submission target '{0}'", targetId));
+                    void this.messageService.error(localizeMarkdown('yukibana/submission/unknownTarget', "Unknown submission target '{0}'", targetId));
                     return;
                 }
                 const root = (await this.workspaceService.roots)[0].resource;
@@ -64,7 +64,9 @@ export class SubmitCommandContribution implements CommandContribution {
                 try {
                     preview = await this.submissionService.prepare(root.toString());
                 } catch (e) {
-                    this.messageService.error(localizeMarkdown('yukibana/submission/prepareFail', 'Cannot submit this folder: {0}', e instanceof Error ? e.message : String(e)));
+                    void this.messageService.error(
+                        localizeMarkdown('yukibana/submission/prepareFail', 'Cannot submit this folder: {0}', e instanceof Error ? e.message : String(e)),
+                    );
                     return;
                 }
                 try {
@@ -87,21 +89,21 @@ export class SubmitCommandContribution implements CommandContribution {
         let error: string | undefined;
         const progress = await this.messageService.showProgress({ text: nls.localize('yukibana/submission/submitProgress', 'Submitting') });
         try {
-            this.logger.info(`Submitting ${preview.entries.length} files`);
+            void this.logger.info(`Submitting ${preview.entries.length} files`);
             progress.report({
                 message: nls.localize('yukibana/submission/transmitting', 'Transmitting...'),
             });
             const result = await this.submit(target, projectId, preview.id);
             if (!result.ok) {
-                this.messageService.error(localizeMarkdown('yukibana/submission/submitFail', 'Failed to submit: {0}', result.reason), { timeout: 5000 });
+                void this.messageService.error(localizeMarkdown('yukibana/submission/submitFail', 'Failed to submit: {0}', result.reason), { timeout: 5000 });
                 error = result.reason;
                 return;
             }
             outcome = 'submitted';
-            this.messageService.info(nls.localize('yukibana/submission/submitSuccess', 'Submitted successfully'), { timeout: 5000 });
+            void this.messageService.info(nls.localize('yukibana/submission/submitSuccess', 'Submitted successfully'), { timeout: 5000 });
         } catch (e) {
             error = e instanceof Error ? e.message : String(e);
-            this.messageService.error(localizeMarkdown('yukibana/submission/submitFail', 'Failed to submit: {0}', error));
+            void this.messageService.error(localizeMarkdown('yukibana/submission/submitFail', 'Failed to submit: {0}', error));
         } finally {
             progress.cancel();
             this.report(outcome, stage, start, projectId, error);

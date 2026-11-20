@@ -95,7 +95,7 @@ export class TestWatcher implements FrontendApplicationContribution, Disposable 
         });
 
         const total = leaves.size;
-        this.logger.info(`Test run completed (${controller.id}): ${passed} passed, ${failed} failed, ${total - passed - failed} not run, ${total} total`);
+        void this.logger.info(`Test run completed (${controller.id}): ${passed} passed, ${failed} failed, ${total - passed - failed} not run, ${total} total`);
         this.telemetry.report({
             type: 'event',
             kind: 'test',

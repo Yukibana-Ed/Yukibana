@@ -20,7 +20,7 @@ export class LiveTelemetryServiceImpl implements LiveTelemetryService, LiveTelem
             if (sink !== undefined) {
                 this.sinks.push(sink);
             } else {
-                this.logger.warn(`Sink ${contribution.name} not created`);
+                void this.logger.warn(`Sink ${contribution.name} not created`);
             }
         }
     }

@@ -40,7 +40,7 @@ function createMockFileService(files: Record<string, string>): MockFileService {
     const changeEmitter = new Emitter<FileChangesEvent>();
     return {
         exists: async (resource: URI): Promise<boolean> => resource.toString() in files,
-        read: async (resource: URI, options?: ReadTextFileOptions): Promise<TextFileContent> => {
+        read: async (resource: URI, _options?: ReadTextFileOptions): Promise<TextFileContent> => {
             const doc = files[resource.toString()];
             if (doc === undefined) {
                 throw new Error();
@@ -56,7 +56,7 @@ function createMockFileService(files: Record<string, string>): MockFileService {
                 value: doc,
             };
         },
-        watch: (resource: URI, options: WatchOptions): Disposable => Disposable.create(() => watched.delete(resource.toString())),
+        watch: (resource: URI, _options: WatchOptions): Disposable => Disposable.create(() => watched.delete(resource.toString())),
         onDidFilesChange: changeEmitter.event,
         write: (resource: URI, content: string) => {
             const path = resource.toString();
@@ -136,7 +136,7 @@ function setup(initialRoot?: URI): MockServices {
     const workspaceService = createMockWorkspaceService();
     const logger = new MockLogger();
     const provider = new ConfigProvider(fileService as unknown as FileService, workspaceService as unknown as WorkspaceService, readOnlyPolicy, logger);
-    if (!!initialRoot) {
+    if (initialRoot !== undefined) {
         workspaceService.setRoot(initialRoot);
     }
     workspaceService.markReady();

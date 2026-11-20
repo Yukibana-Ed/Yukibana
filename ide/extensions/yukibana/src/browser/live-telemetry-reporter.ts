@@ -14,18 +14,18 @@ export class LiveTelemetryReporter implements FrontendApplicationContribution {
     @inject(ILogger) @named('yukibana:LiveTelemetryReporter') protected readonly logger!: ILogger;
 
     async onStart(): Promise<void> {
-        this.configProvider.ready.then(async config => {
+        void this.configProvider.ready.then(async config => {
             if (!config.telemetry.liveTypingStats) {
                 return;
             }
             const consent = (await new LiveTelemetryConsentDialog().open()) ?? false;
             if (consent) {
-                this.logger.info('Starting telemetry service');
+                void this.logger.info('Starting telemetry service');
                 await this.telemetry.start({
                     projectId: config.projectId ?? '',
                 });
             } else {
-                this.workspace.close();
+                await this.workspace.close();
             }
         });
     }

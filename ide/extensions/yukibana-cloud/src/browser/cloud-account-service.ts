@@ -65,7 +65,7 @@ export class CloudAccountService {
         this.authClient.onLoginChanged(() => {
             // A check that began before the change cannot answer for after it
             this.inFlight = undefined;
-            this.refresh();
+            void this.refresh();
         });
     }
 
@@ -89,7 +89,7 @@ export class CloudAccountService {
         if (!this.inFlight) {
             const check = this.check();
             this.inFlight = check;
-            check.finally(() => {
+            void check.finally(() => {
                 if (this.inFlight === check) {
                     this.inFlight = undefined;
                 }
@@ -123,9 +123,11 @@ export class CloudAccountService {
         const before = this.account;
         this._state = state;
         if (state.kind === 'logged-in' && state.account.userId !== before?.userId) {
-            this.logger.info(`Logged in to the cloud registry as ${CloudAccount.label(state.account)} (user ${state.account.userId}, platform role ${state.account.platformRole})`);
+            void this.logger.info(
+                `Logged in to the cloud registry as ${CloudAccount.label(state.account)} (user ${state.account.userId}, platform role ${state.account.platformRole})`,
+            );
         } else if (state.kind === 'error') {
-            this.logger.warn(`Could not get the logged-in account: ${state.reason}`);
+            void this.logger.warn(`Could not get the logged-in account: ${state.reason}`);
         }
         this.onDidChangeEmitter.fire(state);
     }
