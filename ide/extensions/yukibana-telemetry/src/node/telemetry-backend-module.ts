@@ -8,7 +8,7 @@ import { LiveTelemetrySinkContribution } from '@yukibana/ide-ext/lib/node/live-t
 import { YukibanaLiveWebsocketTelemetrySinkContribution } from './yukibana-live-ws-sink';
 import { YukibanaTelemetrySink } from './yukibana-telemetry-sink';
 
-export const liveWebsocketTelemetryConnectionContainerModule = ConnectionContainerModule.create(({ bind, bindBackendService }) => {
+export const liveWebsocketTelemetryConnectionContainerModule = ConnectionContainerModule.create(({ bind }) => {
     bind(YukibanaLiveWebsocketTelemetrySinkContribution).toSelf().inSingletonScope();
     bind(LiveTelemetrySinkContribution).toService(YukibanaLiveWebsocketTelemetrySinkContribution);
 });
