@@ -170,13 +170,13 @@ test('every IDE setting defaults to on, the assignment to ASSIGNMENT.md and subm
 
 test('the config module runs in a browser: it and what it imports use nothing from Node', async () => {
     const { readFile } = await import('node:fs/promises');
-    for (const file of ['../src/lib/yukibana.ts', '../src/lib/glob.ts', '../src/lib/issues.ts']) {
+    for (const file of ['../src/lib/yukibana.ts', '../src/lib/glob.ts']) {
         const source = await readFile(new URL(file, import.meta.url), 'utf8');
         const imports = [...source.matchAll(/^import .* from '([^']+)';/gm)].map(m => m[1]);
         assert.deepEqual(
-            imports.filter(i => !['zod', './glob.js', './issues.js'].includes(i ?? '')),
+            imports.filter(i => !['zod', './glob.js', '@yukibana/project-schema'].includes(i ?? '')),
             [],
-            `${file} imports only zod and its own modules`,
+            `${file} imports only zod, the project schema (checked in its own package) and its own modules`,
         );
     }
 });

@@ -11,7 +11,7 @@
 import * as z from 'zod';
 // The function form of .default(), which zod spells _default, since default is a keyword.
 import { _default as withDefault } from 'zod';
-import { fieldOf, nameOf } from './issues.js';
+import { fieldOf, nameOf } from '@yukibana/project-schema';
 
 /** A person's role in an edition. Staff are `assistant` and `owner`; only an
  *  `owner` changes the roster. */

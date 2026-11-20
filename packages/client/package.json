@@ -49,6 +49,7 @@
     "vitest": "catalog:"
   },
   "dependencies": {
+    "@yukibana/project-schema": "catalog:",
     "ignore": "catalog:",
     "modern-tar": "catalog:",
     "zod": "catalog:"

@@ -1,0 +1,6 @@
+{
+  // TypeScript 6 over a file that imports the built package (scripts/ts6.ts), with the settings cloud/web compiles with.
+  "extends": "../../../../tsconfig.strict.json",
+  "compilerOptions": { "skipLibCheck": false, "types": [] },
+  "include": ["consumer.ts"]
+}
