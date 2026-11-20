@@ -61,8 +61,8 @@ export class LiveDocumentStreamer implements FrontendApplicationContribution, Di
                 this.follow();
             }
         });
-        this.onStreamingChange(streaming => this.setStatusBarElement(streaming));
-        this.setStatusBarElement(this.streaming);
+        this.config.onConfigChanged(config => this.setStatusBarElement(config.telemetry.liveTypingStats));
+        this.config.ready.then(config => this.setStatusBarElement(config.telemetry.liveTypingStats));
     }
 
     dispose(): void {
@@ -70,7 +70,8 @@ export class LiveDocumentStreamer implements FrontendApplicationContribution, Di
     }
 
     protected async start(): Promise<void> {
-        if (!(await this.config.ready).telemetry.liveTypingStats) {
+        const enabled = (await this.config.ready).telemetry.liveTypingStats;
+        if (!enabled) {
             return;
         }
         this.streaming = true;
@@ -141,22 +142,17 @@ export class LiveDocumentStreamer implements FrontendApplicationContribution, Di
         });
     }
 
-    protected setStatusBarElement(streaming: boolean): void {
-        const label = nls.localize('yukibana/liveTelemetry/streaming', 'Teacher viewing');
-        this.statusBar.setElement('remote-view-status', {
-            text: streaming ? `$(codicon-eye) ${label}` : '$(codicon-eye-closed)',
-            alignment: StatusBarAlignment.RIGHT,
-            priority: 300,
-            tooltip: this.getStatusBarTooltip(streaming),
-            backgroundColor: streaming ? 'var(--theia-statusBarItem-prominentBackground)' : undefined,
-            color: streaming ? 'var(--theia-statusBarItem-prominentForeground)' : undefined,
-        });
-    }
-
-    protected getStatusBarTooltip(streaming: boolean): string {
-        if (streaming) {
-            return nls.localize('yukibana/liveTelemetry/streamingTooltip', 'Your teacher can see the files you are editing');
+    protected setStatusBarElement(enabled: boolean): void {
+        if (enabled) {
+            this.statusBar.setElement('remote-view-status', {
+                text: '$(codicon-record)',
+                alignment: StatusBarAlignment.RIGHT,
+                priority: 300,
+                tooltip: nls.localize('yukibana/liveTelemetry/streamingTooltip', 'Your session is being recorded. Your teacher may see the files you are editing'),
+                className: 'recording-indicator',
+            });
+        } else {
+            this.statusBar.removeElement('remote-view-status');
         }
-        return nls.localize('yukibana/liveTelemetry/noStreamingTooltip', 'Remote view disabled');
     }
 }

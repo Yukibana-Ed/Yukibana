@@ -1,0 +1,16 @@
+@keyframes recording-indicator-pulse {
+    0%, 100% {
+        color: red;
+    }
+
+    50% {
+        color: #c01b1b;
+    }
+}
+
+.recording-indicator .codicon-record {
+    animation-name: recording-indicator-pulse;
+    animation-duration: 2s;
+    animation-iteration-count: infinite;
+    animation-timing-function: ease-in-out;
+}
