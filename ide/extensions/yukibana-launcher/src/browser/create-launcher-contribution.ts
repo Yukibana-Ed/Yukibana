@@ -75,9 +75,9 @@ export class CreateLauncherCommandContribution implements FrontendApplicationCon
         const applicationName = appConfig.applicationName;
         const uriScheme = appConfig.electron.uriScheme;
 
-        this.launcherService.getState(uriScheme).then(async state => {
+        void this.launcherService.getState(uriScheme).then(async state => {
             if (state === 'up-to-date') {
-                this.logger.info('Application launcher already up to date.');
+                void this.logger.info('Application launcher already up to date.');
                 return;
             }
             if (state === 'needs-silent-update') {
@@ -86,9 +86,9 @@ export class CreateLauncherCommandContribution implements FrontendApplicationCon
                 const confirmed = await this.confirmLauncherUpdate(uriScheme, true);
                 if (confirmed) {
                     await this.launcherService.createLauncher(true, uriScheme);
-                    this.logger.info('Application launcher updated to match current template.');
+                    void this.logger.info('Application launcher updated to match current template.');
                 } else {
-                    this.logger.info('Application launcher update declined by user.');
+                    void this.logger.info('Application launcher update declined by user.');
                 }
                 return;
             }
@@ -107,13 +107,13 @@ export class CreateLauncherCommandContribution implements FrontendApplicationCon
                 cancel: Dialog.NO,
             });
             const install = await dialog.open();
-            this.launcherService.createLauncher(!!install, uriScheme);
-            this.logger.info('Initialized application launcher.');
+            await this.launcherService.createLauncher(!!install, uriScheme);
+            void this.logger.info('Initialized application launcher.');
         });
 
-        this.desktopFileService.getState({ applicationName, uriScheme }).then(async state => {
+        void this.desktopFileService.getState({ applicationName, uriScheme }).then(async state => {
             if (state === 'up-to-date') {
-                this.logger.info('Desktop file already up to date.');
+                void this.logger.info('Desktop file already up to date.');
                 return;
             }
             if (state === 'needs-silent-update') {
@@ -122,7 +122,7 @@ export class CreateLauncherCommandContribution implements FrontendApplicationCon
                     createUrlHandler: true,
                     uriScheme,
                 });
-                this.logger.info('Desktop file silently updated to match current launcher template.');
+                void this.logger.info('Desktop file silently updated to match current launcher template.');
                 return;
             }
             const messageContainer = document.createElement('div');
@@ -137,12 +137,12 @@ export class CreateLauncherCommandContribution implements FrontendApplicationCon
                 cancel: Dialog.NO,
             });
             const install = await dialog.open();
-            this.desktopFileService.createOrUpdateDesktopfile(!!install, {
+            await this.desktopFileService.createOrUpdateDesktopfile(!!install, {
                 applicationName,
                 createUrlHandler: true,
                 uriScheme,
             });
-            this.logger.info('Created or updated .desktop file.');
+            void this.logger.info('Created or updated .desktop file.');
         });
     }
 
@@ -161,7 +161,7 @@ export class CreateLauncherCommandContribution implements FrontendApplicationCon
                     return;
                 }
                 await this.launcherService.createLauncher(true, uriScheme);
-                this.logger.info('CLI launcher created or updated via command.');
+                void this.logger.info('CLI launcher created or updated via command.');
             },
         });
     }
