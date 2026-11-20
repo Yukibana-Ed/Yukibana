@@ -8,7 +8,7 @@ export class ScalaMessageMiddlewareContribution implements YukibanaMessageMiddle
     readonly PRIORITY: number = 0;
 
     // oxlint-disable-next-line typescript/no-explicit-any
-    shouldIgnoreMessage(type: MessageType, text: string, args?: any[]): MaybePromise<boolean> {
+    shouldIgnoreMessage(type: MessageType, text: string, _args?: any[]): MaybePromise<boolean> {
         if (/metals might not work correctly/i.test(text)) {
             return true;
         }
