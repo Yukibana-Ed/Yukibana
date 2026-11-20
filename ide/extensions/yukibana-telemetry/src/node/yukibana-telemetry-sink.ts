@@ -38,7 +38,7 @@ export class YukibanaTelemetrySink implements TelemetrySink {
     handle(event: TelemetryEvent): void {
         this.queue.push(event);
         if (this.queue.length >= BATCH_SIZE) {
-            this.drain();
+            void this.drain();
         } else {
             this.timer ??= setTimeout(() => this.drain(), MAX_DRAIN_DELAY_MS);
         }
