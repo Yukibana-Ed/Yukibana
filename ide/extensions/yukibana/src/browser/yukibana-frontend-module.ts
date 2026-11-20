@@ -12,7 +12,7 @@ import {
     ServiceConnectionProvider,
     WidgetFactory,
 } from '@theia/core/lib/browser';
-import { bindContribution, bindContributionProvider, CommandContribution, FilterContribution, MenuContribution, MessageService } from '@theia/core/lib/common';
+import { bindContributionProvider, CommandContribution, MenuContribution, MessageService } from '@theia/core/lib/common';
 import { ContainerModule } from '@theia/core/shared/inversify';
 import { RemoteFileSystemProvider } from '@theia/filesystem/lib/common/remote-file-system-provider';
 import { ProblemContribution } from '@theia/markers/lib/browser/problem/problem-contribution';
@@ -30,7 +30,6 @@ import { bindTelemetryContribution } from './telemetry/telemetry-contribution';
 import { YukibanaAIIdeActivationService } from './yukibana-ai-ide-activation-service';
 import { CleanupFrontendContribution } from './yukibana-cleanup-contribution';
 import { YukibanaCommandContribution, YukibanaMenuContribution } from './yukibana-contribution';
-import { YukibanaFilterContribution } from './yukibana-filter-contribution';
 import { bindLayout } from './yukibana-layout-contribution';
 import { YukibanaMessageMiddlewareContribution, YukibanaMessageService } from './yukibana-message-service';
 import { YukibanaProblemContributioun } from './yukibana-problem-contribution';
@@ -53,9 +52,6 @@ export default new ContainerModule((bind, unbind, isBound, rebind) => {
 
     bind(CommandContribution).to(YukibanaCommandContribution);
     bind(MenuContribution).to(YukibanaMenuContribution);
-
-    bind(YukibanaFilterContribution).toSelf().inSingletonScope();
-    bindContribution(bind, YukibanaFilterContribution, [FilterContribution]);
 
     bind(CleanupFrontendContribution).toSelf().inSingletonScope();
     bind(FrontendApplicationContribution).toService(CleanupFrontendContribution);
