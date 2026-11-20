@@ -36,7 +36,7 @@ export class YukibanaRemoteFileSystemProvider extends RemoteFileSystemProvider {
     /** Initializes as Theia does, and logs that it has. */
     protected override init(): void {
         super.init();
-        this.logger.info('Initialized');
+        void this.logger.info('Initialized');
     }
 
     /** Returns `true` iff {@link ReadOnlyPolicy} says `resource` is read-only now. */

@@ -134,7 +134,7 @@ export class YukibanaTypingTracker implements FrontendApplicationContribution {
                 if (detailedSource === 'editor.contrib.dragAndDrop') {
                     return 'drag-drop';
                 }
-                this.logger.debug(`Unknown command for ${JSON.stringify(detailedReason)}`);
+                void this.logger.debug(`Unknown command for ${JSON.stringify(detailedReason)}`);
                 return 'command';
             }
             if (kind === 'cut') {
@@ -144,7 +144,7 @@ export class YukibanaTypingTracker implements FrontendApplicationContribution {
                 return 'paste';
             }
         }
-        this.logger.debug(`Unknown change origin for ${JSON.stringify(detailedReason)}`);
+        void this.logger.debug(`Unknown change origin for ${JSON.stringify(detailedReason)}`);
         return 'unknown';
     }
 

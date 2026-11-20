@@ -28,7 +28,7 @@ export class StatsAggregator implements FrontendApplicationContribution, Disposa
     protected blurDuration: number = 0;
 
     onStart() {
-        this.logger.info('Starting');
+        void this.logger.info('Starting');
         this.toDispose.push(this.tracker.onDidEdit(e => this.onDidEdit(e)));
         this.toDispose.push(this.focus.onDidWindowChangeFocus(e => this.onDidFocusChange(e)));
         const interval = setInterval(() => this.flush(), FLUSH_INTERVAL_MS);

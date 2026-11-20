@@ -63,7 +63,7 @@ export class YukibanaMessageService extends MessageService {
 
         for (const middleware of middlewares) {
             if (await middleware.shouldIgnoreMessage(type, text, args)) {
-                this.logger.debug(`Ignoring message of type ${typeName} (args = ${!!args ? JSON.stringify(args) : args}): '${text}'`);
+                void this.logger.debug(`Ignoring message of type ${typeName} (args = ${args !== undefined ? JSON.stringify(args) : args}): '${text}'`);
                 return;
             }
         }
@@ -73,7 +73,9 @@ export class YukibanaMessageService extends MessageService {
             // with a promise of `undefined` swallowed the message instead of leaving it to the others.
             const autoAction = await middleware.shouldAutoAction(type, text, args);
             if (autoAction !== undefined) {
-                this.logger.debug(`Auto selecting action '${autoAction}' for message of type ${typeName} (args = ${!!args ? JSON.stringify(args) : args}): '${text}'`);
+                void this.logger.debug(
+                    `Auto selecting action '${autoAction}' for message of type ${typeName} (args = ${args !== undefined ? JSON.stringify(args) : args}): '${text}'`,
+                );
                 return autoAction;
             }
         }

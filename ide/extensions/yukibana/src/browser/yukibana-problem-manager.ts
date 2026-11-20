@@ -30,11 +30,8 @@ export class YukibanaProblemManager extends ProblemManager {
         @inject(LiveTelemetryService) protected readonly telemetry: LiveTelemetryService,
     ) {
         super();
-        this.configProvider.onConfigChanged(e => this.onConfigChanged());
-        this.configProvider.ready.then(config => {
-            this.logger.info(`${config.features.squiggles !== false ? 'Enabling' : 'Disabling'} problem markers`);
-        });
-        this.onDidChangeMarkers(e => this.reportDiagnostics());
+        this.configProvider.onConfigChanged(() => this.onConfigChanged());
+        this.onDidChangeMarkers(() => this.reportDiagnostics());
     }
 
     /** `true` iff markers show: the current config's `features.squiggles` is not false. */
@@ -78,7 +75,7 @@ export class YukibanaProblemManager extends ProblemManager {
     }
 
     /** Returns the markers `filter` matches as Theia does, or none while markers are off. */
-    override findMarkers(filter?: SearchFilter<Diagnostic> | undefined): Marker<Diagnostic>[] {
+    override findMarkers(filter?: SearchFilter<Diagnostic>): Marker<Diagnostic>[] {
         if (!this.isEnabled) {
             return [];
         }

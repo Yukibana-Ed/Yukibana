@@ -108,7 +108,7 @@ export class ConfigProvider implements FrontendApplicationContribution {
                 }
             } catch (e) {
                 if (generation === this._generation) {
-                    this.logger.error(`Failed to load Yukibana configuration from '${configURI}: ${e}`, e);
+                    void this.logger.error(`Failed to load Yukibana configuration from '${configURI.toString()}: ${e}`, e);
                     this.applyDefault();
                 }
             }
@@ -117,7 +117,7 @@ export class ConfigProvider implements FrontendApplicationContribution {
         this.toDisposeOnWorkspaceChanged.push(
             this.files.onDidFilesChange(e => {
                 if (e.contains(configURI)) {
-                    read();
+                    void read();
                 }
             }),
         );
@@ -155,7 +155,7 @@ export class ConfigProvider implements FrontendApplicationContribution {
     protected apply(root: URI | undefined, config: YukibanaConfig): void {
         this._config = config;
         this.readOnlyPolicy.update(root, config.readOnly);
-        this.logger.info('Configuration loaded');
+        void this.logger.info('Configuration loaded');
         this.onConfigChangeEmitter.fire(config);
         this._ready.resolve(this._config);
     }

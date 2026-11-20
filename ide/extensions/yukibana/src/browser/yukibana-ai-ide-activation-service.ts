@@ -30,9 +30,6 @@ export class YukibanaAIIdeActivationService extends AIIdeActivationServiceImpl {
     /** Does Theia's initialization, then once the config is ready applies it, and again on every config change. */
     override initialize(): MaybePromise<void> {
         super.initialize();
-        this.configProvider.ready.then(() => {
-            this.configProvider.onConfigChanged(() => this.refreshValue());
-            this.refreshValue();
-        });
+        void this.configProvider.onConfigChanged(() => this.refreshValue());
     }
 }

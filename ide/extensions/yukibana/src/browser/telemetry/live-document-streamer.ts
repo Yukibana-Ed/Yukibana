@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: MIT
  */
 import { Disposable, DisposableCollection, Emitter, nls } from '@theia/core';
-import { FrontendApplication, FrontendApplicationContribution, StatusBar, StatusBarAlignment } from '@theia/core/lib/browser';
+import { FrontendApplicationContribution, StatusBar, StatusBarAlignment } from '@theia/core/lib/browser';
 import { inject, injectable } from '@theia/core/shared/inversify';
 import { EditorManager } from '@theia/editor/lib/browser';
 import { editor } from '@theia/monaco-editor-core';
@@ -46,10 +46,10 @@ export class LiveDocumentStreamer implements FrontendApplicationContribution, Di
     protected readonly perDoc = new DisposableCollection();
     protected safetyTimer?: ReturnType<typeof setInterval>;
 
-    async onStart(app: FrontendApplication): Promise<void> {
+    async onStart(): Promise<void> {
         this.client.onCommand$(cmd => {
             if (cmd.type === 'subscribe') {
-                this.start();
+                void this.start();
             } else if (cmd.type === 'unsubscribe') {
                 this.stop();
             } else if (cmd.type === 'sync' && this.streaming) {
@@ -62,7 +62,6 @@ export class LiveDocumentStreamer implements FrontendApplicationContribution, Di
             }
         });
         this.config.onConfigChanged(config => this.setStatusBarElement(config.telemetry.liveTypingStats));
-        this.config.ready.then(config => this.setStatusBarElement(config.telemetry.liveTypingStats));
     }
 
     dispose(): void {
@@ -144,7 +143,7 @@ export class LiveDocumentStreamer implements FrontendApplicationContribution, Di
 
     protected setStatusBarElement(enabled: boolean): void {
         if (enabled) {
-            this.statusBar.setElement('remote-view-status', {
+            void this.statusBar.setElement('remote-view-status', {
                 text: '$(codicon-record)',
                 alignment: StatusBarAlignment.RIGHT,
                 priority: 300,
@@ -152,7 +151,7 @@ export class LiveDocumentStreamer implements FrontendApplicationContribution, Di
                 className: 'recording-indicator',
             });
         } else {
-            this.statusBar.removeElement('remote-view-status');
+            void this.statusBar.removeElement('remote-view-status');
         }
     }
 }
