@@ -5,12 +5,12 @@ import { Command, CommandContribution, CommandRegistry, CommandService, Contribu
 import { inject, injectable, named } from '@theia/core/shared/inversify';
 import { TelemetryService } from '@theia/telemetry/lib/common';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
+import { localizeMarkdown } from '@yukibana/ide-common/lib/localize-markdown';
 import { ConfigProvider } from '@yukibana/ide-ext/lib/browser/config/config-provider';
 import { SubmissionPreview, SubmissionService } from '../common/submission-protocol';
 import { SubmissionResult, SubmissionTarget } from '../common/submission-target';
 import { SubmissionTelemetry } from '../common/submission-telemetry';
 import { SubmissionSummaryDialog } from './submission-summary-dialog';
-import { localizeMarkdown } from '@yukibana/ide-common/lib/localize-markdown';
 
 /** The command that prepares a submission of the workspace, shows it to the student, and sends it on their go-ahead. */
 export const SubmitCommand: Command = Command.toLocalizedCommand(
@@ -64,7 +64,9 @@ export class SubmitCommandContribution implements CommandContribution {
                 try {
                     preview = await this.submissionService.prepare(root.toString());
                 } catch (e) {
-                    void this.messageService.error(localizeMarkdown('yukibana/submission/prepareFail', 'Cannot submit this folder: {0}', e instanceof Error ? e.message : String(e)));
+                    void this.messageService.error(
+                        localizeMarkdown('yukibana/submission/prepareFail', 'Cannot submit this folder: {0}', e instanceof Error ? e.message : String(e)),
+                    );
                     return;
                 }
                 try {
