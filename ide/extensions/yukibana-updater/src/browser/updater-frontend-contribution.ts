@@ -70,10 +70,10 @@ export class UpdaterFrontendContribution implements FrontendApplicationContribut
     protected showStatus(state: UpdaterState): void {
         const entry = statusText(state);
         if (!entry) {
-            this.statusBar.removeElement(STATUS_ID);
+            void this.statusBar.removeElement(STATUS_ID);
             return;
         }
-        this.statusBar.setElement(STATUS_ID, {
+        void this.statusBar.setElement(STATUS_ID, {
             ...entry,
             alignment: StatusBarAlignment.RIGHT,
             priority: 200,
