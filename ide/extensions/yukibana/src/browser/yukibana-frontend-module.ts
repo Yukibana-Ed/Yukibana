@@ -1,6 +1,8 @@
 /**
  * SPDX-License-Identifier: MIT
  */
+import '../../src/browser/style/index.css';
+
 import { AIIdeActivationServiceImpl } from '@theia/ai-ide/lib/browser/ai-ide-activation-service';
 import {
     ApplicationShell,

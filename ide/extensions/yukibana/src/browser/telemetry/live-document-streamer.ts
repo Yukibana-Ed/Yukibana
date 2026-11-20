@@ -1,8 +1,8 @@
 /**
  * SPDX-License-Identifier: MIT
  */
-import { Disposable, DisposableCollection } from '@theia/core';
-import { FrontendApplication, FrontendApplicationContribution } from '@theia/core/lib/browser';
+import { Disposable, DisposableCollection, Emitter, nls } from '@theia/core';
+import { FrontendApplication, FrontendApplicationContribution, StatusBar, StatusBarAlignment } from '@theia/core/lib/browser';
 import { inject, injectable } from '@theia/core/shared/inversify';
 import { EditorManager } from '@theia/editor/lib/browser';
 import { editor } from '@theia/monaco-editor-core';
@@ -37,6 +37,10 @@ export class LiveDocumentStreamer implements FrontendApplicationContribution, Di
     @inject(LiveTelemetryService) protected readonly service!: LiveTelemetryService;
     @inject(LiveTelemetryClientImpl) protected readonly client!: LiveTelemetryClientImpl;
     @inject(ConfigProvider) protected readonly config!: ConfigProvider;
+    @inject(StatusBar) protected readonly statusBar!: StatusBar;
+
+    protected readonly onStreamingChangeEmitter = new Emitter<boolean>();
+    readonly onStreamingChange = this.onStreamingChangeEmitter.event;
 
     protected streaming = false;
     protected readonly perDoc = new DisposableCollection();
@@ -57,6 +61,8 @@ export class LiveDocumentStreamer implements FrontendApplicationContribution, Di
                 this.follow();
             }
         });
+        this.config.onConfigChanged(config => this.setStatusBarElement(config.telemetry.liveTypingStats));
+        this.config.ready.then(config => this.setStatusBarElement(config.telemetry.liveTypingStats));
     }
 
     dispose(): void {
@@ -64,18 +70,21 @@ export class LiveDocumentStreamer implements FrontendApplicationContribution, Di
     }
 
     protected async start(): Promise<void> {
-        if (!(await this.config.ready).telemetry.liveTypingStats) {
+        const enabled = (await this.config.ready).telemetry.liveTypingStats;
+        if (!enabled) {
             return;
         }
         this.streaming = true;
         this.follow();
         this.safetyTimer = setInterval(() => this.snapshot(), 30_000);
+        this.onStreamingChangeEmitter.fire(this.streaming);
     }
 
     protected stop(): void {
         this.streaming = false;
         this.perDoc.dispose();
         clearInterval(this.safetyTimer);
+        this.onStreamingChangeEmitter.fire(this.streaming);
     }
 
     protected getModel(): editor.ITextModel | undefined {
@@ -131,5 +140,19 @@ export class LiveDocumentStreamer implements FrontendApplicationContribution, Di
             version: model.getVersionId(),
             full: model.getValue(),
         });
+    }
+
+    protected setStatusBarElement(enabled: boolean): void {
+        if (enabled) {
+            this.statusBar.setElement('remote-view-status', {
+                text: '$(codicon-record)',
+                alignment: StatusBarAlignment.RIGHT,
+                priority: 300,
+                tooltip: nls.localize('yukibana/liveTelemetry/streamingTooltip', 'Your session is being recorded. Your teacher may see the files you are editing'),
+                className: 'recording-indicator',
+            });
+        } else {
+            this.statusBar.removeElement('remote-view-status');
+        }
     }
 }
