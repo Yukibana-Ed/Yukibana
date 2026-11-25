@@ -71,7 +71,7 @@ export namespace ClientToServer {
         file: FilePath;
         version: number;
         length: number;
-        sha256: number;
+        sha256: string;
     }
     // #endregion
 
@@ -111,6 +111,7 @@ export namespace ClientToServer {
         path: FilePath;
         newPath?: FilePath;
         by: 'ide' | 'disk';
+        invocation?: number;
     }
 
     /** Terminal command execution event */
@@ -141,7 +142,7 @@ export namespace ClientToServer {
     /** Errors and warnings per file */
     export interface Problems extends Payload {
         type: 'problems';
-        byFile: Record<FilePath, { errors: number; warning: number }>;
+        byFile: Record<FilePath, { errors: number; warnings: number }>;
     }
 
     /** Submit event */

@@ -19,11 +19,17 @@ export namespace ServerToClient {
         flushNow?: boolean;
     }
 
+    /** Acknowledge journal entries */
+    export interface Ack extends Payload {
+        type: 'ack';
+        seq: number;
+    }
+
     /** Document synchronization request */
     export interface Resync extends Payload {
-        type: 'sync';
-        path: FilePath;
+        type: 'resync';
+        file: FilePath;
     }
 }
 
-export type ServerToClientPayload = ServerToClient.Welcome | ServerToClient.Cadence | ServerToClient.Resync;
+export type ServerToClientPayload = ServerToClient.Welcome | ServerToClient.Cadence | ServerToClient.Ack | ServerToClient.Resync;

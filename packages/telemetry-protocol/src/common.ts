@@ -14,4 +14,4 @@ export interface Payload {
     type: string;
 }
 export type FilePath = string;
-export type EditOrigin = 'type' | 'cut' | 'paste' | 'completion' | 'ai-completion' | 'drag-drop' | 'delete' | 'command' | 'unknown';
+export type EditOrigin = 'type' | 'cut' | 'paste' | 'completion' | 'ai-completion' | 'drag-drop' | 'delete' | 'command' | 'undo' | 'redo' | 'external' | 'unknown';
