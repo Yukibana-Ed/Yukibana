@@ -69,13 +69,13 @@ export class CloudSessionManager implements SessionStore {
     }
 
     private async doLogin(open: OpenLoginUrl): Promise<LoginResult> {
-        this.logger.info('Logging in...');
+        void this.logger.info('Logging in...');
         try {
             const session = await loginWithLoopback(DEFAULT_REGISTRY, {
                 callbackPage: o => this.loginCallbackPage(o),
                 open: url => open(url.toString(), loginCode(url) ?? undefined),
             });
-            this.logger.info('Received session');
+            void this.logger.info('Received session');
             await this.saveSession(session);
             this.onLoginChangedEmitter.fire();
             return { ok: true };
@@ -110,12 +110,12 @@ export class CloudSessionManager implements SessionStore {
      * then fires nothing.
      */
     async logout(): Promise<void> {
-        this.logger.info('Logging out...');
+        void this.logger.info('Logging out...');
         const { revoked, why } = await endSession(this);
         if (revoked) {
-            this.logger.info('Session ended at the Auth server');
+            void this.logger.info('Session ended at the Auth server');
         } else {
-            this.logger.warn(`Session forgotten here, but the Auth server did not end it: ${why}`);
+            void this.logger.warn(`Session forgotten here, but the Auth server did not end it: ${why}`);
         }
         this.onLoginChangedEmitter.fire();
     }

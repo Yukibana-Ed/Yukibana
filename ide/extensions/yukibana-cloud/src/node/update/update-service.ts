@@ -86,7 +86,7 @@ export class UpdateServiceImpl implements UpdateService {
             try {
                 return await this.updateNow(root, to.toLowerCase(), confirmed);
             } catch (e) {
-                this.logger.error(`Update of ${root} to ${to} failed`, e);
+                void this.logger.error(`Update of ${root} to ${to} failed`, e);
                 // Put back what it wrote now, before anything plans over a half-written folder
                 const reason = await this.rollBackIfApplying(root).then(
                     () => messageOf(e),
@@ -136,7 +136,7 @@ export class UpdateServiceImpl implements UpdateService {
                 await journal.rollBack(manifest);
                 return { kind: 'undone', state: await this.checkNow(root) };
             } catch (e) {
-                this.logger.error(`Undo in ${root} failed`, e);
+                void this.logger.error(`Undo in ${root} failed`, e);
                 return { kind: 'failed', reason: messageOf(e) };
             }
         });
@@ -168,7 +168,7 @@ export class UpdateServiceImpl implements UpdateService {
         if (manifest?.state !== 'applying') {
             return false;
         }
-        this.logger.warn(`Rolling back the unfinished update of ${root} to ${manifest.to}`);
+        void this.logger.warn(`Rolling back the unfinished update of ${root} to ${manifest.to}`);
         await journal.rollBack(manifest);
         return true;
     }
@@ -207,7 +207,7 @@ export class UpdateServiceImpl implements UpdateService {
             // Nothing the student receives changed (a commit to hidden tests, say): move the stamp and say nothing
             // A starter always has one: `fetchStarter` refuses one whose config does not name its release
             await this.place(root, CONFIG_FILE, fileIn(await this.starter(current), CONFIG_FILE)!);
-            this.logger.info(`Moved the stamp of ${root} to ${current}: nothing else changed`);
+            void this.logger.info(`Moved the stamp of ${root} to ${current}: nothing else changed`);
             return known;
         }
         return { ...known, available: { from: stamp.releaseId, to: current, projectTitle: project.title, decided: planned.decided, pending: planned.pending } };
@@ -260,7 +260,7 @@ export class UpdateServiceImpl implements UpdateService {
         }
         manifest.state = 'done';
         await journal.save(manifest);
-        this.logger.info(`Updated ${root} from ${manifest.from} to ${to}: ${manifest.decided.length} written, ${manifest.pending.length} left to the student`);
+        void this.logger.info(`Updated ${root} from ${manifest.from} to ${to}: ${manifest.decided.length} written, ${manifest.pending.length} left to the student`);
         return { kind: 'updated', state: await this.checkNow(root) };
     }
 

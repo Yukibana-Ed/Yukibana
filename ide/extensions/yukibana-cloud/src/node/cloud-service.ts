@@ -66,7 +66,7 @@ export class CloudServiceImpl implements CloudService {
                 return { kind: 'not-logged-in' };
             }
             // The welcome screen shows the reason rather than an empty list, which would read as nothing due
-            this.logger.warn(`Could not list projects: ${e instanceof Error ? e.message : String(e)}`);
+            void this.logger.warn(`Could not list projects: ${e instanceof Error ? e.message : String(e)}`);
             return { kind: 'error', reason: e instanceof Error ? e.message : String(e) };
         }
     }
@@ -81,11 +81,11 @@ export class CloudServiceImpl implements CloudService {
         try {
             const leftOut = await unpackStarter(await this.client.downloadStarter(projectId), FileUri.fsPath(destinationURI));
             for (const entry of leftOut) {
-                this.logger.warn(`Not unpacked from the starter of ${projectId}: ${entry}`);
+                void this.logger.warn(`Not unpacked from the starter of ${projectId}: ${entry}`);
             }
             return { ok: true, leftOut };
         } catch (e) {
-            this.logger.error(e instanceof Error ? e : String(e));
+            void this.logger.error(e instanceof Error ? e : String(e));
             return { ok: false, reason: e instanceof Error ? e.message : String(e) };
         }
     }

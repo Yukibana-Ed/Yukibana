@@ -76,7 +76,7 @@ export class CloudAuthImpl implements CloudAuth {
         } catch (e) {
             if (isRefused(e)) {
                 // A session that can no longer be used would otherwise block logging in again
-                this.logger.info(`Forgetting a session the registry no longer accepts: ${e.message}`);
+                void this.logger.info(`Forgetting a session the registry no longer accepts: ${e.message}`);
                 await this.service.forget();
                 return undefined;
             }

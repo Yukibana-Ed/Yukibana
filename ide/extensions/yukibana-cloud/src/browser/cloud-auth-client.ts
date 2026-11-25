@@ -33,7 +33,7 @@ export class AuthClientImpl implements AuthClient {
      * is asked of the window service, which does not say whether a page came up, so neither case is reported.
      */
     openLoginUrl(url: string, code?: string): void {
-        this.logger.info('Opening login url...');
+        void this.logger.info('Opening login url...');
         this.windowService.openNewWindow(url, { external: true });
         if (code) {
             this.onLoginCodeEmitter.fire(code);

@@ -23,7 +23,7 @@ import { UpdateServiceImpl } from './update/update-service';
  * back, and are disposed when it closes; {@link CloudServiceImpl} and {@link UpdateServiceImpl} are one for all
  * windows. Also contributes the French strings and the cloud account as the telemetry identity.
  */
-export default new ContainerModule((bind, unbind, isBound, rebind) => {
+export default new ContainerModule(bind => {
     bind(CloudSessionManager).toSelf().inSingletonScope();
 
     bind(CloudAuthImpl).toSelf().inTransientScope();

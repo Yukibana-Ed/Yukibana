@@ -29,7 +29,7 @@ export class YukibanaLiveWebsocketTelemetrySink implements LiveTelemetrySink {
     }
 
     protected start(): void {
-        this.logger.info('Starting');
+        void this.logger.info('Starting');
         return this.open();
     }
 
@@ -38,23 +38,25 @@ export class YukibanaLiveWebsocketTelemetrySink implements LiveTelemetrySink {
     }
 
     protected open(): void {
-        this.logger.info(`Connecting to ${WS_URL}`);
+        void this.logger.info(`Connecting to ${WS_URL}`);
         this.ws = new WebSocket(WS_URL);
         this.ws.on('error', e => {
-            this.logger.error(e);
+            void this.logger.error(e);
         });
         this.ws.on('open', async () => {
             this.sendHello();
         });
         this.ws.on('message', e => {
-            this.logger.info(`WS message: ${e}`);
-            const msg = JSON.parse(e.toString()) as LiveTelemetry.Envelope<LiveTelemetry.ServerToClientPayload>;
+            // eslint-disable-next-line @typescript/no-base-to-string
+            const messageString = e.toString();
+            void this.logger.info(`WS message: ${messageString}`);
+            const msg = JSON.parse(messageString) as LiveTelemetry.Envelope<LiveTelemetry.ServerToClientPayload>;
             this.onCommandEmitter.fire(msg.payload);
             this.host.dispatch(msg.payload);
         });
     }
     protected close(): void {
-        this.logger.info('Closing websocket');
+        void this.logger.info('Closing websocket');
         this.ws?.close();
     }
 
@@ -67,7 +69,7 @@ export class YukibanaLiveWebsocketTelemetrySink implements LiveTelemetrySink {
     }
 
     send(payload: LiveTelemetry.ClientToServerPayload): void {
-        this.logger.info(`Sending payload of type ${payload.type}`);
+        void this.logger.info(`Sending payload of type ${payload.type}`);
         const message: LiveTelemetry.Envelope<LiveTelemetry.ClientToServerPayload> = {
             v: 1,
             seq: this.seq++,
@@ -76,7 +78,7 @@ export class YukibanaLiveWebsocketTelemetrySink implements LiveTelemetrySink {
         };
         this.queue.push(message);
         if (this.mustSendImmediately(payload) || this.queue.length >= BATCH_SIZE) {
-            this.drain();
+            void this.drain();
         } else {
             this.timer ??= setTimeout(() => this.drain(), MAX_DRAIN_DELAY_MS);
         }

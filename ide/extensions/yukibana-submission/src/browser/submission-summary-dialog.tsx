@@ -26,7 +26,7 @@ export class SubmissionSummaryDialog extends ReactDialog<boolean> {
         });
         this.appendCloseButton(Dialog.CANCEL);
         this.appendAcceptButton(nls.localize('yukibana/submission/submit', 'Submit'));
-        this.refreshAvailability();
+        void this.refreshAvailability();
     }
 
     private latestCheck = 0;
@@ -39,7 +39,7 @@ export class SubmissionSummaryDialog extends ReactDialog<boolean> {
         let availability: SubmissionTargetAvailability;
         try {
             availability = await this.target.getAvailability(this.projectId);
-        } catch (e) {
+        } catch {
             availability = {
                 available: false,
                 reason: nls.localize('yukibana/submission/checkFailed', 'Could not check target availability'),
