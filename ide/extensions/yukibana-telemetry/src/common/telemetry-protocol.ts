@@ -27,3 +27,9 @@ export enum LiveEventPriority {
     NORMAL = 'normal',
     IMPORTANT = 'important',
 }
+
+export const LiveTelemetrySourceContribution = Symbol('LiveTelemetrySourceContribution');
+export interface LiveTelemetrySourceContribution {
+    start(): void;
+    dispose(): void;
+}

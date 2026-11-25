@@ -7,6 +7,7 @@ import { ApplicationServer } from '@theia/core/lib/common/application-protocol';
 import { inject, injectable, named } from '@theia/core/shared/inversify';
 import { WorkspaceService } from '@theia/workspace/lib/browser';
 import { ConfigProvider } from '@yukibana/ide-ext/lib/browser/config/config-provider';
+import { ClientToServerPayload } from '@yukibana/telemetry-protocol';
 import { LiveTelemetryService } from '../common/telemetry-protocol';
 import { LiveTelemetryConsentDialog } from './live-telemetry-consent-dialog';
 
@@ -40,6 +41,10 @@ export class LiveTelemetryJournal implements FrontendApplicationContribution {
                 await this.workspace.close();
             }
         });
+    }
+
+    record(payload: ClientToServerPayload): void {
+        this.telemetry.report(payload);
     }
 
     protected setStatusBarElement(enabled: boolean): void {

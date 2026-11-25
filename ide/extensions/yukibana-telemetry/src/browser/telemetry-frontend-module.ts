@@ -7,8 +7,10 @@ import { FrontendApplicationContribution, ServiceConnectionProvider } from '@the
 import { ContainerModule } from '@theia/core/shared/inversify';
 import { LiveTelemetryService, LiveTelemetryServicePath } from '../common/telemetry-protocol';
 import { LiveTelemetryClientImpl } from './live-telemetry-client';
+import { LiveTelemetryContribution } from './live-telemetry-contribution';
 import { LiveTelemetryJournal } from './live-telemetry-journal';
 import { LiveTelemetryPolicy } from './live-telemetry-policy';
+import { bindLiveSourceContributions } from './sources/live-source-contributions';
 
 export default new ContainerModule(bind => {
     bind(LiveTelemetryPolicy).toSelf().inSingletonScope();
@@ -18,4 +20,8 @@ export default new ContainerModule(bind => {
     bind(LiveTelemetryService)
         .toDynamicValue(ctx => ServiceConnectionProvider.createProxy<LiveTelemetryService>(ctx.container, LiveTelemetryServicePath, ctx.container.get(LiveTelemetryClientImpl)))
         .inSingletonScope();
+
+    bindLiveSourceContributions(bind);
+    bind(LiveTelemetryContribution).toSelf().inSingletonScope();
+    bind(FrontendApplicationContribution).toService(LiveTelemetryContribution);
 });
