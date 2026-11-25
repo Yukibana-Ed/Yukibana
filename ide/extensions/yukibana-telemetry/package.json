@@ -13,6 +13,7 @@
     "@theia/core": "catalog:",
     "@theia/telemetry": "catalog:",
     "@yukibana/ide-ext": "catalog:",
+    "@yukibana/telemetry-protocol": "catalog:",
     "ws": "catalog:"
   },
   "devDependencies": {

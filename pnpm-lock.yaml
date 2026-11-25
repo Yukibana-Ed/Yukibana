@@ -359,6 +359,9 @@ catalogs:
     '@yukibana/ide-updater-ext':
       specifier: workspace:*
       version: workspace:*
+    '@yukibana/telemetry-protocol':
+      specifier: workspace:*
+      version: workspace:*
     aws4fetch:
       specifier: 1.0.20
       version: 1.0.20
@@ -1165,6 +1168,9 @@ importers:
       '@yukibana/ide-ext':
         specifier: 'catalog:'
         version: link:../yukibana
+      '@yukibana/telemetry-protocol':
+        specifier: 'catalog:'
+        version: link:../../../packages/telemetry-protocol
       ws:
         specifier: 'catalog:'
         version: 8.22.0

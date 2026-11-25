@@ -115,6 +115,7 @@ catalog:
   '@yukibana/ide-submission-ext': workspace:*
   '@yukibana/ide-telemetry-ext': workspace:*
   '@yukibana/ide-updater-ext': workspace:*
+  '@yukibana/telemetry-protocol': workspace:*
   aws4fetch: 1.0.20
   chai: 6.3.0
   electron-builder: 26.18.0

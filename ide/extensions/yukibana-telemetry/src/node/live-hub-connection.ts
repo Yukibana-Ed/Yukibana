@@ -3,33 +3,33 @@
  */
 import { Emitter, ILogger } from '@theia/core';
 import { inject, injectable, named } from '@theia/core/shared/inversify';
-import { LiveSessionContext, LiveTelemetry, LiveTelemetrySink, LiveTelemetrySinkHost } from '@yukibana/ide-ext/lib/common/yukibana-telemetry';
-import { LiveTelemetrySinkContribution } from '@yukibana/ide-ext/lib/node/live-telemetry-sink-contribution';
+import { Batch, ClientToServerPayload, Envelope, ServerToClientPayload } from '@yukibana/telemetry-protocol';
 import { WebSocket } from 'ws';
+import { LiveSessionContext } from '../common/telemetry-protocol';
+import { LiveJournalStore } from './live-journal-store';
 
 const BATCH_SIZE = 50;
 const MAX_DRAIN_DELAY_MS = 1_000;
 const WS_URL = 'ws://localhost:5432/ws/student';
 
-export class YukibanaLiveWebsocketTelemetrySink implements LiveTelemetrySink {
-    protected queue: LiveTelemetry.Envelope<LiveTelemetry.ClientToServerPayload>[] = [];
+@injectable()
+export class LiveHubConnection {
+    @inject(LiveJournalStore) protected readonly store!: LiveJournalStore;
+    @inject(ILogger) @named('yukibana:LiveHubConnection') protected readonly logger!: ILogger;
+
+    protected queue: Envelope<ClientToServerPayload>[] = [];
     protected timer?: NodeJS.Timeout;
     protected ws?: WebSocket;
     protected seq: number = 0;
 
-    protected readonly onCommandEmitter = new Emitter<LiveTelemetry.ServerToClientPayload>();
+    protected sessionCtx?: LiveSessionContext;
+
+    protected readonly onCommandEmitter = new Emitter<ServerToClientPayload>();
     readonly onCommand = this.onCommandEmitter.event;
 
-    constructor(
-        protected readonly logger: ILogger,
-        protected readonly host: LiveTelemetrySinkHost,
-        protected readonly sessionCtx: LiveSessionContext,
-    ) {
-        this.start();
-    }
-
-    protected start(): void {
+    protected start(sessionCtx: LiveSessionContext): void {
         void this.logger.info('Starting');
+        this.sessionCtx = sessionCtx;
         return this.open();
     }
 
@@ -50,9 +50,9 @@ export class YukibanaLiveWebsocketTelemetrySink implements LiveTelemetrySink {
             // eslint-disable-next-line @typescript/no-base-to-string
             const messageString = e.toString();
             void this.logger.info(`WS message: ${messageString}`);
-            const msg = JSON.parse(messageString) as LiveTelemetry.Envelope<LiveTelemetry.ServerToClientPayload>;
+            const msg = JSON.parse(messageString) as Envelope<ServerToClientPayload>;
             this.onCommandEmitter.fire(msg.payload);
-            this.host.dispatch(msg.payload);
+            // this.host.dispatch(msg.payload);
         });
     }
     protected close(): void {
@@ -63,15 +63,16 @@ export class YukibanaLiveWebsocketTelemetrySink implements LiveTelemetrySink {
     protected sendHello(): void {
         this.send({
             type: 'hello',
-            studentId: '',
+            studentId: this.sessionCtx?.studentId ?? '',
             projectId: this.sessionCtx?.projectId ?? '',
+            clientVersion: this.sessionCtx?.clientVersion ?? '',
         });
     }
 
-    send(payload: LiveTelemetry.ClientToServerPayload): void {
+    send(payload: ClientToServerPayload): void {
         void this.logger.info(`Sending payload of type ${payload.type}`);
-        const message: LiveTelemetry.Envelope<LiveTelemetry.ClientToServerPayload> = {
-            v: 1,
+        const message: Envelope<ClientToServerPayload> = {
+            v: 2,
             seq: this.seq++,
             ts: Date.now(),
             payload: payload,
@@ -84,10 +85,8 @@ export class YukibanaLiveWebsocketTelemetrySink implements LiveTelemetrySink {
         }
     }
 
-    protected mustSendImmediately(payload: LiveTelemetry.ClientToServerPayload): boolean {
-        if (payload.type === 'hello' || (payload.type === 'doc' && payload?.full !== undefined) || payload.type === 'ping') {
-            return true;
-        }
+    protected mustSendImmediately(payload: ClientToServerPayload): boolean {
+        // TODO: rewrite
         return false;
     }
 
@@ -108,28 +107,14 @@ export class YukibanaLiveWebsocketTelemetrySink implements LiveTelemetrySink {
         }
     }
 
-    protected async sendBatch(batch: LiveTelemetry.Envelope<LiveTelemetry.ClientToServerPayload>[]): Promise<void> {
+    protected async sendBatch(batch: Envelope<ClientToServerPayload>[]): Promise<void> {
         if (!this.ws) {
             return;
         }
         this.ws.send(
             JSON.stringify({
-                identity: {
-                    provider: 'none',
-                    id: 'unique-id',
-                },
                 events: batch,
-            }),
+            } satisfies Batch<ClientToServerPayload>),
         );
-    }
-}
-
-@injectable()
-export class YukibanaLiveWebsocketTelemetrySinkContribution implements LiveTelemetrySinkContribution {
-    @inject(ILogger) @named('yukibana:LiveWebsocketTelemetrySink') protected readonly logger!: ILogger;
-    readonly name: string = 'live-websocket-sink';
-
-    create(ctx: LiveSessionContext, host: LiveTelemetrySinkHost): LiveTelemetrySink {
-        return new YukibanaLiveWebsocketTelemetrySink(this.logger, host, ctx);
     }
 }
