@@ -15,11 +15,9 @@ export const FocusProblemsCommand: Command = Command.toDefaultLocalizedCommand({
 /**
  * Theia's problems view contribution, without its status bar item while the config's `features.squiggles` is false;
  * the item comes back when it is turned on again.
- *
- * The class name is misspelt (`Contributioun`); the module binds it by that name.
  */
 @injectable()
-export class YukibanaProblemContributioun extends ProblemContribution {
+export class YukibanaProblemContribution extends ProblemContribution {
     /** The config whose `features.squiggles` hides the status bar item. */
     @inject(ConfigProvider) protected readonly configProvider: ConfigProvider;
     /** The contribution's logger; nothing logs to it yet. */
