@@ -194,10 +194,16 @@ catalogs:
     '@theia/ai-chat-ui':
       specifier: 1.76.0
       version: 1.76.0
+    '@theia/ai-code-completion':
+      specifier: 1.76.0
+      version: 1.76.0
     '@theia/ai-core':
       specifier: 1.76.0
       version: 1.76.0
     '@theia/ai-ide':
+      specifier: 1.76.0
+      version: 1.76.0
+    '@theia/ai-openai':
       specifier: 1.76.0
       version: 1.76.0
     '@theia/bundle-plugin':
@@ -606,12 +612,18 @@ importers:
       '@theia/ai-chat-ui':
         specifier: 'catalog:'
         version: 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)
+      '@theia/ai-code-completion':
+        specifier: 'catalog:'
+        version: 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)
       '@theia/ai-core':
         specifier: 'catalog:'
         version: 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)
       '@theia/ai-ide':
         specifier: 'catalog:'
         version: 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)(yauzl@2.10.0)(zod@4.6.7)
+      '@theia/ai-openai':
+        specifier: 'catalog:'
+        version: 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)(ws@8.22.0)(zod@4.6.7)
       '@theia/core':
         specifier: 'catalog:'
         version: 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)
@@ -744,12 +756,18 @@ importers:
       '@theia/ai-chat-ui':
         specifier: 'catalog:'
         version: 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)
+      '@theia/ai-code-completion':
+        specifier: 'catalog:'
+        version: 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)
       '@theia/ai-core':
         specifier: 'catalog:'
         version: 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)
       '@theia/ai-ide':
         specifier: 'catalog:'
         version: 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)(yauzl@2.10.0)(zod@4.6.7)
+      '@theia/ai-openai':
+        specifier: 'catalog:'
+        version: 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)(ws@8.22.0)(zod@4.6.7)
       '@theia/core':
         specifier: 'catalog:'
         version: 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)
@@ -2728,6 +2746,9 @@ packages:
   '@theia/ai-chat@1.76.0':
     resolution: {integrity: sha512-JSz0W1WHvNPA141Qi3FM+iEgGpKbvU3ZZTCNSztEgEoJ2bT8NBmGjanuqKoq9BM3VbVaTNDKQjC8TtLqSOsuWA==}
 
+  '@theia/ai-code-completion@1.76.0':
+    resolution: {integrity: sha512-AD+N2jg7Py7Bsajpm/89Cv1BDnl0WEjlsRZDrokuKRrYs7nb9zgalisEBaRcxDsF/71boSd7pbbTaFfQNUWm4g==}
+
   '@theia/ai-core-ui@1.76.0':
     resolution: {integrity: sha512-BA1dp3PlSHsH6UF6Q/V/4mCtIA/LRsoK3ruAvtDQErLvm0LktLd1uUG7WmLbIxjA77tlSGYDWNavC3ABRoYWUQ==}
 
@@ -2739,6 +2760,9 @@ packages:
 
   '@theia/ai-mcp@1.76.0':
     resolution: {integrity: sha512-/aNNIgaMq4ZFOpCmgXALmXCjcw019QGSL/1buV/zLTwPcdnGPg8s0DeJUsqiFeyeUPyvQQl4PXqZWAwiFaQfsw==}
+
+  '@theia/ai-openai@1.76.0':
+    resolution: {integrity: sha512-I/iiLUkPI7kZnpT2mGVXi7Nsxgfs1q/Kbaad0oHlMgBfaTirEFk6dv24Xvd+TELCycj/RfNvyJ4mnb13LDK3qw==}
 
   '@theia/ai-terminal@1.76.0':
     resolution: {integrity: sha512-gnMK7ne5HAT6ggQZA4YqcmyNwUB9qva9GO7PDkSv2rU43EfZog4DjJ/FwMs8x+GXwjcwkxfvEFmVJJPA4AwlPg==}
@@ -6088,6 +6112,26 @@ packages:
     resolution: {integrity: sha512-MVHddDVweXZF3awtlAS+6pgKLlm/JgxZ90+/NBurBoQctVOOB/zDdVjcyPzQ+0laDGbsWgrRkflI65sQeOgT9Q==}
     engines: {node: '>=8'}
 
+  openai@6.49.0:
+    resolution: {integrity: sha512-aYCc0C6L864eR6WSYIwQGyXriw/nIyZx0ObvhzOEVuk0zoBDpynjSbrionWI7q65B5H8jJX0DXR9snEzM6bfPg==}
+    peerDependencies:
+      '@aws-sdk/credential-provider-node': '>=3.972.0 <4'
+      '@smithy/hash-node': '>=4.3.0 <5'
+      '@smithy/signature-v4': '>=5.4.0 <6'
+      ws: ^8.18.0
+      zod: ^3.25 || ^4.0
+    peerDependenciesMeta:
+      '@aws-sdk/credential-provider-node':
+        optional: true
+      '@smithy/hash-node':
+        optional: true
+      '@smithy/signature-v4':
+        optional: true
+      ws:
+        optional: true
+      zod:
+        optional: true
+
   opener@1.5.2:
     resolution: {integrity: sha512-ur5UIdyw5Y7yEj9wLzhqXiy6GZ3Mwx0yGI+5sMn2r0N0v3cKJvUmFH5yPP+WXh9e0xfyzyJX95D8l088DNFj7A==}
     hasBin: true
@@ -8945,6 +8989,30 @@ snapshots:
       - typescript
       - utf-8-validate
 
+  '@theia/ai-code-completion@1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)':
+    dependencies:
+      '@theia/ai-core': 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)
+      '@theia/core': 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)
+      '@theia/filesystem': 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)
+      '@theia/monaco-editor-core': 1.108.201
+      '@theia/output': 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)
+      '@theia/workspace': 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - '@theia/electron'
+      - '@types/react'
+      - '@types/react-dom'
+      - bare-abort-controller
+      - bare-buffer
+      - bufferutil
+      - debug
+      - react
+      - react-dom
+      - react-native-b4a
+      - supports-color
+      - typescript
+      - utf-8-validate
+
   '@theia/ai-core-ui@1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)':
     dependencies:
       '@theia/ai-core': 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)
@@ -9066,6 +9134,34 @@ snapshots:
       - supports-color
       - typescript
       - utf-8-validate
+      - zod
+
+  '@theia/ai-openai@1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)(ws@8.22.0)(zod@4.6.7)':
+    dependencies:
+      '@theia/ai-core': 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)
+      '@theia/core': 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)
+      '@theia/filesystem': 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)
+      '@theia/workspace': 1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)
+      openai: 6.49.0(ws@8.22.0)(zod@4.6.7)
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - '@aws-sdk/credential-provider-node'
+      - '@smithy/hash-node'
+      - '@smithy/signature-v4'
+      - '@theia/electron'
+      - '@types/react'
+      - '@types/react-dom'
+      - bare-abort-controller
+      - bare-buffer
+      - bufferutil
+      - debug
+      - react
+      - react-dom
+      - react-native-b4a
+      - supports-color
+      - typescript
+      - utf-8-validate
+      - ws
       - zod
 
   '@theia/ai-terminal@1.76.0(@theia/electron@1.76.0(electron@42.8.1(supports-color@8.1.1)))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@8.1.1)(typescript@7.0.2)':
@@ -13514,6 +13610,11 @@ snapshots:
     dependencies:
       is-docker: 2.2.1
       is-wsl: 2.2.0
+
+  openai@6.49.0(ws@8.22.0)(zod@4.6.7):
+    optionalDependencies:
+      ws: 8.22.0
+      zod: 4.6.7
 
   opener@1.5.2: {}
 
