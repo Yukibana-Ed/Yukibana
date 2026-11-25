@@ -49,7 +49,10 @@ export class LiveFlushScheduler implements BackendApplicationContribution, Dispo
 
     protected setFlushRate(rateMs: number): void {
         this.logger.info(`Set flush rate to ${rateMs}`);
-        // TODO
+        if (this.interval !== undefined) {
+            clearInterval(this.interval);
+        }
+        this.interval = setInterval(() => this.flush(), rateMs);
     }
 
     protected flush(): void {
