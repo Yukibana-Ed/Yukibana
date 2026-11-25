@@ -1,0 +1,11 @@
+{
+  "$schema": "../../node_modules/oxlint/configuration_schema.json",
+  "extends": ["../../oxlint.strict.json"],
+  "rules": {
+    /* Off for now: an error's `code`, a parsed JSON object's fields and a
+       Node buffer's ArrayBuffer are cast, not narrowed (src/store.ts,
+       session.ts, extract.ts, and `JSON.parse(...) as X` in the tests). */
+    "typescript/no-unsafe-type-assertion": "off"
+  },
+  "ignorePatterns": ["lib/**", "node_modules/**"]
+}
