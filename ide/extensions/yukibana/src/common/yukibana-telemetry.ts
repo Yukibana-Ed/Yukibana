@@ -2,7 +2,6 @@
  * SPDX-License-Identifier: MIT
  */
 import { MaybePromise, RpcServer } from '@theia/core';
-import { editor } from '@theia/monaco-editor-core';
 
 export namespace TypingTelemetry {
     export const EditPath = 'yukibana/edit';
@@ -34,85 +33,165 @@ export namespace TypingTelemetry {
 
 export namespace LiveTelemetry {
     export interface Envelope<P extends Payload> {
-        v: 1;
+        v: 2;
         seq: number;
         ts: number;
         payload: P;
+    }
+    export interface Batch<P extends Payload> {
+        events: Envelope<P>[];
     }
 
     export interface Payload {
         type: string;
     }
+    export type FilePath = string;
+    export type EditOrigin = 'type' | 'cut' | 'paste' | 'completion' | 'ai-completion' | 'drag-drop' | 'delete' | 'command' | 'unknown';
 
-    // client -> server
+    // #region Client -> Server
+
+    // #region Session lifecycle
     export interface Hello extends Payload {
         type: 'hello';
         studentId: string;
         projectId: string;
+        sessionId?: string;
+        clientVersion: string;
+        configHash?: string;
+        windowTitle?: string;
     }
-    export interface DocSync extends Payload {
-        type: 'doc';
-        uri: string;
-        version: number;
-        full?: string;
-        changes?: editor.IModelContentChange[];
-        cursor?: [number, number];
-    }
-    export interface PasteStats {
-        size: number;
-        external: boolean;
-    }
-    export interface Stats extends Payload {
-        type: 'stats';
-        windowMs: number;
-        idleMs: number;
-        charsInserted: number;
-        charsDeleted: number;
-        pastes: PasteStats[];
-        commands: string[];
-        activeFile?: string;
+    export interface State extends Payload {
+        type: 'state';
         focused: boolean;
+        activeFile?: FilePath;
+        openFiles: FilePath[];
     }
-    export interface Event extends Payload {
-        type: 'event';
-        kind: 'run' | 'test' | 'submit' | 'ai-prompt' | 'file-op';
-        data: unknown;
+    // #endregion
+
+    // #region Journal
+    export interface Snapshot extends Payload {
+        type: 'snapshot';
+        file: FilePath;
+        version: number;
+        text: string;
+        eol: '\n' | '\r\n';
+        sha256: string;
+        reason: 'open' | 'external' | 'resync';
+    }
+    export interface Change {
+        offset: number;
+        length: number;
+        text: string;
+    }
+    export interface Edit extends Payload {
+        type: 'edit';
+        file: FilePath;
+        version: number;
+        baseVersion: number;
+        changes: Change[];
+        origin: EditOrigin;
+        invocation?: number;
+        external?: boolean;
+    }
+    export interface Selection extends Payload {
+        type: 'selection';
+        file: FilePath;
+        selections: [anchor: number, active: number][];
+    }
+    export interface Checkpoint extends Payload {
+        type: 'checkpoint';
+        file: FilePath;
+        version: number;
+        length: number;
+        sha256: number;
+    }
+    // #endregion
+
+    // #region Events
+    export interface Command extends Payload {
+        type: 'command';
+        invocation: number;
+        phase: 'start' | 'end';
+        id: string;
+        source?: 'keybinding' | 'menu' | 'palette' | 'toolbar' | 'code-action' | 'other';
+        args?: unknown;
+        ok?: boolean;
+    }
+    export interface Copy extends Payload {
+        type: 'copy';
+        file: FilePath;
+        size: number;
+        cut: boolean;
+    }
+    export interface AIPrompt extends Payload {
+        type: 'ai-prompt';
+        feature: string;
+        chars: number;
+        text?: string;
+    }
+    export interface FileOp extends Payload {
+        type: 'file-op';
+        op: 'create' | 'rename' | 'delete' | 'change';
+        path: FilePath;
+        newPath?: FilePath;
+        by: 'ide' | 'disk';
+    }
+    export interface Terminal extends Payload {
+        type: 'terminal';
+        commandLine: string;
+        exitCode?: number;
+    }
+    export interface Run extends Payload {
+        type: 'run';
+        target?: FilePath;
+        exitCode?: number;
+        durationMs?: number;
+    }
+    export interface Test extends Payload {
+        type: 'test';
+        results: {
+            name: string;
+            status: 'passed' | 'failed' | 'error' | 'skipped';
+        }[];
+        durationMs?: number;
     }
     export interface Problems extends Payload {
         type: 'problems';
+        byFile: Record<FilePath, { errors: number; warning: number }>;
         errors: number;
         warnings: number;
     }
-    export interface Ping extends Payload {
-        type: 'ping';
+    export interface Submit extends Payload {
+        type: 'submit';
+        ref?: string;
     }
+    // #endregion
+    // #endregion
 
-    // server -> client
+    // #region Server -> Client
     export interface Welcome extends Payload {
         type: 'welcome';
         sessionId: string;
+        resumed: boolean;
+        ackedSeq: number;
         serverTime: number;
         heartbeatMs: number;
+        maxDocChars: number;
     }
-    export interface Subscribe extends Payload {
-        type: 'subscribe';
-        stream: 'doc';
-    }
-    export interface Unsubscribe extends Payload {
-        type: 'unsubscribe';
-        stream: 'doc';
-    }
-    export interface Sync extends Payload {
+    export interface Resync extends Payload {
         type: 'sync';
-        uri: string;
+        path: FilePath;
     }
+    // #endregion
 
-    export type ClientToServerPayload = Hello | DocSync | Stats | Event | Problems | Ping;
-    export type ServerToClientPayload = Welcome | Subscribe | Unsubscribe | Sync;
+    export type ClientToServerPayload = Hello | State | Snapshot | Edit | Selection | Checkpoint | Command | Copy | AIPrompt | FileOp | Terminal | Run | Test | Problems | Submit;
+    export type ServerToClientPayload = Welcome | Resync;
 }
 
 export interface LiveSessionContext {
+    studentId: string;
     projectId: string;
+    clientVersion: string;
 }
 
 export const LiveTelemetrySink = Symbol('LiveTelemetrySink');
@@ -124,7 +203,7 @@ export interface LiveTelemetrySink {
 export const LiveTelemetryServicePath = 'yukibana/live-telemetry';
 export const LiveTelemetryService = Symbol('LiveTelemetryService');
 export interface LiveTelemetryService extends RpcServer<LiveTelemetryClient> {
-    start(ctx: LiveSessionContext): MaybePromise<void>;
+    start(ctx: Omit<LiveSessionContext, 'studentId'>): MaybePromise<void>;
     report(event: LiveTelemetry.ClientToServerPayload): void;
     stop(): void;
 }
