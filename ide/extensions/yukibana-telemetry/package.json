@@ -31,6 +31,7 @@
   },
   "theiaExtensions": [
     {
+      "frontend": "lib/browser/telemetry-frontend-module",
       "backend": "lib/node/telemetry-backend-module"
     }
   ]

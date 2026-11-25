@@ -1,6 +1,7 @@
 /**
  * SPDX-License-Identifier: MIT
  */
+import { BackendApplicationContribution } from '@theia/core/lib/node/backend-application';
 import { ConnectionContainerModule } from '@theia/core/lib/node/messaging/connection-container-module';
 import { ContainerModule } from '@theia/core/shared/inversify';
 import { TelemetrySink } from '@theia/telemetry/lib/node';
@@ -17,8 +18,7 @@ export const liveTelemetryConnectionContainerModule = ConnectionContainerModule.
     bind(LiveJournalStore).toSelf().inSingletonScope();
     bind(LiveHubConnection).toSelf().inSingletonScope();
     bind(LiveFlushScheduler).toSelf().inSingletonScope();
-    bind(LiveTelemetryServiceImpl).toSelf().inSingletonScope();
-
+    bind(BackendApplicationContribution).toService(LiveFlushScheduler);
     bind(LiveTelemetryServiceImpl).toSelf().inSingletonScope();
     bind(LiveTelemetryService).toService(LiveTelemetryServiceImpl);
     bindBackendService<LiveTelemetryService, LiveTelemetryClient>(LiveTelemetryServicePath, LiveTelemetryService, (service, client) => {

@@ -12,6 +12,13 @@ export namespace ServerToClient {
         maxDocChars: number;
     }
 
+    /** Flush cadence parameters */
+    export interface Cadence extends Payload {
+        type: 'cadence';
+        flushMs: number;
+        flushNow?: boolean;
+    }
+
     /** Document synchronization request */
     export interface Resync extends Payload {
         type: 'sync';
@@ -19,4 +26,4 @@ export namespace ServerToClient {
     }
 }
 
-export type ServerToClientPayload = ServerToClient.Welcome | ServerToClient.Resync;
+export type ServerToClientPayload = ServerToClient.Welcome | ServerToClient.Cadence | ServerToClient.Resync;

@@ -7,14 +7,14 @@ import { Batch, ClientToServerPayload, Envelope, ServerToClientPayload } from '@
 import { WebSocket } from 'ws';
 import { LiveSessionContext } from '../common/telemetry-protocol';
 import { LiveJournalStore } from './live-journal-store';
+import { LiveSessionIdentity } from './live-session-identity';
 
-const BATCH_SIZE = 50;
-const MAX_DRAIN_DELAY_MS = 1_000;
 const WS_URL = 'ws://localhost:5432/ws/student';
 
 @injectable()
 export class LiveHubConnection {
     @inject(LiveJournalStore) protected readonly store!: LiveJournalStore;
+    @inject(LiveSessionIdentity) protected readonly session!: LiveSessionIdentity;
     @inject(ILogger) @named('yukibana:LiveHubConnection') protected readonly logger!: ILogger;
 
     protected queue: Envelope<ClientToServerPayload>[] = [];
@@ -27,7 +27,7 @@ export class LiveHubConnection {
     protected readonly onCommandEmitter = new Emitter<ServerToClientPayload>();
     readonly onCommand = this.onCommandEmitter.event;
 
-    protected start(sessionCtx: LiveSessionContext): void {
+    start(sessionCtx: LiveSessionContext): void {
         void this.logger.info('Starting');
         this.sessionCtx = sessionCtx;
         return this.open();
@@ -44,7 +44,7 @@ export class LiveHubConnection {
             void this.logger.error(e);
         });
         this.ws.on('open', async () => {
-            this.sendHello();
+            await this.sendHello();
         });
         this.ws.on('message', e => {
             // eslint-disable-next-line @typescript/no-base-to-string
@@ -52,7 +52,6 @@ export class LiveHubConnection {
             void this.logger.info(`WS message: ${messageString}`);
             const msg = JSON.parse(messageString) as Envelope<ServerToClientPayload>;
             this.onCommandEmitter.fire(msg.payload);
-            // this.host.dispatch(msg.payload);
         });
     }
     protected close(): void {
@@ -60,61 +59,29 @@ export class LiveHubConnection {
         this.ws?.close();
     }
 
-    protected sendHello(): void {
-        this.send({
+    protected async sendHello(): Promise<void> {
+        this.store.append({
             type: 'hello',
-            studentId: this.sessionCtx?.studentId ?? '',
-            projectId: this.sessionCtx?.projectId ?? '',
-            clientVersion: this.sessionCtx?.clientVersion ?? '',
+            studentId: this.session.studentId ?? '',
+            projectId: this.session.projectId ?? '',
+            clientVersion: (await this.session.clientVersion) ?? '',
         });
     }
 
-    send(payload: ClientToServerPayload): void {
-        void this.logger.info(`Sending payload of type ${payload.type}`);
-        const message: Envelope<ClientToServerPayload> = {
-            v: 2,
-            seq: this.seq++,
-            ts: Date.now(),
-            payload: payload,
-        };
-        this.queue.push(message);
-        if (this.mustSendImmediately(payload) || this.queue.length >= BATCH_SIZE) {
-            void this.drain();
-        } else {
-            this.timer ??= setTimeout(() => this.drain(), MAX_DRAIN_DELAY_MS);
-        }
+    send(payload: Envelope<ClientToServerPayload>): Promise<boolean> {
+        return this.sendBatch({ events: [payload] });
     }
 
-    protected mustSendImmediately(payload: ClientToServerPayload): boolean {
-        // TODO: rewrite
-        return false;
-    }
-
-    protected async drain(): Promise<void> {
-        clearTimeout(this.timer);
-        this.timer = undefined;
-        if (!this.ws) {
-            return;
-        }
-        const batch = this.queue.splice(0);
-        if (!batch.length) {
-            return;
-        }
-        try {
-            await this.sendBatch(batch);
-        } catch {
-            this.queue.unshift(...batch);
-        }
-    }
-
-    protected async sendBatch(batch: Envelope<ClientToServerPayload>[]): Promise<void> {
-        if (!this.ws) {
-            return;
-        }
-        this.ws.send(
-            JSON.stringify({
-                events: batch,
-            } satisfies Batch<ClientToServerPayload>),
-        );
+    async sendBatch(batch: Batch<ClientToServerPayload>): Promise<boolean> {
+        return new Promise(resolve => {
+            if (!this.ws) {
+                return resolve(false);
+            }
+            try {
+                this.ws.send(JSON.stringify(batch), err => resolve(err === undefined));
+            } catch {
+                resolve(false);
+            }
+        });
     }
 }

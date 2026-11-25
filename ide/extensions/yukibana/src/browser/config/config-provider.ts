@@ -159,4 +159,11 @@ export class ConfigProvider implements FrontendApplicationContribution {
         this.onConfigChangeEmitter.fire(config);
         this._ready.resolve(this._config);
     }
+
+    async getHash(): Promise<string> {
+        const json = JSON.stringify(this._config);
+        const data = new TextEncoder().encode(json);
+        const digest = await crypto.subtle.digest('SHA-1', data);
+        return Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
+    }
 }
