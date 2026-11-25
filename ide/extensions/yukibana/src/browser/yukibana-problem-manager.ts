@@ -8,7 +8,6 @@ import { Diagnostic } from '@theia/core/shared/vscode-languageserver-protocol';
 import { MarkerCollection, SearchFilter } from '@theia/markers/lib/browser/marker-manager';
 import { ProblemManager, ProblemStat } from '@theia/markers/lib/browser/problem/problem-manager';
 import { Marker } from '@theia/markers/lib/common/marker';
-import { LiveTelemetry, LiveTelemetryService } from '../common/yukibana-telemetry';
 import { ConfigProvider } from './config/config-provider';
 
 /**
@@ -27,11 +26,9 @@ export class YukibanaProblemManager extends ProblemManager {
     constructor(
         @inject(ConfigProvider) protected readonly configProvider: ConfigProvider,
         @inject(ILogger) @named('yukibana:ProblemManager') protected readonly logger: ILogger,
-        @inject(LiveTelemetryService) protected readonly telemetry: LiveTelemetryService,
     ) {
         super();
         this.configProvider.onConfigChanged(() => this.onConfigChanged());
-        this.onDidChangeMarkers(() => this.reportDiagnostics());
     }
 
     /** `true` iff markers show: the current config's `features.squiggles` is not false. */
@@ -80,14 +77,5 @@ export class YukibanaProblemManager extends ProblemManager {
             return [];
         }
         return super.findMarkers(filter);
-    }
-
-    protected reportDiagnostics(): void {
-        const stats = super.getProblemStat();
-        this.telemetry.report({
-            type: 'problems',
-            errors: stats.errors,
-            warnings: stats.warnings,
-        } satisfies LiveTelemetry.Problems);
     }
 }
