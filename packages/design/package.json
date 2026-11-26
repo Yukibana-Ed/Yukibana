@@ -1,7 +1,7 @@
 {
   "private": true,
   "name": "@yukibana/design",
-  "description": "Yukibana's design system: W3C design tokens compiled to CSS custom properties, the base styles of the shared components, the fonts, the theme choice shared by the sites of one domain, and a reference page that shows them.",
+  "description": "Yukibana's design system: W3C design tokens compiled to CSS custom properties, the base styles of the shared components, the fonts, the theme choice shared by the sites of one domain, the script that tells a click from Tab for focus, and a reference page that shows them.",
   "version": "0.0.0-dev",
   "license": "MIT",
   "type": "module",
@@ -10,6 +10,7 @@
     "fonts",
     "tokens",
     "src/theme.ts",
+    "src/focus.ts",
     "README.md"
   ],
   "exports": {
@@ -17,6 +18,7 @@
     "./base.css": "./css/base.css",
     "./fonts.css": "./css/fonts.css",
     "./theme": "./src/theme.ts",
+    "./focus": "./src/focus.ts",
     "./css/*": "./css/*",
     "./fonts/*": "./fonts/*",
     "./tokens/*": "./tokens/*",
