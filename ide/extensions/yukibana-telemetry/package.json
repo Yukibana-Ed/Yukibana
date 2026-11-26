@@ -11,7 +11,10 @@
   ],
   "dependencies": {
     "@theia/core": "catalog:",
+    "@theia/editor": "catalog:",
     "@theia/markers": "catalog:",
+    "@theia/monaco": "catalog:",
+    "@theia/monaco-editor-core": "catalog:",
     "@theia/telemetry": "catalog:",
     "@theia/workspace": "catalog:",
     "@yukibana/ide-ext": "catalog:",
