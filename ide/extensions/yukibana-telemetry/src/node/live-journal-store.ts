@@ -11,8 +11,8 @@ import { LiveSessionIdentity } from './live-session-identity';
 export class LiveJournalStore {
     @inject(LiveSessionIdentity) protected readonly session!: LiveSessionIdentity;
 
-    protected seq: number = 0;
-    protected store: Envelope<any>[] = [];
+    protected seq: number = 1;
+    protected store: Envelope<ClientToServerPayload>[] = [];
 
     protected readonly onEntryEmitter = new Emitter<{ event: Envelope<ClientToServerPayload>; priority: LiveEventPriority }>();
     readonly onEntry = this.onEntryEmitter.event;
@@ -27,14 +27,25 @@ export class LiveJournalStore {
         // TODO: persist to disk
         this.store.push(event);
 
-        // TODO: choose priority based on event type
+        const priority = this.computePriority(payload);
         this.onEntryEmitter.fire({
             event: event,
-            priority: LiveEventPriority.NORMAL,
+            priority: priority,
         });
     }
 
-    getBatch(): Envelope<any>[] {
+    getBatch(): Envelope<ClientToServerPayload>[] {
         return this.store;
+    }
+
+    acknowledge(seq: number): void {
+        this.store = this.store.filter(e => e.seq > seq);
+    }
+
+    protected computePriority(payload: ClientToServerPayload): LiveEventPriority {
+        if (payload.type === 'hello') {
+            return LiveEventPriority.IMPORTANT;
+        }
+        return LiveEventPriority.NORMAL;
     }
 }

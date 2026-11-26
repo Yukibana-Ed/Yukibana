@@ -5,7 +5,6 @@ import { Emitter, ILogger } from '@theia/core';
 import { inject, injectable, named } from '@theia/core/shared/inversify';
 import { Batch, ClientToServerPayload, Envelope, ServerToClientPayload } from '@yukibana/telemetry-protocol';
 import { WebSocket } from 'ws';
-import { LiveSessionContext } from '../common/telemetry-protocol';
 import { LiveJournalStore } from './live-journal-store';
 import { LiveSessionIdentity } from './live-session-identity';
 
@@ -17,20 +16,14 @@ export class LiveHubConnection {
     @inject(LiveSessionIdentity) protected readonly session!: LiveSessionIdentity;
     @inject(ILogger) @named('yukibana:LiveHubConnection') protected readonly logger!: ILogger;
 
-    protected queue: Envelope<ClientToServerPayload>[] = [];
-    protected timer?: NodeJS.Timeout;
-    protected ws?: WebSocket;
-    protected seq: number = 0;
-
-    protected sessionCtx?: LiveSessionContext;
-
+        protected ws?: WebSocket;
+    
     protected readonly onCommandEmitter = new Emitter<ServerToClientPayload>();
     readonly onCommand = this.onCommandEmitter.event;
 
-    start(sessionCtx: LiveSessionContext): void {
+    start(): void {
         void this.logger.info('Starting');
-        this.sessionCtx = sessionCtx;
-        return this.open();
+                return this.open();
     }
 
     dispose(): void {
@@ -50,8 +43,15 @@ export class LiveHubConnection {
             // eslint-disable-next-line @typescript/no-base-to-string
             const messageString = e.toString();
             void this.logger.info(`WS message: ${messageString}`);
-            const msg = JSON.parse(messageString) as Envelope<ServerToClientPayload>;
+            const batch = JSON.parse(messageString) as Batch<ServerToClientPayload>;
+for (const msg of batch.events) {
             this.onCommandEmitter.fire(msg.payload);
+}
+        });
+        this.onCommand(cmd => {
+            if (cmd.type === 'ack') {
+                this.store.acknowledge(cmd.seq);
+            }
         });
     }
     protected close(): void {
@@ -60,11 +60,16 @@ export class LiveHubConnection {
     }
 
     protected async sendHello(): Promise<void> {
-        this.store.append({
+        this.send({
+v: 2,
+            seq: 0,
+            ts: Date.now(),
+            payload: {
             type: 'hello',
             studentId: this.session.studentId ?? '',
             projectId: this.session.projectId ?? '',
             clientVersion: (await this.session.clientVersion) ?? '',
+},
         });
     }
 
@@ -75,11 +80,13 @@ export class LiveHubConnection {
     async sendBatch(batch: Batch<ClientToServerPayload>): Promise<boolean> {
         return new Promise(resolve => {
             if (!this.ws) {
+                this.logger.warn('WebSocket not initialized');
                 return resolve(false);
             }
             try {
-                this.ws.send(JSON.stringify(batch), err => resolve(err === undefined));
+                this.ws.send(JSON.stringify(batch), err => resolve(!err));
             } catch {
+                this.logger.error('Error');
                 resolve(false);
             }
         });

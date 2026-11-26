@@ -22,10 +22,12 @@ export class LiveTelemetryServiceImpl implements LiveTelemetryService, Disposabl
 
     start(ctx: Omit<LiveSessionContext, 'studentId'>): void {
         this.logger.info('Starting');
+        this.session.setStudentId('unknown');
         this.session.setProjectId(ctx.projectId);
         this.session.setConfigHash(ctx.configHash);
         this.hub.onCommand(command => this.client?.onCommand(command));
-        this.hub.start({ ...ctx, studentId: this.session.studentId ?? '' });
+        this.hub.start();
+        this.scheduler.start();
     }
 
     report(payload: ClientToServerPayload): void {

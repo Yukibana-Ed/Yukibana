@@ -2,7 +2,6 @@
  * SPDX-License-Identifier: MIT
  */
 import { Disposable, DisposableCollection, ILogger } from '@theia/core';
-import { BackendApplicationContribution } from '@theia/core/lib/node/backend-application.js';
 import { inject, injectable, named } from '@theia/core/shared/inversify';
 import { LiveEventPriority } from '../common/telemetry-protocol.js';
 import { LiveHubConnection } from './live-hub-connection.js';
@@ -11,7 +10,7 @@ import { LiveJournalStore } from './live-journal-store';
 const DEFAULT_FLUSH_INTERVAL_MS = 2000;
 
 @injectable()
-export class LiveFlushScheduler implements BackendApplicationContribution, Disposable {
+export class LiveFlushScheduler implements Disposable {
     @inject(LiveJournalStore) protected readonly store!: LiveJournalStore;
     @inject(LiveHubConnection) protected readonly hub!: LiveHubConnection;
     @inject(ILogger) @named('yukibana:LiveFlushScheduler') protected readonly logger!: ILogger;
@@ -19,7 +18,7 @@ export class LiveFlushScheduler implements BackendApplicationContribution, Dispo
     protected readonly toDispose = new DisposableCollection();
     protected interval?: ReturnType<typeof setInterval>;
 
-    onStart(): void {
+    start(): void {
         this.logger.info('Initializing');
         this.toDispose.push(
             this.hub.onCommand(cmd => {
@@ -41,6 +40,7 @@ export class LiveFlushScheduler implements BackendApplicationContribution, Dispo
                 }
             },
         });
+        this.toDispose.push(this.store.onEntry(e => this.notify(e.priority)));
     }
 
     dispose(): void {
@@ -57,13 +57,11 @@ export class LiveFlushScheduler implements BackendApplicationContribution, Dispo
 
     protected flush(): void {
         const batch = this.store.getBatch();
-        this.logger.info(`Flush ${batch.length} events`);
         if (batch.length === 0) {
             return;
         }
-        this.hub.sendBatch({
-            events: batch,
-        });
+        this.logger.info(`Flush ${batch.length} events`);
+        this.hub.sendBatch({ events: batch });
     }
 
     notify(priority: LiveEventPriority): void {
