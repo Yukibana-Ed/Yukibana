@@ -62,7 +62,7 @@ export namespace ClientToServer {
     export interface Selection extends Payload {
         type: 'selection';
         file: FilePath;
-        selections: [anchor: number, active: number][];
+        selections: [from: [line: number, column: number], to: [line: number, column: number]][];
     }
 
     /** Small checkpoint document hash for the server to compare */

@@ -3,6 +3,7 @@ import { interfaces } from '@theia/core/shared/inversify';
 import { LiveTelemetrySourceContribution } from '../../common/telemetry-protocol';
 import { EditorEditSource } from './editor-edit-source';
 import { ProblemsSource } from './problems-source';
+import { SelectionSource } from './selection-source';
 
 type SourceContribution = new (...args: any[]) => LiveTelemetrySourceContribution;
 
@@ -16,4 +17,5 @@ export function bindLiveSourceContributions(bind: interfaces.Bind): void {
 
     bindSource(bind, ProblemsSource);
     bindSource(bind, EditorEditSource);
+    bindSource(bind, SelectionSource);
 }
