@@ -16,6 +16,7 @@
     "@theia/monaco": "catalog:",
     "@theia/monaco-editor-core": "catalog:",
     "@theia/telemetry": "catalog:",
+    "@theia/test": "catalog:",
     "@theia/workspace": "catalog:",
     "@yukibana/ide-ext": "catalog:",
     "@yukibana/telemetry-protocol": "catalog:",

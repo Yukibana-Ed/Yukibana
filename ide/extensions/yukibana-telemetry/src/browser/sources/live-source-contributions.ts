@@ -2,6 +2,7 @@ import { bindContributionProvider } from '@theia/core';
 import { interfaces } from '@theia/core/shared/inversify';
 import { LiveTelemetrySourceContribution } from '../../common/telemetry-protocol';
 import { EditorEditSource } from './editor-edit-source';
+import { ExecutionSource } from './execution-source';
 import { ProblemsSource } from './problems-source';
 import { SelectionSource } from './selection-source';
 import { WorkbenchStateSource } from './workbench-state-source';
@@ -20,4 +21,5 @@ export function bindLiveSourceContributions(bind: interfaces.Bind): void {
     bindSource(bind, EditorEditSource);
     bindSource(bind, SelectionSource);
     bindSource(bind, WorkbenchStateSource);
+    bindSource(bind, ExecutionSource);
 }
