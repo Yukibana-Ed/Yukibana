@@ -21,6 +21,21 @@
     outline: var(--yk-focus-width) solid var(--yk-ink);
     outline-offset: var(--yk-focus-offset);
 }
+/* A text field the person clicked into gets a 1px ink border, not the ring: browsers count a click into a field as
+   visible focus, and the field already shows a caret. Tab still brings the ring. `data-yk-pointer` is set by FOCUS_BOOT
+   (src/focus.ts) while the last input was a pointer; without the script the ring stays. Zero specificity, like the
+   ring, so a field the app styles itself keeps the app's border; `.yk-input` has its own rule in fields.css. */
+:where(
+    [data-yk-pointer]
+        :is(
+            textarea,
+            input:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file'], [type='button'], [type='submit'], [type='reset'], [type='image']),
+            [contenteditable]:not([contenteditable='false'])
+        ):focus-visible
+) {
+    outline: none;
+    border-color: var(--yk-ink);
+}
 :where(svg.yk-icon) {
     width: 16px;
     height: 16px;

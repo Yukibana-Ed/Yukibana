@@ -13,6 +13,7 @@ why, so that nobody has to rerun them to learn it.
 | `css/base.css` | Generated: the parts in `css/base/` joined into one file, in the order `src/base.ts` lists them. Committed, and the file apps import. |
 | `css/fonts.css` | `@font-face` for the three typefaces, under the names `tokens.css` uses, from `fonts/`. Optional. |
 | `src/theme.ts` | The theme choice (System, Light or Dark), shared by the sites of one domain in one cookie, exported as TypeScript for the app's bundler. See [The theme choice](#the-theme-choice). |
+| `src/focus.ts` | `FOCUS_BOOT`, the script that tells a click into a field from Tab, so a clicked field gets a border instead of the ring. See **Focus** below. |
 | `fonts/` | The fonts as variable WOFF2, Latin and Latin Extended, each family with its licence (`OFL.txt`, SIL Open Font License 1.1). |
 | `reference/index.html` | The living reference. Open it from this directory. |
 
@@ -114,7 +115,14 @@ native radio buttons in labels (the arrow keys move the choice) or buttons with 
 Checkboxes are drawn, not native: a native one follows the page's colour scheme and came out dark grey in a light panel.
 
 **Focus.** The ink ring: 2px, a 2px gap, black in the light theme and white in the dark. Highest contrast, and it keeps
-green for actions.
+green for actions. A text field (or an editor, `contenteditable`) clicked into gets a 1px ink border instead, about 5:1
+from its grey one: browsers count a click into a field as visible focus, so the ring showed on every click, which was
+too much for something that already shows a caret (Ambrus, 2026-11-26). Tab still brings the ring. CSS cannot tell a
+click from Tab, so `@yukibana/design/focus` exports `FOCUS_BOOT`, an inline script that keeps `data-yk-pointer` on
+`<html>` while the last input was a pointer; the app puts it beside `THEME_BOOT` (`<script>${THEME_BOOT}${FOCUS_BOOT}</script>`).
+A page without it keeps the ring everywhere. Typing into a field one clicked into keeps the border; Tab, or a key
+pressed outside a field, brings back the ring. Buttons, tabs, checkboxes and the segmented control keep the ring: a
+browser shows it for them only after the keyboard anyway.
 
 **Code.** Expressive Code frames, as on hylo-lang.org: the dock tab bar for files, Copy and Run in Light as icon
 buttons, no header on terminal blocks (Copy appears on hover or keyboard focus, and always on a touch screen), and marked, added and removed lines with a bar and a sign.
