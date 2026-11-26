@@ -1,7 +1,7 @@
 /* Fields: outlined, label on top, never fully round (long text looks cramped in a pill). On a wide settings page the
-   label may sit beside the field; it moves back on top on a phone. Focus from the keyboard is the ink ring, as
-   everywhere; a click turns the border ink instead (core.css). Not green: a green border was too small a change to see
-   (1.6:1 from the unfocused border in the light theme); ink is 5:1. */
+   label may sit beside the field; it moves back on top on a phone. Focus turns the border ink (core.css), not the
+   ring: a click into a field counts as visible focus too, and the ring was too much for every click. Not green: a green
+   border was too small a change to see (1.6:1 from the unfocused border in the light theme); ink is 5:1. */
 .yk-field {
     display: grid;
     gap: 4px;
@@ -23,7 +23,7 @@
     padding: 7px 11px;
     min-width: 0;
 }
-:where([data-yk-pointer]) .yk-input:focus-visible {
+.yk-input:focus-visible {
     border-color: var(--yk-ink);
 }
 .yk-field[data-invalid] .yk-input {

@@ -25,18 +25,15 @@
     outline: var(--yk-focus-width) solid var(--yk-ink);
     outline-offset: var(--yk-focus-offset);
 }
-/* A text field the person clicked into gets a 1px ink border, not the ring: browsers count a click into a field as
-   visible focus, and the field already shows a caret. Tab still brings the ring. `data-yk-pointer` is set by FOCUS_BOOT
-   (src/focus.ts) while the last input was a pointer; without the script the ring stays. Zero specificity, like the
-   ring, so a field the app styles itself keeps the app's border; `.yk-input` has its own rule in fields.css. */
+/* A text field (or an editor, contenteditable) gets a 1px ink border, not the ring. Browsers count every focus of a
+   field as :focus-visible, a click too, so the ring showed on every click, which was too much for something that
+   already shows a caret. Zero specificity, like the ring, so a field the app styles itself keeps the app's border;
+   `.yk-input` has its own rule in fields.css. */
 :where(
-    [data-yk-pointer]
-        :is(
-            textarea,
-            input:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file'], [type='button'], [type='submit'], [type='reset'], [type='image']),
-            [contenteditable]:not([contenteditable='false'])
-        ):focus-visible
-) {
+    textarea,
+    input:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file'], [type='button'], [type='submit'], [type='reset'], [type='image']),
+    [contenteditable]:not([contenteditable='false'])
+):focus-visible {
     outline: none;
     border-color: var(--yk-ink);
 }
@@ -290,9 +287,9 @@
 /* ---- css/base/fields.css ---- */
 
 /* Fields: outlined, label on top, never fully round (long text looks cramped in a pill). On a wide settings page the
-   label may sit beside the field; it moves back on top on a phone. Focus from the keyboard is the ink ring, as
-   everywhere; a click turns the border ink instead (core.css). Not green: a green border was too small a change to see
-   (1.6:1 from the unfocused border in the light theme); ink is 5:1. */
+   label may sit beside the field; it moves back on top on a phone. Focus turns the border ink (core.css), not the
+   ring: a click into a field counts as visible focus too, and the ring was too much for every click. Not green: a green
+   border was too small a change to see (1.6:1 from the unfocused border in the light theme); ink is 5:1. */
 .yk-field {
     display: grid;
     gap: 4px;
@@ -314,7 +311,7 @@
     padding: 7px 11px;
     min-width: 0;
 }
-:where([data-yk-pointer]) .yk-input:focus-visible {
+.yk-input:focus-visible {
     border-color: var(--yk-ink);
 }
 .yk-field[data-invalid] .yk-input {
