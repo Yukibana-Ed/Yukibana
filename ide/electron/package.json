@@ -61,7 +61,7 @@
     "@theia/bundle-plugin": "catalog:",
     "@theia/cli": "catalog:",
     "@yukibana/ide": "catalog:",
-    "electron": "42.8.1",
+    "electron": "45.3.2",
     "electron-builder": "catalog:",
     "esbuild": "catalog:",
     "typescript": "catalog:"
