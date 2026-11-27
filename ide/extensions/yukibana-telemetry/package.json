@@ -12,6 +12,7 @@
   "dependencies": {
     "@theia/core": "catalog:",
     "@theia/editor": "catalog:",
+    "@theia/filesystem": "catalog:",
     "@theia/markers": "catalog:",
     "@theia/monaco": "catalog:",
     "@theia/monaco-editor-core": "catalog:",

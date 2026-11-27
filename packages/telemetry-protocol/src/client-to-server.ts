@@ -110,7 +110,7 @@ export namespace ClientToServer {
         op: 'create' | 'rename' | 'delete' | 'change';
         path: FilePath;
         newPath?: FilePath;
-        by: 'ide' | 'disk';
+        by: 'user' | 'ide' | 'disk';
         invocation?: number;
     }
 
