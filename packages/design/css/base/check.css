@@ -27,16 +27,16 @@
    box is not indeterminate. */
 .yk-check:checked:not(:indeterminate)::after {
     content: '';
-    width: 9px;
-    height: 5px;
+    width: 7px;
+    height: 3.5px;
     border: solid var(--yk-on-accent);
-    border-width: 0 0 2px 2px;
+    border-width: 0 0 1.75px 1.75px;
     transform: translateY(-1px) rotate(-45deg);
 }
 .yk-check:indeterminate::after {
     content: '';
-    width: 8px;
-    height: 2px;
+    width: 7px;
+    height: 1.75px;
     border-radius: 1px;
     background: var(--yk-on-accent);
 }
