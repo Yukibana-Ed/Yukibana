@@ -28,12 +28,16 @@
     background: var(--yk-surface);
     border-color: var(--yk-line-strong);
 }
-.yk-btn--secondary:hover:not(:disabled, [data-done]),
-.yk-btn--ghost:hover:not(:disabled, [data-done]) {
+.yk-btn--secondary:hover:not(:disabled, [data-done]) {
     background: var(--yk-sunken);
 }
+/* A ghost button is drawn in the tones of the surface it sits on (tone.css), like an icon button. */
 .yk-btn--ghost {
-    color: var(--yk-soft);
+    color: var(--yk-fg-soft);
+}
+.yk-btn--ghost:hover:not(:disabled, [data-done]) {
+    background: var(--yk-hover);
+    color: var(--yk-fg);
 }
 .yk-btn--danger {
     background: var(--yk-danger);
@@ -71,10 +75,10 @@
     border: 0;
     border-radius: var(--yk-radius-sm);
     background: transparent;
-    color: var(--yk-soft);
+    color: var(--yk-fg-soft);
     cursor: pointer;
 }
 .yk-icon-btn:hover:not(:disabled) {
-    background: var(--yk-sunken);
-    color: var(--yk-ink);
+    background: var(--yk-hover);
+    color: var(--yk-fg);
 }

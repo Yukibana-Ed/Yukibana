@@ -70,6 +70,27 @@
     text-underline-offset: 2px;
 }
 
+/* ---- css/base/tone.css ---- */
+
+/* Contextual tones: the ink, the soft ink and the hover wash of the surface a control sits on. They are the page's
+   by default; a tinted surface (`.yk-tint`: a selected row, a chosen item) sets them for everything drawn on it, as
+   `--yk-on-accent` does for a solid accent fill. Controls draw with these rather than with `--yk-ink` and `--yk-soft`,
+   so an icon button on a selected row reads as part of that row instead of grey on green. */
+:where(:root) {
+    --yk-fg: var(--yk-ink);
+    --yk-fg-soft: var(--yk-soft);
+    --yk-hover: color-mix(in oklch, var(--yk-ink) 8%, transparent);
+}
+.yk-tint,
+.yk-table tbody tr:has(.yk-check:checked) {
+    --yk-fg: var(--yk-accent-strong);
+    --yk-fg-soft: color-mix(in oklch, var(--yk-accent-strong) 70%, var(--yk-soft));
+    --yk-hover: color-mix(in oklch, var(--yk-accent) 16%, transparent);
+}
+.yk-tint {
+    background: var(--yk-accent-bg);
+}
+
 /* ---- css/base/buttons.css ---- */
 
 /* Buttons: small and flat, with a 6px corner (chosen over pills in context, 2026-11-13). One primary (green) per view;
@@ -102,12 +123,16 @@
     background: var(--yk-surface);
     border-color: var(--yk-line-strong);
 }
-.yk-btn--secondary:hover:not(:disabled, [data-done]),
-.yk-btn--ghost:hover:not(:disabled, [data-done]) {
+.yk-btn--secondary:hover:not(:disabled, [data-done]) {
     background: var(--yk-sunken);
 }
+/* A ghost button is drawn in the tones of the surface it sits on (tone.css), like an icon button. */
 .yk-btn--ghost {
-    color: var(--yk-soft);
+    color: var(--yk-fg-soft);
+}
+.yk-btn--ghost:hover:not(:disabled, [data-done]) {
+    background: var(--yk-hover);
+    color: var(--yk-fg);
 }
 .yk-btn--danger {
     background: var(--yk-danger);
@@ -145,12 +170,12 @@
     border: 0;
     border-radius: var(--yk-radius-sm);
     background: transparent;
-    color: var(--yk-soft);
+    color: var(--yk-fg-soft);
     cursor: pointer;
 }
 .yk-icon-btn:hover:not(:disabled) {
-    background: var(--yk-sunken);
-    color: var(--yk-ink);
+    background: var(--yk-hover);
+    color: var(--yk-fg);
 }
 
 /* ---- css/base/segmented.css ---- */

@@ -7,6 +7,7 @@
  *  build refuses a file in css/base/ that is not listed here, so a new part cannot be forgotten. */
 export const BASE_PARTS = [
     'core',
+    'tone',
     'buttons',
     'segmented',
     'chips',
