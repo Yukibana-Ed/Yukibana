@@ -1,0 +1,18 @@
+/* Contextual tones: the ink, the soft ink and the hover wash of the surface a control sits on. They are the page's
+   by default; a tinted surface (`.yk-tint`: a selected row, a chosen item) sets them for everything drawn on it, as
+   `--yk-on-accent` does for a solid accent fill. Controls draw with these rather than with `--yk-ink` and `--yk-soft`,
+   so an icon button on a selected row reads as part of that row instead of grey on green. */
+:where(:root) {
+    --yk-fg: var(--yk-ink);
+    --yk-fg-soft: var(--yk-soft);
+    --yk-hover: color-mix(in oklch, var(--yk-ink) 8%, transparent);
+}
+.yk-tint,
+.yk-table tbody tr:has(.yk-check:checked) {
+    --yk-fg: var(--yk-accent-strong);
+    --yk-fg-soft: color-mix(in oklch, var(--yk-accent-strong) 70%, var(--yk-soft));
+    --yk-hover: color-mix(in oklch, var(--yk-accent) 16%, transparent);
+}
+.yk-tint {
+    background: var(--yk-accent-bg);
+}

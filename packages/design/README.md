@@ -110,6 +110,14 @@ is pressed, a sunken fill outlined in ink on all four sides, never green (it is 
 native radio buttons in labels (the arrow keys move the choice) or buttons with `aria-pressed`. A single toggle is a
 `.yk-btn` with `aria-pressed`, drawn the same way when on.
 
+**Tones.** A control is drawn in the tones of the surface it sits on, not in the page's: `--yk-fg` (ink),
+`--yk-fg-soft` (an icon at rest) and `--yk-hover` (the wash under a hovered control). They are the page's ink, soft ink
+and 8% ink by default (`css/base/tone.css`); a tinted surface sets them for what is drawn on it. `.yk-tint`, the green
+of a selected row, makes them the accent's: accent-strong, accent-strong mixed 70% with soft, and a 16% accent wash. It
+is the counterpart of `--yk-on-accent`, which is the ink on a solid accent fill. Icon buttons and ghost buttons use the
+tones; a component with a tinted surface of its own sets them there. Chosen on the selected row of Papers' commit
+review, where grey icons on green looked pasted on (Ambrus, 2026-11-27).
+
 **Tables.** Every row is a link. A checkbox on the left selects it for the bulk bar, which keeps a gap above the list.
 Checkboxes are drawn, not native: a native one follows the page's colour scheme and came out dark grey in a light panel.
 
