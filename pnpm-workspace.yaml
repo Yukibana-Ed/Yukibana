@@ -115,6 +115,7 @@ catalog:
   '@yukibana/ide-submission-ext': workspace:*
   '@yukibana/ide-telemetry-ext': workspace:*
   '@yukibana/ide-updater-ext': workspace:*
+  '@yukibana/project-schema': workspace:*
   aws4fetch: 1.0.20
   chai: 6.3.0
   electron-builder: 26.18.0
@@ -149,5 +150,7 @@ catalogs:
   # cloud/web only: svelte-check supports TypeScript 6 at most (its peer dependency is ^5 || ^6).
   ts6:
     typescript: 6.0.3
+    # packages/project-schema, beside its own TypeScript 7: checks that its declarations compile for cloud/web.
+    typescript-6: npm:typescript@6.0.3
 catalogMode: strict
 catalogPrune: true

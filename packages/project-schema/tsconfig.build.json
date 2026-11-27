@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.json",
+  // Composite, so that `tsc --build` of the client, and of the IDE through it, compiles it first.
+  "compilerOptions": { "noEmit": false, "composite": true, "outDir": "lib", "rootDir": "src", "declaration": true, "allowImportingTsExtensions": false },
+  "include": ["src/**/*.ts"]
+}

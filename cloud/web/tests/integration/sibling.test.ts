@@ -155,7 +155,16 @@ async function seeded(): Promise<Record<string, string>> {
         const [s] = await tx<{ id: string }[]>`select submission_id as id from submission where project_id = ${p.project_id} limit 1`;
         const none = '00000000-0000-4000-8000-000000000000';
         // A well-formed invite secret that no invite has, so that the page and its form are reached.
-        return { edition: p.edition_id, project: p.project_id, release: r?.id ?? none, submission: s?.id ?? none, archive: 'starter', secret: `yk_invite_${'0'.repeat(64)}` };
+        return {
+            edition: p.edition_id,
+            project: p.project_id,
+            release: r?.id ?? none,
+            submission: s?.id ?? none,
+            archive: 'starter',
+            format: 'yukibana',
+            file: 'v1.json',
+            secret: `yk_invite_${'0'.repeat(64)}`,
+        };
     });
 }
 

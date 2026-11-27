@@ -30,7 +30,7 @@
 import * as z from 'zod';
 // The function form of .default(), which zod spells _default, since default is a keyword.
 import { _default as withDefault } from 'zod';
-import { expectation, fieldOf } from './issues.js';
+import { expectation, fieldOf } from '@yukibana/project-schema';
 
 /** The file's name, at the project root, in the repository and in every
  *  starter. */

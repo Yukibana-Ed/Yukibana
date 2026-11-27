@@ -113,6 +113,7 @@ const DEVCONTAINER_INPUTS: ReadonlySet<string> = new Set([
     'packages/cli/package.json',
     'packages/client/package.json',
     'packages/fixtures/package.json',
+    'packages/project-schema/package.json',
     'cloud/db/supabase/config.toml',
 ]);
 
